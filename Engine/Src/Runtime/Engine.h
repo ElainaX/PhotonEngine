@@ -12,6 +12,12 @@ namespace photon
 		void StartEngine();
 		void ShutDownEngine();
 
+	public:
+		void TickOneFrame(float deltaTime);
+
+		void TickLogical(float deltaTime);
+		void TickRenderer(float deltaTime);
+
 		void Run();
 
 		~PhotonEngine();

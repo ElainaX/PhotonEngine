@@ -1,6 +1,6 @@
 ﻿#include "Engine.h"
 #include "Test/SandBox.h"
-#include "Test/RuntimeGlobalContext.h"
+#include "Function/Global/RuntimeGlobalContext.h"
 
 
 namespace photon

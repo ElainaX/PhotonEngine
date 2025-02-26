@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "Core/Log/LogManager.h"
-#include "Test/RuntimeGlobalContext.h"
+#include "Function/Global/RuntimeGlobalContext.h"
 
 #include <string>
 #include <format>
