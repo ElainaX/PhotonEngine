@@ -32,7 +32,9 @@ set_target_properties(PhotonRuntime PROPERTIES
     DEBUG_POSTFIX "${DebugOutputPostfix}"          # Debug 配置下的后缀为 "_d"
 )
 
-
+if(MSVC)
+    target_compile_options(PhotonRuntime PUBLIC "/Zc:preprocessor")
+endif()
 # Clear Variable
 # unset(SOURCE_FILES)
 # unset(HEAD_FILES)

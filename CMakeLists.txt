@@ -16,5 +16,7 @@ if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
   )
 endif()
 
+add_definitions(-DUNICODE -D_UNICODE)
+
 set(PHOTON_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 add_subdirectory(Engine)
