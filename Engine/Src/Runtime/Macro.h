@@ -6,6 +6,7 @@
 #include <format>
 #include <cassert>
 #include <iostream>
+#include <windows.h>
 
 #define LOG_DEBUG(...) \
 		g_RuntimeGlobalContext.logManager->Log(__FUNCTION__ " (line " + std::to_string(__LINE__) + "): " + std::format(__VA_ARGS__))
@@ -23,3 +24,19 @@
         std::cerr << "自定义断言失败: " << message << std::endl; \
         assert(condition); \
     }
+
+inline std::string WString2String(const std::wstring & wstr)
+{
+	std::string str;
+	str.resize(wstr.size());
+	WideCharToMultiByte(CP_ACP, 0, wstr.data(), wstr.size(), str.data(), wstr.size(), NULL, NULL);
+	return str;
+}
+
+inline std::wstring String2WString(const std::string& str)
+{
+	std::wstring wstr;
+	wstr.resize(str.size());
+	MultiByteToWideChar(CP_ACP, 0, str.data(), str.size(), wstr.data(), str.size());
+	return wstr;
+}

@@ -39,14 +39,15 @@ namespace photon
 	void PhotonEngine::Run()
 	{
 		//// Run Code
-		//SandBox sandBox;
-		//sandBox.Run();
+		SandBox sandBox;
+		sandBox.Run();
 		m_Timer.Reset();
 		assert(g_RuntimeGlobalContext.windowSystem);
 		while(!g_RuntimeGlobalContext.windowSystem->ShouldClose())
 		{
 			m_Timer.Tick();
 			TickOneFrame(m_Timer);
+
 		}
 	}
 

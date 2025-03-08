@@ -371,9 +371,9 @@ namespace photon
 
 	void WindowSystem::OnMouseMove(const MouseMoveEvent& mouseMove)
 	{
-#ifdef DEBUG
-		LOG_INFO("{}", mouseMove.ToString());
-#endif
+//#ifdef DEBUG
+//		LOG_INFO("{}", mouseMove.ToString());
+//#endif
 		MouseMoveEvent e = mouseMove;
 		for (auto& callback : m_OnMouseMoveCallbacks)
 		{
