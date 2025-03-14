@@ -452,6 +452,11 @@ namespace photon
 #ifdef DEBUG
 		LOG_DEBUG("{}", wndResize.ToString());
 #endif
+		// 更新WindowSystem的参数
+		Vector2i wndSize = wndResize.GetWindowSize();
+		m_Width = wndSize.x;
+		m_Height = wndSize.y;
+
 		WindowResizeEvent e = wndResize;
 		for (auto& callback : m_OnWindowResizeCallbacks)
 		{
@@ -467,6 +472,9 @@ namespace photon
 #ifdef DEBUG
 		LOG_DEBUG("{}", keydown.ToString());
 #endif
+		if (keydown.GetVirtualKey() == VirtualKey::esc)
+			m_bShouldClose = true;
+
 		KeyDownEvent e = keydown;
 		for (auto& callback : m_OnKeyDownCallbacks)
 		{

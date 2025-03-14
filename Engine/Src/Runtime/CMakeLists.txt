@@ -20,6 +20,10 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${SOURCE_FILES} ${HEAD_FIL
 # build
 add_library(PhotonRuntime STATIC ${SOURCE_FILES} ${HEAD_FILES})
 target_link_libraries(PhotonRuntime PUBLIC spdlog)
+target_link_libraries(PhotonRuntime PUBLIC d3d12.lib)
+target_link_libraries(PhotonRuntime PUBLIC d3dcompiler.lib)
+target_link_libraries(PhotonRuntime PUBLIC dxgi.lib)
+
 target_include_directories(PhotonRuntime PRIVATE ${CMAKE_SOURCE_DIR}/3rdParty/include)
 target_include_directories(PhotonRuntime PUBLIC "./")
     

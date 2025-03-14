@@ -2,6 +2,7 @@
 #include "Test/SandBox.h"
 #include "Function/Global/RuntimeGlobalContext.h"
 #include "Function/Render/WindowSystem.h"
+#include "Function/Render/RenderSystem.h"
 
 #include <cassert>
 
@@ -22,7 +23,6 @@ namespace photon
 	void PhotonEngine::TickOneFrame(GameTimer& timer)
 	{
 		TickLogical(timer);
-
 		TickRenderer(timer);
 	}
 
@@ -33,7 +33,7 @@ namespace photon
 
 	void PhotonEngine::TickRenderer(GameTimer& timer)
 	{
-
+		g_RuntimeGlobalContext.renderSystem->Tick(timer);
 	}
 
 	void PhotonEngine::Run()

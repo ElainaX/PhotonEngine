@@ -6,6 +6,7 @@
 #include <format>
 #include <cassert>
 #include <iostream>
+#include <d3d12.h>
 #include <windows.h>
 
 #define LOG_DEBUG(...) \
@@ -24,6 +25,12 @@
         std::cerr << "自定义断言失败: " << message << std::endl; \
         assert(condition); \
     }
+
+#define DX_LogIfFailed(result) \
+	    if (FAILED((result))) { \
+        std::cerr << "DX FAILED" << std::endl; \
+        assert(0); \
+		}
 
 inline std::string WString2String(const std::wstring & wstr)
 {

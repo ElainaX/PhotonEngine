@@ -7,6 +7,7 @@ namespace photon
 {
 	class WindowUtil
 	{
+	public:
 		static Vector2i ScreenToClient(HWND hwnd, int x, int y);
 		static Vector2i ScreenToClient(HWND hwnd, Vector2i p);
 

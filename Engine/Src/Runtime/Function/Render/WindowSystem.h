@@ -7,6 +7,7 @@
 #include <windows.h>
 
 #include "Function/Event/EventHeaders.h"
+#include "Function/Util/WindowUtil.h"
 
 namespace photon
 {
@@ -38,6 +39,11 @@ namespace photon
 		bool ShouldClose() const;
 		void SetShouldClose(bool bShouldClose = true);
 		void SetTitle(const std::wstring& title);
+
+		HWND GetHwnd() { return m_WndHandle; }
+		Vector2i GetWidthAndHeight() { return Vector2i(m_Width, m_Height); }
+		Vector2i GetClientWidthAndHeight() { return WindowUtil::WindowToClient(m_WndHandle, m_Width, m_Height);}
+		
 
 		void CloseAllWindows();
 

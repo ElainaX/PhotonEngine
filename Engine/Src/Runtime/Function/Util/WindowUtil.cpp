@@ -26,19 +26,17 @@ namespace photon
 
 	photon::Vector2i WindowUtil::ClientToScreen(HWND hwnd, Vector2i p)
 	{
-		return ClientToScreen(hwnd, p);
+		return ClientToScreen(hwnd, p.x, p.y);
 	}
 
 
 	photon::Vector2i WindowUtil::ClientToWindow(HWND hwnd, Vector2i p)
 	{
-		RECT clientRect;
+		POINT point = {p.x, p.y};
 		RECT wndRect;
-		::GetClientRect(hwnd, &clientRect);
+		::ClientToScreen(hwnd, &point);
 		::GetWindowRect(hwnd, &wndRect);
-		Vector2i offset = { clientRect.left - wndRect.left,
-			clientRect.top - wndRect.top };
-		return offset + p;
+		return Vector2i{point.x - wndRect.left, point.y - wndRect.top};
 	}
 
 	photon::Vector2i WindowUtil::ClientToWindow(HWND hwnd, int x, int y)
@@ -48,13 +46,13 @@ namespace photon
 
 	photon::Vector2i WindowUtil::WindowToClient(HWND hwnd, Vector2i p)
 	{
-		RECT clientRect;
+		POINT point{p.x, p.y};
 		RECT wndRect;
-		::GetClientRect(hwnd, &clientRect);
 		::GetWindowRect(hwnd, &wndRect);
-		Vector2i offset = { clientRect.left - wndRect.left,
-			clientRect.top - wndRect.top };
-		return p - offset;
+		point.x += wndRect.left;
+		point.y += wndRect.top;
+		::ScreenToClient(hwnd, &point);
+		return Vector2i{point.x, point.y};
 	}
 
 

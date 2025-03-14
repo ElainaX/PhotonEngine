@@ -312,7 +312,7 @@ namespace photon
 		}
 
 		/// Check whether this vector contains valid values
-		bool isNaN() const { return std::isnan(x) || std::isnan(y); }
+		// bool isNaN() const { return std::isnan(x) || std::isnan(y); }
 
 		static Vector2i lerp(const Vector2i& lhs, const Vector2i& rhs, int alpha) { return lhs + alpha * (rhs - lhs); }
 
