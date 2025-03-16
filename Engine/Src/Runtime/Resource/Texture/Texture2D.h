@@ -9,7 +9,6 @@ namespace photon
 {
 	struct Texture2DDesc
 	{
-		std::string name = "Texture2D";
 		unsigned int width;
 		unsigned int height;
 		unsigned int maxMipLevel = 1; // 从1开始
@@ -25,10 +24,11 @@ namespace photon
 	{
 	public:
 		Texture2D() = default;
-		Texture2D(Texture2DDesc desc, Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource);
-		Texture2D(D3D12_RESOURCE_DESC desc, Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource);
-
-	protected:
-
+		Texture2D(Texture2DDesc desc, Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource, Microsoft::WRL::ComPtr<ID3DBlob> _cpuResource = nullptr);
+		Texture2D(D3D12_RESOURCE_DESC desc, ResourceHeapProperties prop, Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource, 
+			Microsoft::WRL::ComPtr<ID3DBlob> _cpuResource = nullptr);
+		static D3D12_RESOURCE_DESC ToDxDesc (Texture2DDesc desc);
+		static Texture2DDesc ToPhotonDesc(D3D12_RESOURCE_DESC dxDesc, ResourceHeapProperties heapProp);
+		
 	};
 }

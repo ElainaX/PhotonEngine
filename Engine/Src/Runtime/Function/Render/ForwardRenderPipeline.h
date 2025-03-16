@@ -11,14 +11,16 @@ namespace photon
 	class ForwardRenderPipeline : public RenderPipeline
 	{
 	public:
-		ForwardRenderPipeline()
+		ForwardRenderPipeline() = default;
+
+		ForwardRenderPipeline(std::shared_ptr<RHI> rhi)
 			: RenderPipeline(RenderPipelineType::ForwardPipeline) 
 		{
-			Initialize();
+			Initialize(rhi);
 		}
 
 
-		void Initialize() override final;
+		void Initialize(std::shared_ptr<RHI> rhi) override final;
 		void Render(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceData> renderData) override final;
 		
 	private:
@@ -29,6 +31,7 @@ namespace photon
 		//std::shared_ptr<RenderPass> m_ColorGradingPass;
 
 		std::shared_ptr<Texture2D> m_RenderTarget;
+
 
 	};
 }

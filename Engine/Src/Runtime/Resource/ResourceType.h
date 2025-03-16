@@ -9,16 +9,14 @@ namespace photon
 	enum class ResourceHeapProperties : uint32_t
 	{
 		Static = D3D12_HEAP_TYPE_DEFAULT,
-		Dynamic = D3D12_HEAP_TYPE_UPLOAD
+		Upload = D3D12_HEAP_TYPE_UPLOAD
 	};
 
 	class Resource 
 	{
 	public:
 		Resource() = default;
-		Resource(UINT64 _guid, const std::string& _name, D3D12_RESOURCE_STATES _state = D3D12_RESOURCE_STATE_COMMON)
-			: guid(_guid), name(_name), state(_state) {}
-
+		virtual ~Resource() = default;
 	public:
 
 		bool operator==(const Resource& rhs) const
@@ -37,14 +35,16 @@ namespace photon
 		UINT64 guid = 0;
 		std::string name = "Basic Resource";
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+
+
 		bool bStatic = false;
-		
+		ResourceHeapProperties heapProp;
 		D3D12_RESOURCE_DESC dxDesc;
 		Microsoft::WRL::ComPtr<ID3D12Resource> gpuResource;
-
+		Microsoft::WRL::ComPtr<ID3DBlob> cpuResource;
 	};
 	//class Texture3D;
-
+	 
 	//class Material;
 
 	//class Mesh;

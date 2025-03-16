@@ -19,9 +19,10 @@ namespace photon
 		rhiInitInfo.window_System = initInfo.windowSystem;
 		m_Rhi->Initialize(rhiInitInfo);
 
+
 		m_RenderPipelines[RenderPipelineType::ForwardPipeline] = 
 			std::make_shared<ForwardRenderPipeline>();
-		m_RenderPipelines[RenderPipelineType::ForwardPipeline]->Initialize();
+		m_RenderPipelines[RenderPipelineType::ForwardPipeline]->Initialize(m_Rhi);
 
 		m_ResourceData = std::make_shared<RenderResourceData>();
 		Texture2DDesc texDesc;
@@ -30,7 +31,6 @@ namespace photon
 		texDesc.height = swapchainWidthAndHeight.y;
 		texDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		texDesc.heapProp = ResourceHeapProperties::Static;
-		texDesc.name = "Main Tex";
 		texDesc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 		m_ResourceData->texA = m_Rhi->CreateTexture2D(texDesc);
 	}

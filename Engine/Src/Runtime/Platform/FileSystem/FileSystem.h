@@ -10,10 +10,10 @@ namespace photon
 	{
 	public:
 
-		std::vector<std::filesystem::path> GetFiles(const std::filesystem::path& directory, 
+		static std::vector<std::filesystem::path> GetFiles(const std::filesystem::path& directory, 
 			const std::string& extension = "");
 
-		std::vector<std::filesystem::path> GetFilesRecursive(const std::filesystem::path& directory, 
+		static std::vector<std::filesystem::path> GetFilesRecursive(const std::filesystem::path& directory, 
 			const std::string& extension = "");
 	};
 

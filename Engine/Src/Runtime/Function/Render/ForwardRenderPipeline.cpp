@@ -6,23 +6,26 @@
 namespace photon 
 {
 
-	void ForwardRenderPipeline::Initialize()
+	void ForwardRenderPipeline::Initialize(std::shared_ptr<RHI> rhi)
 	{
-
+		
 	}
 
 	void ForwardRenderPipeline::Render(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceData> renderData)
 	{
-		rhi->BeginSingleRenderPass();
-
-		auto tex = renderData->texA;
-		rhi->CopyTextureToSwapChain(tex);
-
-		rhi->PrepareForPresent();
-
-		rhi->EndSingleRenderPass();
 		
-		rhi->Present();
+		rhi->TestRender();
+
+		//rhi->BeginSingleRenderPass();
+
+		//auto tex = renderData->texA;
+		//rhi->CopyTextureToSwapChain(tex);
+
+		//rhi->PrepareForPresent();
+
+		//rhi->EndSingleRenderPass();
+		//
+		//rhi->Present();
 	}
 
 }

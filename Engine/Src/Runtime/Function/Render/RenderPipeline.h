@@ -15,7 +15,7 @@ namespace photon
 			: m_Type(renderPipelineType){}
 
 		virtual void Render(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceData> renderData) = 0;
-		virtual void Initialize() = 0;
+		virtual void Initialize(std::shared_ptr<RHI> rhi) = 0;
 
 	protected:
 		RenderPipelineType m_Type = RenderPipelineType::ForwardPipeline;

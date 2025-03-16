@@ -2,6 +2,7 @@
 #include "RhiStruct.h"
 #include "Resource/ResourceType.h"
 #include "Resource/Texture/Texture2D.h"
+#include "Resource/Texture/Buffer.h"
 
 #include <memory>
 #include <cstdint>
@@ -53,6 +54,8 @@ namespace photon
 		virtual void BeginSingleRenderPass() = 0;
 		virtual void EndSingleRenderPass() = 0;
 
+		virtual void TestRender() = 0;
+
 
 		virtual unsigned int GetCurrBackBufferIndex() = 0;
 		// virtual Resource* GetCurrBackBufferResource() = 0;
@@ -60,6 +63,11 @@ namespace photon
 		
 		// 资源相关函数
 		virtual std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) = 0;
+		virtual std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc) = 0;
+		virtual std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes) = 0;
+		virtual void CopyDataCpuToGpu(Resource* dstResource, const void* data, UINT64 sizeInBytes) = 0;
+		virtual void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource) = 0;
+
 
 		virtual void ResourceStateTransform(Resource* resource, D3D12_RESOURCE_STATES stateAfter) = 0;
 

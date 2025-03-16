@@ -12,7 +12,10 @@
 #include "Function/Render/WindowSystem.h"
 #include "Resource/Texture/Texture2D.h"
 #include "Core/Math/Vector4.h"
-
+#include "DX12Resource/VertexType.h"
+#include "DX12Resource/VertexBuffer.h"
+#include "DX12Resource/IndexBuffer.h"
+#include "DX12Resource/VertexLayout.h"
 
 namespace photon 
 {
@@ -58,7 +61,12 @@ namespace photon
 
 
 		std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) override final;
+		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc) override final;
+		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes) override final;
+		void CompileShaders();
 
+		void CopyDataCpuToGpu(Resource* dstResource, const void* data, UINT64 sizeInBytes) override;
+		void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource) override;
 
 		void CopyTextureToSwapChain(std::shared_ptr<Texture2D> tex) override;
 		void Present() override;
@@ -74,6 +82,7 @@ namespace photon
 		void PrepareForPresent() override;
 
 
+		void TestRender() override;
 
 	private:
 		Texture2D* GetCurrBackBufferResource() { return m_SwapChainContents[m_CurrBackBufferIndex]->backBuffer.get(); }
@@ -86,8 +95,22 @@ namespace photon
 		uint32_t m_CurrFrameResourceIndex = 0;
 		Vector4 m_ClearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 
+		// temp resource
+		// delete when has more class
 		uint32_t m_RtvDescriptorSize = 0;
+		uint32_t m_DsvDescriptorSize = 0;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RtvHeap;
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_DsvHeap;
+		Microsoft::WRL::ComPtr<ID3DBlob> m_VertexShaderBlob;
+		Microsoft::WRL::ComPtr<ID3DBlob> m_PixelShaderBlob;
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
+		std::shared_ptr<Texture2D> m_RenderTex;
+		std::shared_ptr<Texture2D> m_DepthStencilTex;
+		std::shared_ptr<VertexBuffer> m_VertexBuffer;
+		std::shared_ptr<IndexBuffer> m_IndexBuffer;
+		
+
 
 
 		Microsoft::WRL::ComPtr<IDXGIFactory4> m_Factory;

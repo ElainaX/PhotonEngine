@@ -2,10 +2,13 @@
 #include "Function/Render/WindowSystem.h"
 #include "Macro.h"
 #include "d3dx12.h"
+#include "Platform/FileSystem/FileSystem.h"
+
 
 #include <dxgi1_4.h>
 #include <d3d12.h>
 #include <DirectXMath.h>
+#include <d3dcompiler.h>
 
 namespace photon 
 {
@@ -40,6 +43,117 @@ namespace photon
 			};
 		m_WindowSystem->RegisterOnWindowResizeCallback(OnWindowResizeLambda);
 
+		// 做一些Test的准备
+		FlushCommandQueue();
+
+		BeginSingleRenderPass();
+
+		CompileShaders();
+
+
+		Texture2DDesc desc;
+		desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		desc.heapProp = ResourceHeapProperties::Static;
+		desc.width = m_WindowSystem->GetClientWidthAndHeight().x;
+		desc.height = m_WindowSystem->GetClientWidthAndHeight().y;
+
+		m_RenderTex = CreateTexture2D(desc);
+		CD3DX12_CPU_DESCRIPTOR_HANDLE handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
+		handle.Offset(3, m_RtvDescriptorSize);
+		m_Device->CreateRenderTargetView(m_RenderTex->gpuResource.Get(), nullptr, handle);
+
+		Texture2DDesc dsvtex;
+		dsvtex.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		dsvtex.flag = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		dsvtex.heapProp = ResourceHeapProperties::Static;
+		dsvtex.width = desc.width;
+		dsvtex.height = desc.height;
+		m_DepthStencilTex = CreateTexture2D(dsvtex);
+		handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_DsvHeap->GetCPUDescriptorHandleForHeapStart());
+		m_Device->CreateDepthStencilView(m_DepthStencilTex->gpuResource.Get(), nullptr, handle);
+		ResourceStateTransform(m_DepthStencilTex.get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+		VertexSimple vertices[] =
+		{
+			VertexSimple{Vector3{-0.5f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+			VertexSimple{Vector3{0.0f, 0.5f, 0.0f}  , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+			VertexSimple{Vector3{0.5f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+		};
+
+		uint32_t indices[] = { 0, 1, 2 };
+
+		m_VertexBuffer = std::make_shared<VertexBuffer>();
+		m_VertexBuffer->CreateBuffer(this, VertexType::VertexSimple,(const void*)(vertices), sizeof(VertexSimple) * 3);
+		
+		m_IndexBuffer = std::make_shared<IndexBuffer>();
+		m_IndexBuffer->CreateBuffer(this, (const void*)indices, sizeof(uint32_t) * 3);
+
+
+
+		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
+		rootSignatureDesc.Init_1_1(
+			0,      // 无参数
+			nullptr, // 无描述符
+			0,      // 无静态采样器
+			nullptr, // 无静态采样器描述
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT // 允许输入装配器使用输入布局
+		);
+
+		using namespace Microsoft::WRL;
+		// 序列化 Root Signature
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		HRESULT hr = D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &signature, &error);
+		if (FAILED(hr))
+		{
+			if (error)
+			{
+				OutputDebugStringA((char*)error->GetBufferPointer());
+			}
+			throw std::runtime_error("Failed to serialize root signature");
+		}
+
+		// 创建 Root Signature
+		hr = m_Device->CreateRootSignature(
+			0,                              // 节点掩码（单 GPU 为 0）
+			signature->GetBufferPointer(),  // 序列化后的 Root Signature 数据
+			signature->GetBufferSize(),     // 数据大小
+			IID_PPV_ARGS(&m_RootSignature)  // 返回的 Root Signature 对象
+		);
+		if (FAILED(hr))
+		{
+			throw std::runtime_error("Failed to create root signature");
+		}
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
+		ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+		auto& inputLayout = VertexSimple::GetInputLayout();
+		psoDesc.InputLayout = { inputLayout.data(), (unsigned int)inputLayout.size() };
+		psoDesc.pRootSignature = m_RootSignature.Get();
+		psoDesc.VS = {
+		reinterpret_cast<BYTE*>(m_VertexShaderBlob->GetBufferPointer()),
+		m_VertexShaderBlob->GetBufferSize()
+		};
+		psoDesc.PS = {
+		reinterpret_cast<BYTE*>(m_PixelShaderBlob->GetBufferPointer()),
+		m_PixelShaderBlob->GetBufferSize()
+		};
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		psoDesc.SampleMask = UINT_MAX;
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.SampleDesc.Count = 1;
+		psoDesc.SampleDesc.Quality = 0;
+		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		DX_LogIfFailed(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PipelineState)));
+
+		EndSingleRenderPass();
+
+		FlushCommandQueue();
 	}
 
 	void DX12RHI::CreateSwapChain()
@@ -156,7 +270,7 @@ namespace photon
 		{
 			ID3D12Resource* pBackBuffer = nullptr;
 			m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
-			m_SwapChainContents[i]->backBuffer = std::make_shared<Texture2D>(pBackBuffer->GetDesc(), pBackBuffer);
+			m_SwapChainContents[i]->backBuffer = std::make_shared<Texture2D>(pBackBuffer->GetDesc(), ResourceHeapProperties::Static, pBackBuffer);
 			m_SwapChainContents[i]->backBuffer->name = "SwapChain Buffer" + std::to_string(i);
 			m_Device->CreateRenderTargetView(pBackBuffer, nullptr, m_SwapChainContents[i]->cpuDescriptor);
 		}
@@ -166,7 +280,7 @@ namespace photon
 	{
 		m_RtvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		D3D12_DESCRIPTOR_HEAP_DESC heapDesc;
-		heapDesc.NumDescriptors = g_SwapChainCount * 1;
+		heapDesc.NumDescriptors = g_SwapChainCount + 1;
 		heapDesc.NodeMask = 0;
 		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
@@ -180,6 +294,13 @@ namespace photon
 			rtvHeapHandle.Offset(m_RtvDescriptorSize);
 		}
 
+		m_DsvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+		D3D12_DESCRIPTOR_HEAP_DESC dsvheapDesc;
+		dsvheapDesc.NumDescriptors = 1;
+		dsvheapDesc.NodeMask = 0;
+		dsvheapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+		dsvheapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		DX_LogIfFailed(m_Device->CreateDescriptorHeap(&dsvheapDesc, IID_PPV_ARGS(&m_DsvHeap)));
 	}
 
 	void DX12RHI::CreateAssetAllocator()
@@ -232,31 +353,69 @@ namespace photon
 
 	std::shared_ptr<Texture2D> DX12RHI::CreateTexture2D(Texture2DDesc desc)
 	{
-		D3D12_RESOURCE_DESC dxDesc;
-		dxDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		dxDesc.Format = desc.format;
-		dxDesc.MipLevels = desc.maxMipLevel;
-		dxDesc.Alignment = 0;
-		dxDesc.DepthOrArraySize = 1;
-		dxDesc.Width = desc.width;
-		dxDesc.Height = desc.height;
-		dxDesc.SampleDesc.Count = desc.sampleCount;
-		dxDesc.SampleDesc.Quality = desc.sampleQuality;
-		dxDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		dxDesc.Flags = desc.flag;
+		D3D12_RESOURCE_DESC dxDesc = Texture2D::ToDxDesc(desc);
 
 		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
 		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
-		CD3DX12_CLEAR_VALUE clearValue = CD3DX12_CLEAR_VALUE(desc.format, m_ClearColor.ptr());
+		D3D12_CLEAR_VALUE optClearValue;
+		optClearValue.Color[0] = 1.0f;
+		optClearValue.Color[0] = 1.0f;
+		optClearValue.Color[0] = 1.0f;
+		optClearValue.Color[0] = 1.0f;
+		optClearValue.Format = desc.format;
+		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
 		DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
-			D3D12_RESOURCE_STATE_COMMON, &clearValue, IID_PPV_ARGS(&resource)));
+			state, &optClearValue, IID_PPV_ARGS(&resource)));
 
-		std::shared_ptr<Texture2D> tex = std::make_shared<Texture2D>(dxDesc, resource);
+		std::shared_ptr<Texture2D> tex = std::make_shared<Texture2D>(desc, resource);
 
 		// 交给ResourceManager管理
 		// ResourceManager::PushResource
 
 		return tex;
+	}
+
+	std::shared_ptr<Buffer> DX12RHI::CreateBuffer(BufferDesc desc)
+	{
+		D3D12_RESOURCE_DESC dxDesc = Buffer::ToDxDesc(desc);
+		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
+		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
+		DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc, state, nullptr, IID_PPV_ARGS(&resource)));
+		std::shared_ptr<Buffer> tex = std::make_shared<Buffer>(desc, resource);
+		return tex;
+	}
+
+	std::shared_ptr<Buffer> DX12RHI::CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes)
+	{
+		if (desc.heapProp == ResourceHeapProperties::Static)
+		{
+			LOG_ERROR("Static Heap Type Can't Get Resource Directly!");
+		}
+		std::shared_ptr<Buffer> buffer = CreateBuffer(desc);
+		CopyDataCpuToGpu(buffer.get(), data, sizeInBytes);
+		return buffer;
+	}
+
+	void DX12RHI::CompileShaders()
+	{
+		UINT flags = D3DCOMPILE_DEBUG;
+//#if defined( DEBUG ) || defined( _DEBUG )
+//		flags |= D3DCOMPILE_DEBUG;
+//#endif
+		// Prefer higher CS shader profile when possible as CS 5.0 provides better performance on 11-class hardware.
+		ID3DBlob* errorBlob = nullptr;
+		const wchar_t* filePath = L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders/TestShader.hlsl";
+		const wchar_t* dicPath = L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders";
+		auto hlslFiles = FileSystem::GetFiles(dicPath);
+		HRESULT hr = D3DCompileFromFile(filePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+			"VS", "vs_5_0",
+			flags, 0, &m_VertexShaderBlob, &errorBlob);
+		if (FAILED(hr))
+			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+		DX_LogIfFailed(D3DCompileFromFile(filePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+			"PS", "ps_5_0",
+			flags, 0, &m_PixelShaderBlob, &errorBlob));
 	}
 
 	void DX12RHI::CopyTextureToSwapChain(std::shared_ptr<Texture2D> tex)
@@ -306,6 +465,65 @@ namespace photon
 	{
 		ResourceStateTransform(m_SwapChainContents[m_CurrBackBufferIndex]->backBuffer.get(), D3D12_RESOURCE_STATE_PRESENT);
 	}
+
+
+
+	void DX12RHI::TestRender()
+	{
+		BeginSingleRenderPass();
+
+		ResourceStateTransform(m_RenderTex.get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+		auto [width, height] = m_WindowSystem->GetClientWidthAndHeight();
+		D3D12_RECT d3dScissorRect = { 0, 0, (LONG)width, (LONG)height };
+		D3D12_VIEWPORT d3dViewport{ (FLOAT)0,(FLOAT)0, (FLOAT)width, (FLOAT)height,
+			0.0f, 1.0f};
+		m_MainCmdList->RSSetViewports(1, &d3dViewport);
+		m_MainCmdList->RSSetScissorRects(1, &d3dScissorRect);
+		m_MainCmdList->SetPipelineState(m_PipelineState.Get());
+		m_MainCmdList->SetGraphicsRootSignature(m_RootSignature.Get());
+
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtView = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
+		rtView.Offset(3, m_RtvDescriptorSize);
+		CD3DX12_CPU_DESCRIPTOR_HANDLE dsView = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_DsvHeap->GetCPUDescriptorHandleForHeapStart());
+		m_MainCmdList->ClearRenderTargetView(rtView, DirectX::Colors::LightBlue, 0, nullptr);
+		m_MainCmdList->ClearDepthStencilView(dsView,
+			D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+
+		m_MainCmdList->OMSetRenderTargets(1, &rtView, true, &dsView);
+
+		m_MainCmdList->IASetVertexBuffers(0, 1, &m_VertexBuffer->view);
+		m_MainCmdList->IASetIndexBuffer(&m_IndexBuffer->view);
+		m_MainCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		m_MainCmdList->DrawIndexedInstanced(3, 1, 0, 0, 0);
+
+
+
+		CopyTextureToSwapChain(m_RenderTex);
+
+		PrepareForPresent();
+
+		EndSingleRenderPass();
+
+		Present();
+	}
+
+	void DX12RHI::CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource)
+	{
+		ResourceStateTransform(dstResource, D3D12_RESOURCE_STATE_COPY_DEST);
+		ResourceStateTransform(srcResource, D3D12_RESOURCE_STATE_GENERIC_READ);
+		m_MainCmdList->CopyResource(dstResource->gpuResource.Get(), srcResource->gpuResource.Get());
+	}
+
+	void DX12RHI::CopyDataCpuToGpu(Resource* dstResource, const void* data, UINT64 sizeInBytes)
+	{
+		auto dst = dstResource->gpuResource.Get();
+		void* mappedData = nullptr;
+		dst->Map(0, nullptr, &mappedData);
+		CopyMemory(mappedData, data, sizeInBytes);
+		dst->Unmap(0, nullptr);
+	}
+
 
 	void DX12RHI::Clear()
 	{
