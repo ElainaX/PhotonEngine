@@ -6,16 +6,16 @@
 
 namespace photon 
 {
-	class DX12RHI;
+	class RHI;
 
 	class IndexBuffer
 	{
 	public:
 		IndexBuffer() = default;
-		IndexBuffer(DX12RHI* rhi,
+		IndexBuffer(RHI* rhi,
 			const void* indexData, UINT64 sizeInBytes);
 		
-		void CreateBuffer(DX12RHI* rhi,
+		void CreateBuffer(RHI* rhi,
 			const void* indexData, UINT64 sizeInBytes);
 
 		std::shared_ptr<Buffer> uploadBuffer;

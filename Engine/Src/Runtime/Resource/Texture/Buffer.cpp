@@ -3,7 +3,7 @@
 namespace photon 
 {
 
-	Buffer::Buffer(BufferDesc bufferDesc, Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource, Microsoft::WRL::ComPtr<ID3DBlob> _cpuResource /*= nullptr*/)
+	Buffer::Buffer(BufferDesc bufferDesc, Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource)
 	{
 		dxDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 		dxDesc.Alignment = 0;
@@ -19,10 +19,10 @@ namespace photon
 
 		heapProp = bufferDesc.heapProp;
 		gpuResource = _gpuResource;
-		cpuResource = _cpuResource;
+		cpuResource = bufferDesc.cpuResource;
 	}
 
-	Buffer::Buffer(D3D12_RESOURCE_DESC desc, ResourceHeapProperties prop, Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource, Microsoft::WRL::ComPtr<ID3DBlob> _cpuResource /*= nullptr*/)
+	Buffer::Buffer(D3D12_RESOURCE_DESC desc, ResourceHeapProperties prop, Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource, Microsoft::WRL::ComPtr<ID3DBlob> _cpuResource)
 	{
 		dxDesc = desc;
 		heapProp = prop;

@@ -2,29 +2,34 @@
 
 #include "Function/Render/DX12RHI/d3dx12.h"
 #include "Function/Render/DX12RHI/DX12RHI.h"
+#include "Function/Util/RenderUtil.h"
+
+#include <d3d12.h>
 
 namespace photon
 {
 
-	VertexBuffer::VertexBuffer(DX12RHI* rhi, VertexType vertType, const void* vertexData, UINT64 sizeInBytes)
+	VertexBuffer::VertexBuffer(RHI* rhi, VertexType vertType, const void* vertexData, UINT64 sizeInBytes)
 	{
 		CreateBuffer(rhi, vertType, vertexData, sizeInBytes);
 	}
 
-	void VertexBuffer::CreateBuffer(DX12RHI* rhi,
+	void VertexBuffer::CreateBuffer(RHI* rhi,
 		VertexType vertType, const void* vertexData, UINT64 sizeInBytes)
 	{
 		vertexType = vertType;
 
 		BufferDesc defaultBufferDesc;
 		defaultBufferDesc.bufferSizeInBytes = sizeInBytes;
-		defaultBufferDesc.heapProp = ResourceHeapProperties::Static;
+		defaultBufferDesc.cpuResource = nullptr;
+		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
 		vertexBuffer = rhi->CreateBuffer(defaultBufferDesc);
 
 		BufferDesc uploadBufferDesc;
 		uploadBufferDesc.bufferSizeInBytes = sizeInBytes;
+		uploadBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(vertexData, sizeInBytes);
 		uploadBufferDesc.heapProp = ResourceHeapProperties::Upload;
-		uploadBuffer = rhi->CreateBuffer(uploadBufferDesc, vertexData, sizeInBytes);
+		uploadBuffer = rhi->CreateBuffer(uploadBufferDesc);
 
 		rhi->CopyDataGpuToGpu(vertexBuffer.get(), uploadBuffer.get());
 	

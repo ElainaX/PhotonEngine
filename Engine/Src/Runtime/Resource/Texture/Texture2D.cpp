@@ -4,26 +4,29 @@ namespace photon
 {
 
 
-	Texture2D::Texture2D(Texture2DDesc desc, 
-		Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource, Microsoft::WRL::ComPtr<ID3DBlob> _cpuResource)
+	Texture2D::Texture2D(Texture2DDesc desc, Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource)
 	{
 		dxDesc = ToDxDesc(desc);
 		heapProp = desc.heapProp;
 
 		gpuResource = _gpuResource;
-		cpuResource = _cpuResource;
+		cpuResource = desc.cpuResource;
+		clearValue = desc.clearValue;
 	}
 
 
 
-	Texture2D::Texture2D(D3D12_RESOURCE_DESC desc, ResourceHeapProperties prop, 
-		Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource, Microsoft::WRL::ComPtr<ID3DBlob> _cpuResource)
+	Texture2D::Texture2D(D3D12_RESOURCE_DESC desc, ResourceHeapProperties prop,
+		Microsoft::WRL::ComPtr<ID3D12Resource> _gpuResource, Microsoft::WRL::ComPtr<ID3DBlob> _cpuResource, Vector4 _clearValue)
 	{
 		dxDesc = desc;
 
 		gpuResource = _gpuResource;
 		cpuResource = _cpuResource;
+
 		heapProp = prop;
+
+		clearValue = _clearValue;
 	}
 
 	D3D12_RESOURCE_DESC Texture2D::ToDxDesc(Texture2DDesc desc)
@@ -43,7 +46,8 @@ namespace photon
 		return dxDesc;
 	}
 
-	photon::Texture2DDesc Texture2D::ToPhotonDesc(D3D12_RESOURCE_DESC dxDesc, ResourceHeapProperties heapProp)
+	Texture2DDesc Texture2D::ToPhotonDesc(D3D12_RESOURCE_DESC dxDesc, ResourceHeapProperties heapProp,
+		Vector4 _clearValue)
 	{
 		Texture2DDesc desc;
 		desc.format = dxDesc.Format;
@@ -55,6 +59,8 @@ namespace photon
 		desc.sampleQuality = dxDesc.SampleDesc.Quality;
 
 		desc.heapProp = heapProp;
+		desc.clearValue = _clearValue;
+
 		return desc;
 	}
 

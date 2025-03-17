@@ -4,11 +4,14 @@
 #include "d3dx12.h"
 #include "Platform/FileSystem/FileSystem.h"
 
+#include "../ResourceManager.h"
+
 
 #include <dxgi1_4.h>
 #include <d3d12.h>
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
+#include <cmath>
 
 namespace photon 
 {
@@ -19,6 +22,11 @@ namespace photon
 
 	void DX12RHI::Initialize(RHIInitInfo initializeInfo)
 	{
+		// 等待被删除
+		m_ResourceManager = std::make_shared<ResourceManager>();
+		m_ResourceManager->Initialize(this);
+
+
 		m_WindowSystem = initializeInfo.window_System;
 		PHOTON_ASSERT(m_WindowSystem != nullptr, "WindowSystem Is NullPtr! DX12RHI Init Error!");
 
@@ -35,6 +43,8 @@ namespace photon
 		CreateDescriptorHeaps();
 
 		CreateSwapChain();
+
+
 
 		// RegisterWindowClass
 		auto OnWindowResizeLambda = [this](WindowResizeEvent& event)
@@ -54,11 +64,12 @@ namespace photon
 		Texture2DDesc desc;
 		desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		desc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-		desc.heapProp = ResourceHeapProperties::Static;
+		desc.heapProp = ResourceHeapProperties::Default;
+		desc.clearValue = { 0.5f, 0.5f, 0.5f, 0.5f };
 		desc.width = m_WindowSystem->GetClientWidthAndHeight().x;
 		desc.height = m_WindowSystem->GetClientWidthAndHeight().y;
 
-		m_RenderTex = CreateTexture2D(desc);
+		m_RenderTex = m_ResourceManager->CreateTexture2D(desc);
 		CD3DX12_CPU_DESCRIPTOR_HANDLE handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
 		handle.Offset(3, m_RtvDescriptorSize);
 		m_Device->CreateRenderTargetView(m_RenderTex->gpuResource.Get(), nullptr, handle);
@@ -66,10 +77,11 @@ namespace photon
 		Texture2DDesc dsvtex;
 		dsvtex.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		dsvtex.flag = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		dsvtex.heapProp = ResourceHeapProperties::Static;
+		dsvtex.heapProp = ResourceHeapProperties::Default;
 		dsvtex.width = desc.width;
 		dsvtex.height = desc.height;
-		m_DepthStencilTex = CreateTexture2D(dsvtex);
+		dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
+		m_DepthStencilTex = m_ResourceManager->CreateTexture2D(dsvtex);
 		handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_DsvHeap->GetCPUDescriptorHandleForHeapStart());
 		m_Device->CreateDepthStencilView(m_DepthStencilTex->gpuResource.Get(), nullptr, handle);
 		ResourceStateTransform(m_DepthStencilTex.get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
@@ -83,12 +95,25 @@ namespace photon
 
 		uint32_t indices[] = { 0, 1, 2 };
 
-		m_VertexBuffer = std::make_shared<VertexBuffer>();
-		m_VertexBuffer->CreateBuffer(this, VertexType::VertexSimple,(const void*)(vertices), sizeof(VertexSimple) * 3);
-		
-		m_IndexBuffer = std::make_shared<IndexBuffer>();
-		m_IndexBuffer->CreateBuffer(this, (const void*)indices, sizeof(uint32_t) * 3);
 
+		MeshDesc triMeshDesc;
+		triMeshDesc.name = "Triangle";
+		triMeshDesc.type = VertexType::VertexSimple;
+		DX_LogIfFailed(D3DCreateBlob(sizeof(VertexSimple) * 3, &triMeshDesc.vertexRawData));
+		CopyMemory(triMeshDesc.vertexRawData->GetBufferPointer(), (void*)vertices, triMeshDesc.vertexRawData->GetBufferSize());
+
+		DX_LogIfFailed(D3DCreateBlob(sizeof(uint32_t) * 3, &triMeshDesc.indexRawData));
+		CopyMemory(triMeshDesc.indexRawData->GetBufferPointer(), (void*)indices, triMeshDesc.indexRawData->GetBufferSize());
+	
+		std::shared_ptr<Mesh> triMesh = m_ResourceManager->CreateMesh(triMeshDesc);
+
+
+		m_RenderMeshCollection = std::make_shared<RenderMeshCollection>();
+		m_RenderMeshCollection->PushMesh(triMesh);
+		m_RenderMeshCollection->EndPush(this);
+
+		m_RenderItem.meshCollection = m_RenderMeshCollection.get();
+		m_RenderItem.meshGuid = triMesh->guid;
 
 
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
@@ -270,7 +295,7 @@ namespace photon
 		{
 			ID3D12Resource* pBackBuffer = nullptr;
 			m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
-			m_SwapChainContents[i]->backBuffer = std::make_shared<Texture2D>(pBackBuffer->GetDesc(), ResourceHeapProperties::Static, pBackBuffer);
+			m_SwapChainContents[i]->backBuffer = std::make_shared<Texture2D>(pBackBuffer->GetDesc(), ResourceHeapProperties::Default, pBackBuffer, nullptr);
 			m_SwapChainContents[i]->backBuffer->name = "SwapChain Buffer" + std::to_string(i);
 			m_Device->CreateRenderTargetView(pBackBuffer, nullptr, m_SwapChainContents[i]->cpuDescriptor);
 		}
@@ -358,10 +383,12 @@ namespace photon
 		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
 		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
 		D3D12_CLEAR_VALUE optClearValue;
-		optClearValue.Color[0] = 1.0f;
-		optClearValue.Color[0] = 1.0f;
-		optClearValue.Color[0] = 1.0f;
-		optClearValue.Color[0] = 1.0f;
+		optClearValue.Color[0] = desc.clearValue.x;
+		optClearValue.Color[0] = desc.clearValue.y;
+		optClearValue.Color[0] = desc.clearValue.z;
+		optClearValue.Color[0] = desc.clearValue.w;
+		optClearValue.DepthStencil.Depth = desc.clearValue.x;
+		optClearValue.DepthStencil.Stencil = (int)std::round(desc.clearValue.y);
 		optClearValue.Format = desc.format;
 		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
 		DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
@@ -369,8 +396,11 @@ namespace photon
 
 		std::shared_ptr<Texture2D> tex = std::make_shared<Texture2D>(desc, resource);
 
-		// 交给ResourceManager管理
-		// ResourceManager::PushResource
+		if (desc.cpuResource != nullptr)
+		{
+			CopyDataCpuToGpu(tex.get(), desc.cpuResource->GetBufferPointer(), desc.cpuResource->GetBufferSize());
+			tex->cpuResource = desc.cpuResource;
+		}
 
 		return tex;
 	}
@@ -382,18 +412,27 @@ namespace photon
 		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
 		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
 		DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc, state, nullptr, IID_PPV_ARGS(&resource)));
-		std::shared_ptr<Buffer> tex = std::make_shared<Buffer>(desc, resource);
-		return tex;
+		std::shared_ptr<Buffer> buffer = std::make_shared<Buffer>(desc, resource);
+
+
+		if (desc.cpuResource != nullptr)
+		{
+			CopyDataCpuToGpu(buffer.get(), desc.cpuResource->GetBufferPointer(), desc.cpuResource->GetBufferSize());
+			buffer->cpuResource = desc.cpuResource;
+		}
+
+
+		return buffer;
 	}
 
 	std::shared_ptr<Buffer> DX12RHI::CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes)
 	{
-		if (desc.heapProp == ResourceHeapProperties::Static)
+		if (desc.heapProp == ResourceHeapProperties::Default)
 		{
 			LOG_ERROR("Static Heap Type Can't Get Resource Directly!");
 		}
+		DX_LogIfFailed(D3DCreateBlob(sizeInBytes, &desc.cpuResource));
 		std::shared_ptr<Buffer> buffer = CreateBuffer(desc);
-		CopyDataCpuToGpu(buffer.get(), data, sizeInBytes);
 		return buffer;
 	}
 
@@ -485,17 +524,21 @@ namespace photon
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtView = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
 		rtView.Offset(3, m_RtvDescriptorSize);
 		CD3DX12_CPU_DESCRIPTOR_HANDLE dsView = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_DsvHeap->GetCPUDescriptorHandleForHeapStart());
-		m_MainCmdList->ClearRenderTargetView(rtView, DirectX::Colors::LightBlue, 0, nullptr);
+		Vector4 clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
+		m_MainCmdList->ClearRenderTargetView(rtView, (float*)&clearValue, 0, nullptr);
 		m_MainCmdList->ClearDepthStencilView(dsView,
 			D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
 		m_MainCmdList->OMSetRenderTargets(1, &rtView, true, &dsView);
 
-		m_MainCmdList->IASetVertexBuffers(0, 1, &m_VertexBuffer->view);
-		m_MainCmdList->IASetIndexBuffer(&m_IndexBuffer->view);
-		m_MainCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		m_MainCmdList->DrawIndexedInstanced(3, 1, 0, 0, 0);
+		m_MainCmdList->IASetVertexBuffers(0, 1, &m_RenderMeshCollection->VertexBufferView());
+		m_MainCmdList->IASetIndexBuffer(&m_RenderMeshCollection->IndexBufferView());
+
+		auto mesh = m_RenderMeshCollection->GetMesh(m_RenderItem.meshGuid);
+		m_MainCmdList->IASetPrimitiveTopology(m_RenderItem.primitiveType);
+
+		m_MainCmdList->DrawIndexedInstanced(mesh->indexCount, 1, mesh->startIndexLocation, mesh->baseVertexLocation, 0);
 
 
 

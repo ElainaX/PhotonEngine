@@ -30,7 +30,7 @@ namespace photon
 		texDesc.width = swapchainWidthAndHeight.x;
 		texDesc.height = swapchainWidthAndHeight.y;
 		texDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		texDesc.heapProp = ResourceHeapProperties::Static;
+		texDesc.heapProp = ResourceHeapProperties::Default;
 		texDesc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 		m_ResourceData->texA = m_Rhi->CreateTexture2D(texDesc);
 	}

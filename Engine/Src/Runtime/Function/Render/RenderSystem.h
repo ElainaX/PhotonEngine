@@ -3,6 +3,7 @@
 #include "RenderType.h"
 #include "RenderPipeline.h"
 #include "RenderResourceData.h"
+#include "ResourceManager.h"
 
 #include <memory>
 #include <unordered_map>

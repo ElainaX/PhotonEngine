@@ -16,9 +16,14 @@
 #include "DX12Resource/VertexBuffer.h"
 #include "DX12Resource/IndexBuffer.h"
 #include "DX12Resource/VertexLayout.h"
+#include "../RenderObject/RenderMeshCollection.h"
+#include "../RenderObject/RenderItem.h"
 
 namespace photon 
 {
+	class ResourceManager;
+
+
 	struct FrameContext
 	{
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAllocator = nullptr;
@@ -59,7 +64,6 @@ namespace photon
 		unsigned int GetCurrBackBufferIndex() override final;
 
 
-
 		std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) override final;
 		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc) override final;
 		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes) override final;
@@ -84,6 +88,7 @@ namespace photon
 
 		void TestRender() override;
 
+
 	private:
 		Texture2D* GetCurrBackBufferResource() { return m_SwapChainContents[m_CurrBackBufferIndex]->backBuffer.get(); }
 
@@ -107,8 +112,9 @@ namespace photon
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
 		std::shared_ptr<Texture2D> m_RenderTex;
 		std::shared_ptr<Texture2D> m_DepthStencilTex;
-		std::shared_ptr<VertexBuffer> m_VertexBuffer;
-		std::shared_ptr<IndexBuffer> m_IndexBuffer;
+		std::shared_ptr<ResourceManager> m_ResourceManager;
+		std::shared_ptr<RenderMeshCollection> m_RenderMeshCollection;
+		OpaqueRenderItem m_RenderItem;
 		
 
 

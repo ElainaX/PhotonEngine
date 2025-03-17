@@ -6,16 +6,16 @@
 
 namespace photon 
 {
-	class DX12RHI;
+	class RHI;
 
 	class VertexBuffer 
 	{
 	public:
 		VertexBuffer() = default;
-		VertexBuffer(DX12RHI* rhi,
+		VertexBuffer(RHI* rhi,
 			VertexType vertType, const void* vertexData, UINT64 sizeInBytes);
 
-		void CreateBuffer(DX12RHI* rhi, 
+		void CreateBuffer(RHI* rhi,
 			VertexType vertType, const void* vertexData, UINT64 sizeInBytes);
 
 

@@ -4,18 +4,20 @@
 #include <windows.h>
 #include <string>
 
+#include "GuidAllocator.h"
+
 namespace photon 
 {
 	enum class ResourceHeapProperties : uint32_t
 	{
-		Static = D3D12_HEAP_TYPE_DEFAULT,
+		Default = D3D12_HEAP_TYPE_DEFAULT,
 		Upload = D3D12_HEAP_TYPE_UPLOAD
 	};
 
 	class Resource 
 	{
 	public:
-		Resource() = default;
+		Resource();
 		virtual ~Resource() = default;
 	public:
 
@@ -30,6 +32,8 @@ namespace photon
 			size_t h2 = std::hash<UINT64>{}(guid);
 			return h1 ^ (h2 << 1);
 		}
+
+		static UINT64 s_Guid;
 
 	public:
 		UINT64 guid = 0;
