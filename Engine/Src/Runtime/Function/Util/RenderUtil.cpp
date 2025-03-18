@@ -1,5 +1,7 @@
 ﻿#include "RenderUtil.h"
 
+#include <map>
+
 namespace photon 
 {
 

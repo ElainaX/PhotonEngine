@@ -65,14 +65,12 @@ namespace photon
 		desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		desc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 		desc.heapProp = ResourceHeapProperties::Default;
-		desc.clearValue = { 0.5f, 0.5f, 0.5f, 0.5f };
+		desc.clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
 		desc.width = m_WindowSystem->GetClientWidthAndHeight().x;
 		desc.height = m_WindowSystem->GetClientWidthAndHeight().y;
 
 		m_RenderTex = m_ResourceManager->CreateTexture2D(desc);
-		CD3DX12_CPU_DESCRIPTOR_HANDLE handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
-		handle.Offset(3, m_RtvDescriptorSize);
-		m_Device->CreateRenderTargetView(m_RenderTex->gpuResource.Get(), nullptr, handle);
+		m_ResourceToViews.insert({m_RenderTex.get(), m_RtvHeap->CreateRenderTargetView(m_RenderTex.get(), nullptr)});
 
 		Texture2DDesc dsvtex;
 		dsvtex.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -80,10 +78,9 @@ namespace photon
 		dsvtex.heapProp = ResourceHeapProperties::Default;
 		dsvtex.width = desc.width;
 		dsvtex.height = desc.height;
-		dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
+		dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, -1.0f };
 		m_DepthStencilTex = m_ResourceManager->CreateTexture2D(dsvtex);
-		handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_DsvHeap->GetCPUDescriptorHandleForHeapStart());
-		m_Device->CreateDepthStencilView(m_DepthStencilTex->gpuResource.Get(), nullptr, handle);
+		m_ResourceToViews.insert({ m_DepthStencilTex.get(), m_DsvHeap->CreateDepthStencilView(m_DepthStencilTex.get(), nullptr) });
 		ResourceStateTransform(m_DepthStencilTex.get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 		VertexSimple vertices[] =
@@ -208,6 +205,12 @@ namespace photon
 		DX_LogIfFailed(m_SwapChain->SetMaximumFrameLatency(g_SwapChainCount));
 		m_SwapChainWaitableObject = m_SwapChain->GetFrameLatencyWaitableObject();
 
+		for(int i = 0; i < g_SwapChainCount; ++i)
+		{
+			m_SwapChainContents[i] = SwapChainContent();
+			m_SwapChainContents[i].view = m_RtvHeap->CreateRenderTargetView();
+		}
+
 		CreateSwapChainRenderTarget();
 	}
 
@@ -222,10 +225,10 @@ namespace photon
 		// Clean Up SwapChain Resource
 		for (UINT i = 0; i < g_SwapChainCount; i++)
 		{
-			if (m_SwapChainContents[i])
+			if (m_SwapChainContents[i].view != nullptr)
 			{
-				m_SwapChainContents[i]->backBuffer->gpuResource->Release();
-				m_SwapChainContents[i]->backBuffer->gpuResource = nullptr;
+				m_SwapChainContents[i].backBuffer->gpuResource->Release();
+				m_SwapChainContents[i].backBuffer->gpuResource = nullptr;
 			}
 		}
 		// 0: maintain, DXGI_FORMAT_UNKNOWN: maintain
@@ -295,37 +298,43 @@ namespace photon
 		{
 			ID3D12Resource* pBackBuffer = nullptr;
 			m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
-			m_SwapChainContents[i]->backBuffer = std::make_shared<Texture2D>(pBackBuffer->GetDesc(), ResourceHeapProperties::Default, pBackBuffer, nullptr);
-			m_SwapChainContents[i]->backBuffer->name = "SwapChain Buffer" + std::to_string(i);
-			m_Device->CreateRenderTargetView(pBackBuffer, nullptr, m_SwapChainContents[i]->cpuDescriptor);
+			m_SwapChainContents[i].backBuffer = std::make_shared<Texture2D>(pBackBuffer->GetDesc(), ResourceHeapProperties::Default, pBackBuffer, nullptr);
+			m_SwapChainContents[i].backBuffer->name = "SwapChain Buffer" + std::to_string(i);
+			m_RtvHeap->CreateRenderTargetView(m_SwapChainContents[i].backBuffer.get(), nullptr, m_SwapChainContents[i].view);
 		}
 	}
 
 	void DX12RHI::CreateDescriptorHeaps()
 	{
-		m_RtvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		D3D12_DESCRIPTOR_HEAP_DESC heapDesc;
-		heapDesc.NumDescriptors = g_SwapChainCount + 1;
-		heapDesc.NodeMask = 0;
-		heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		DX_LogIfFailed(m_Device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_RtvHeap)));
+		//m_RtvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		//D3D12_DESCRIPTOR_HEAP_DESC heapDesc;
+		//heapDesc.NumDescriptors = g_SwapChainCount + 1;
+		//heapDesc.NodeMask = 0;
+		//heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		//heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		//DX_LogIfFailed(m_Device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_RtvHeap)));
 
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
-		for(int i = 0; i < g_SwapChainCount; ++i)
-		{
-			m_SwapChainContents[i] = std::make_shared<SwapChainContent>();
-			m_SwapChainContents[i]->cpuDescriptor = rtvHeapHandle;
-			rtvHeapHandle.Offset(m_RtvDescriptorSize);
-		}
+		//CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
+		//for(int i = 0; i < g_SwapChainCount; ++i)
+		//{
+		//	m_SwapChainContents[i] = std::make_shared<SwapChainContent>();
+		//	m_SwapChainContents[i]->cpuDescriptor = rtvHeapHandle;
+		//	rtvHeapHandle.Offset(m_RtvDescriptorSize);
+		//}
 
-		m_DsvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-		D3D12_DESCRIPTOR_HEAP_DESC dsvheapDesc;
-		dsvheapDesc.NumDescriptors = 1;
-		dsvheapDesc.NodeMask = 0;
-		dsvheapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-		dsvheapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		DX_LogIfFailed(m_Device->CreateDescriptorHeap(&dsvheapDesc, IID_PPV_ARGS(&m_DsvHeap)));
+		//m_DsvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+		//D3D12_DESCRIPTOR_HEAP_DESC dsvheapDesc;
+		//dsvheapDesc.NumDescriptors = 1;
+		//dsvheapDesc.NodeMask = 0;
+		//dsvheapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+		//dsvheapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		//DX_LogIfFailed(m_Device->CreateDescriptorHeap(&dsvheapDesc, IID_PPV_ARGS(&m_DsvHeap)));
+
+		m_RtvHeap = std::make_shared<RtvDescriptorHeap>(m_Device.Get(), g_RenderTargetHeapSize);
+		m_DsvHeap = std::make_shared<DsvDescriptorHeap>(m_Device.Get(), g_DepthStencilHeapSize);
+		m_CbvUavSrvHeap = std::make_shared<CbvSrvUavDescriptorHeap>(m_Device.Get(),
+			g_CbvSrvUavHeapSize, static_cast<int>(g_CbvSrvUavHeapSize * 0.4), static_cast<int>(g_CbvSrvUavHeapSize * 0.4));
+		m_SamplerHeap = std::make_shared<SamplerDescriptorHeap>(m_Device.Get(), g_SamplerHeapSize);
 	}
 
 	void DX12RHI::CreateAssetAllocator()
@@ -384,11 +393,9 @@ namespace photon
 		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
 		D3D12_CLEAR_VALUE optClearValue;
 		optClearValue.Color[0] = desc.clearValue.x;
-		optClearValue.Color[0] = desc.clearValue.y;
-		optClearValue.Color[0] = desc.clearValue.z;
-		optClearValue.Color[0] = desc.clearValue.w;
-		optClearValue.DepthStencil.Depth = desc.clearValue.x;
-		optClearValue.DepthStencil.Stencil = (int)std::round(desc.clearValue.y);
+		optClearValue.Color[1] = desc.clearValue.y;
+		optClearValue.Color[2] = desc.clearValue.z;
+		optClearValue.Color[3] = desc.clearValue.w;
 		optClearValue.Format = desc.format;
 		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
 		DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
@@ -460,11 +467,11 @@ namespace photon
 	void DX12RHI::CopyTextureToSwapChain(std::shared_ptr<Texture2D> tex)
 	{
 		ResourceStateTransform(tex.get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
-		ResourceStateTransform(m_SwapChainContents[m_CurrBackBufferIndex]->backBuffer.get(), D3D12_RESOURCE_STATE_COPY_DEST);
+		ResourceStateTransform(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(), D3D12_RESOURCE_STATE_COPY_DEST);
 
 		if(tex->dxDesc.SampleDesc.Count == 1)
 		{
-			m_MainCmdList->CopyResource(m_SwapChainContents[m_CurrBackBufferIndex]->backBuffer->gpuResource.Get(), tex->gpuResource.Get());
+			m_MainCmdList->CopyResource(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer->gpuResource.Get(), tex->gpuResource.Get());
 		}
 	}
 
@@ -502,7 +509,7 @@ namespace photon
 
 	void DX12RHI::PrepareForPresent()
 	{
-		ResourceStateTransform(m_SwapChainContents[m_CurrBackBufferIndex]->backBuffer.get(), D3D12_RESOURCE_STATE_PRESENT);
+		ResourceStateTransform(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(), D3D12_RESOURCE_STATE_PRESENT);
 	}
 
 
@@ -521,15 +528,15 @@ namespace photon
 		m_MainCmdList->SetPipelineState(m_PipelineState.Get());
 		m_MainCmdList->SetGraphicsRootSignature(m_RootSignature.Get());
 
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtView = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
-		rtView.Offset(3, m_RtvDescriptorSize);
-		CD3DX12_CPU_DESCRIPTOR_HANDLE dsView = CD3DX12_CPU_DESCRIPTOR_HANDLE(m_DsvHeap->GetCPUDescriptorHandleForHeapStart());
+		auto rtv = m_ResourceToViews[m_RenderTex.get()];
+		auto dsv = m_ResourceToViews[m_DepthStencilTex.get()];
+
 		Vector4 clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
-		m_MainCmdList->ClearRenderTargetView(rtView, (float*)&clearValue, 0, nullptr);
-		m_MainCmdList->ClearDepthStencilView(dsView,
+		m_MainCmdList->ClearRenderTargetView(rtv->cpuHandleInHeap, (float*)&clearValue, 0, nullptr);
+		m_MainCmdList->ClearDepthStencilView(dsv->cpuHandleInHeap,
 			D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-		m_MainCmdList->OMSetRenderTargets(1, &rtView, true, &dsView);
+		m_MainCmdList->OMSetRenderTargets(1, &rtv->cpuHandleInHeap, true, &dsv->cpuHandleInHeap);
 
 
 		m_MainCmdList->IASetVertexBuffers(0, 1, &m_RenderMeshCollection->VertexBufferView());

@@ -59,4 +59,20 @@ namespace photon
 		return nullptr;
 	}
 
+	void ResourceManager::DestoryTexture2D(UINT64 guid)
+	{
+		if(m_Meshs.find(guid) != m_Meshs.end())
+		{
+			m_Meshs[guid]->gpuResource->Release();
+			m_Meshs[guid]->gpuResource = nullptr;
+			m_Meshs.erase(guid);
+		}
+	}
+
+	void ResourceManager::DestoryTexture2D(Resource* resource)
+	{
+		UINT64 guid = resource->guid;
+		DestoryTexture2D(guid);
+	}
+
 }

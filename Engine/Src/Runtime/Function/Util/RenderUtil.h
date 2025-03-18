@@ -10,6 +10,8 @@ namespace photon
 	{
 	public:
 		static Microsoft::WRL::ComPtr<ID3DBlob> CreateD3DBlob(const void* data, UINT64 sizeInBytes);
+
+		static D3D12_SRV_DIMENSION GetResourceSrvDimension(D3D12_RESOURCE_DESC desc);
 	};
 
 

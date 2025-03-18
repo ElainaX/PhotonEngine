@@ -27,6 +27,9 @@ namespace photon
 		std::shared_ptr<Buffer> GetBuffer(UINT64 guid);
 		std::shared_ptr<Mesh> GetMesh(UINT64 guid);
 
+		void DestoryTexture2D(UINT64 guid);
+		void DestoryTexture2D(Resource* resource);
+
 	private:
 		std::map<UINT64, std::shared_ptr<Texture2D>> m_Textures;
 		std::map<UINT64, std::shared_ptr<Buffer>> m_Buffers;

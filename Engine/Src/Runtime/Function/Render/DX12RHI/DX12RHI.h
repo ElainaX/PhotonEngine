@@ -18,6 +18,10 @@
 #include "DX12Resource/VertexLayout.h"
 #include "../RenderObject/RenderMeshCollection.h"
 #include "../RenderObject/RenderItem.h"
+#include "DescriptorHeap/CbvSrvUavDescriptorHeap.h"
+#include "DescriptorHeap/DsvDescriptorHeap.h"
+#include "DescriptorHeap/RtvDescriptorHeap.h"
+#include "DescriptorHeap/SamplerDescriptorHeap.h"
 
 namespace photon 
 {
@@ -33,7 +37,7 @@ namespace photon
 	struct SwapChainContent
 	{
 		std::shared_ptr<Texture2D> backBuffer = nullptr;
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuDescriptor;
+		RenderTargetView* view = nullptr;
 	};
 
 	class DX12RHI : public RHI 
@@ -90,7 +94,7 @@ namespace photon
 
 
 	private:
-		Texture2D* GetCurrBackBufferResource() { return m_SwapChainContents[m_CurrBackBufferIndex]->backBuffer.get(); }
+		Texture2D* GetCurrBackBufferResource() { return m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(); }
 
 		void OnWindowResize(const WindowResizeEvent& e);
 
@@ -100,12 +104,19 @@ namespace photon
 		uint32_t m_CurrFrameResourceIndex = 0;
 		Vector4 m_ClearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
 
+		std::shared_ptr<RtvDescriptorHeap> m_RtvHeap;
+		std::shared_ptr<DsvDescriptorHeap> m_DsvHeap;
+		std::shared_ptr<CbvSrvUavDescriptorHeap> m_CbvUavSrvHeap;
+		std::shared_ptr<SamplerDescriptorHeap> m_SamplerHeap;
+
 		// temp resource
 		// delete when has more class
-		uint32_t m_RtvDescriptorSize = 0;
-		uint32_t m_DsvDescriptorSize = 0;
-		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RtvHeap;
-		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_DsvHeap;
+		//uint32_t m_RtvDescriptorSize = 0;
+		//uint32_t m_DsvDescriptorSize = 0;
+		//Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RtvHeap;
+		//Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_DsvHeap;
+
+		std::map<Resource*, ViewBase*> m_ResourceToViews;
 		Microsoft::WRL::ComPtr<ID3DBlob> m_VertexShaderBlob;
 		Microsoft::WRL::ComPtr<ID3DBlob> m_PixelShaderBlob;
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
@@ -123,7 +134,7 @@ namespace photon
 		Microsoft::WRL::ComPtr <IDXGIAdapter3> m_Adapter;
 		Microsoft::WRL::ComPtr<ID3D12Device3> m_Device;
 		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_SwapChain;
-		std::array<std::shared_ptr<SwapChainContent>, g_SwapChainCount> m_SwapChainContents;
+		std::array<SwapChainContent, g_SwapChainCount> m_SwapChainContents;
 		HANDLE m_SwapChainWaitableObject;
 
 
