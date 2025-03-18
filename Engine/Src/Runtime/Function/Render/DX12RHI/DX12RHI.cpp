@@ -3,7 +3,7 @@
 #include "Macro.h"
 #include "d3dx12.h"
 #include "Platform/FileSystem/FileSystem.h"
-
+#include "../Shader/TestShader.h"
 #include "../ResourceManager.h"
 
 
@@ -154,12 +154,12 @@ namespace photon
 		psoDesc.InputLayout = { inputLayout.data(), (unsigned int)inputLayout.size() };
 		psoDesc.pRootSignature = m_RootSignature.Get();
 		psoDesc.VS = {
-		reinterpret_cast<BYTE*>(m_VertexShaderBlob->GetBufferPointer()),
-		m_VertexShaderBlob->GetBufferSize()
+		reinterpret_cast<BYTE*>(m_TestShaderBlob->vsBlob->GetBufferPointer()),
+		m_TestShaderBlob->vsBlob->GetBufferSize()
 		};
 		psoDesc.PS = {
-		reinterpret_cast<BYTE*>(m_PixelShaderBlob->GetBufferPointer()),
-		m_PixelShaderBlob->GetBufferSize()
+		reinterpret_cast<BYTE*>(m_TestShaderBlob->psBlob->GetBufferPointer()),
+		m_TestShaderBlob->psBlob->GetBufferSize()
 		};
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -445,23 +445,8 @@ namespace photon
 
 	void DX12RHI::CompileShaders()
 	{
-		UINT flags = D3DCOMPILE_DEBUG;
-//#if defined( DEBUG ) || defined( _DEBUG )
-//		flags |= D3DCOMPILE_DEBUG;
-//#endif
-		// Prefer higher CS shader profile when possible as CS 5.0 provides better performance on 11-class hardware.
-		ID3DBlob* errorBlob = nullptr;
-		const wchar_t* filePath = L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders/TestShader.hlsl";
-		const wchar_t* dicPath = L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders";
-		auto hlslFiles = FileSystem::GetFiles(dicPath);
-		HRESULT hr = D3DCompileFromFile(filePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-			"VS", "vs_5_0",
-			flags, 0, &m_VertexShaderBlob, &errorBlob);
-		if (FAILED(hr))
-			OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-		DX_LogIfFailed(D3DCompileFromFile(filePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-			"PS", "ps_5_0",
-			flags, 0, &m_PixelShaderBlob, &errorBlob));
+		m_TestShader = std::make_shared<TestShader>(L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders/TestShader.hlsl");
+		m_TestShaderBlob = m_TestShader->Compile({ MacroInfo{"MEME", "3"} });
 	}
 
 	void DX12RHI::CopyTextureToSwapChain(std::shared_ptr<Texture2D> tex)

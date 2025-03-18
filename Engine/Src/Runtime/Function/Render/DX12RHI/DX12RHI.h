@@ -22,6 +22,7 @@
 #include "DescriptorHeap/DsvDescriptorHeap.h"
 #include "DescriptorHeap/RtvDescriptorHeap.h"
 #include "DescriptorHeap/SamplerDescriptorHeap.h"
+#include "../Shader/TestShader.h"
 
 namespace photon 
 {
@@ -126,7 +127,8 @@ namespace photon
 		std::shared_ptr<ResourceManager> m_ResourceManager;
 		std::shared_ptr<RenderMeshCollection> m_RenderMeshCollection;
 		OpaqueRenderItem m_RenderItem;
-		
+		std::shared_ptr<TestShader> m_TestShader;
+		TestShader::ShaderBlob* m_TestShaderBlob;
 
 
 

@@ -26,10 +26,15 @@ namespace photon
 		OpaqueRenderItem()
 			: RenderItem(RenderLayer::Opaque)
 		{}
-		RenderMeshCollection* meshCollection = nullptr;
-		D3D12_PRIMITIVE_TOPOLOGY primitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
 		// submesh data in RenderMeshCollection
+		// MeshData
+		RenderMeshCollection* meshCollection = nullptr;
+		D3D12_PRIMITIVE_TOPOLOGY primitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		UINT64 meshGuid = 0;
+
+		// MaterialData
+		
+
 	};
 }
