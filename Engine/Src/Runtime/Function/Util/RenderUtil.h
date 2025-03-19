@@ -9,9 +9,10 @@ namespace photon
 	class RenderUtil
 	{
 	public:
-		static Microsoft::WRL::ComPtr<ID3DBlob> CreateD3DBlob(const void* data, UINT64 sizeInBytes);
+		static Microsoft::WRL::ComPtr<ID3DBlob> CreateD3DBlob(const void* data, UINT64 sizeInBytes, INT64 maxCopySize = -1);
 
-		static D3D12_SRV_DIMENSION GetResourceSrvDimension(D3D12_RESOURCE_DESC desc);
+		// constant buffer必须256B对齐
+		static UINT GetConstantBufferByteSize(UINT byteSize);
 	};
 
 

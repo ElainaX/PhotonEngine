@@ -19,6 +19,13 @@ namespace photon
 	std::shared_ptr<photon::Buffer> ResourceManager::CreateBuffer(BufferDesc desc)
 	{
 		std::shared_ptr<Buffer> newBuffer = m_Rhi->CreateBuffer(desc);
+		if (desc.cpuResource != nullptr && desc.heapProp == ResourceHeapProperties::Default)
+		{
+			desc.heapProp = ResourceHeapProperties::Upload;
+			std::shared_ptr<Buffer> uploadBuffer = m_Rhi->CreateBuffer(desc);
+			m_Rhi->CopyDataGpuToGpu(newBuffer.get(), uploadBuffer.get());
+			m_Buffers.insert({ uploadBuffer->guid, uploadBuffer });
+		}
 		m_Buffers.insert({ newBuffer->guid, newBuffer });
 		return newBuffer;
 	}

@@ -5,6 +5,7 @@
 #include "Platform/FileSystem/FileSystem.h"
 #include "../Shader/TestShader.h"
 #include "../ResourceManager.h"
+#include "Function/Util/RenderUtil.h"
 
 
 #include <dxgi1_4.h>
@@ -78,7 +79,7 @@ namespace photon
 		dsvtex.heapProp = ResourceHeapProperties::Default;
 		dsvtex.width = desc.width;
 		dsvtex.height = desc.height;
-		dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, -1.0f };
+		dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
 		m_DepthStencilTex = m_ResourceManager->CreateTexture2D(dsvtex);
 		m_ResourceToViews.insert({ m_DepthStencilTex.get(), m_DsvHeap->CreateDepthStencilView(m_DepthStencilTex.get(), nullptr) });
 		ResourceStateTransform(m_DepthStencilTex.get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
@@ -113,54 +114,29 @@ namespace photon
 		m_RenderItem.meshGuid = triMesh->guid;
 
 
-		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init_1_1(
-			0,      // 无参数
-			nullptr, // 无描述符
-			0,      // 无静态采样器
-			nullptr, // 无静态采样器描述
-			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT // 允许输入装配器使用输入布局
-		);
+		// 创建一个cbv的view
+		Vector4 gcolor = { 1.0, 1.0, 0.5, 1.0 };
+		BufferDesc constantBufferDesc;
+		constantBufferDesc.bufferSizeInBytes = RenderUtil::GetConstantBufferByteSize(sizeof(gcolor));
+		constantBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(&gcolor[0], constantBufferDesc.bufferSizeInBytes, sizeof(gcolor));
+		constantBufferDesc.heapProp = ResourceHeapProperties::Default;
+		m_ConstantBuffer = m_ResourceManager->CreateBuffer(constantBufferDesc);
+		D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferViewDesc;
+		constantBufferViewDesc.BufferLocation = m_ConstantBuffer->gpuResource->GetGPUVirtualAddress();
+		constantBufferViewDesc.SizeInBytes = constantBufferDesc.bufferSizeInBytes;
+		m_ResourceToViews[m_ConstantBuffer.get()] = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
 
-		using namespace Microsoft::WRL;
-		// 序列化 Root Signature
-		ComPtr<ID3DBlob> signature;
-		ComPtr<ID3DBlob> error;
-		HRESULT hr = D3D12SerializeVersionedRootSignature(&rootSignatureDesc, &signature, &error);
-		if (FAILED(hr))
-		{
-			if (error)
-			{
-				OutputDebugStringA((char*)error->GetBufferPointer());
-			}
-			throw std::runtime_error("Failed to serialize root signature");
-		}
 
-		// 创建 Root Signature
-		hr = m_Device->CreateRootSignature(
-			0,                              // 节点掩码（单 GPU 为 0）
-			signature->GetBufferPointer(),  // 序列化后的 Root Signature 数据
-			signature->GetBufferSize(),     // 数据大小
-			IID_PPV_ARGS(&m_RootSignature)  // 返回的 Root Signature 对象
-		);
-		if (FAILED(hr))
-		{
-			throw std::runtime_error("Failed to create root signature");
-		}
+		m_RootSignature = CreateRootSignature(m_TestShader.get());
+		auto& inputLayout = m_TestShader->GetShaderInputLayout();
+		auto shaderBlob = m_TestShader->Compile({});
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
 		ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-		auto& inputLayout = VertexSimple::GetInputLayout();
 		psoDesc.InputLayout = { inputLayout.data(), (unsigned int)inputLayout.size() };
 		psoDesc.pRootSignature = m_RootSignature.Get();
-		psoDesc.VS = {
-		reinterpret_cast<BYTE*>(m_TestShaderBlob->vsBlob->GetBufferPointer()),
-		m_TestShaderBlob->vsBlob->GetBufferSize()
-		};
-		psoDesc.PS = {
-		reinterpret_cast<BYTE*>(m_TestShaderBlob->psBlob->GetBufferPointer()),
-		m_TestShaderBlob->psBlob->GetBufferSize()
-		};
+		psoDesc.VS = shaderBlob->GetVSShaderByteCode();
+		psoDesc.PS = shaderBlob->GetPSShaderByteCode();
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -337,6 +313,15 @@ namespace photon
 		m_SamplerHeap = std::make_shared<SamplerDescriptorHeap>(m_Device.Get(), g_SamplerHeapSize);
 	}
 
+
+	Microsoft::WRL::ComPtr<ID3D12RootSignature> DX12RHI::CreateRootSignature(Shader* shader, int samplerCount /*= 0*/, const D3D12_STATIC_SAMPLER_DESC* samplerDesc /*= nullptr*/)
+	{
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> ret;
+		auto signature = m_TestShader->GetDXSerializedRootSignatureBlob(samplerCount, samplerDesc);
+		DX_LogIfFailed(m_Device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&ret)));
+		return ret;
+	}
+
 	void DX12RHI::CreateAssetAllocator()
 	{
 	}
@@ -424,8 +409,11 @@ namespace photon
 
 		if (desc.cpuResource != nullptr)
 		{
-			CopyDataCpuToGpu(buffer.get(), desc.cpuResource->GetBufferPointer(), desc.cpuResource->GetBufferSize());
-			buffer->cpuResource = desc.cpuResource;
+			if(desc.heapProp == ResourceHeapProperties::Upload)
+			{
+				CopyDataCpuToGpu(buffer.get(), desc.cpuResource->GetBufferPointer(), desc.cpuResource->GetBufferSize());
+				buffer->cpuResource = desc.cpuResource;
+			}
 		}
 
 
@@ -439,6 +427,7 @@ namespace photon
 			LOG_ERROR("Static Heap Type Can't Get Resource Directly!");
 		}
 		DX_LogIfFailed(D3DCreateBlob(sizeInBytes, &desc.cpuResource));
+		CopyMemory(desc.cpuResource->GetBufferPointer(), data, sizeInBytes);
 		std::shared_ptr<Buffer> buffer = CreateBuffer(desc);
 		return buffer;
 	}
@@ -446,7 +435,7 @@ namespace photon
 	void DX12RHI::CompileShaders()
 	{
 		m_TestShader = std::make_shared<TestShader>(L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders/TestShader.hlsl");
-		m_TestShaderBlob = m_TestShader->Compile({ MacroInfo{"MEME", "3"} });
+		//m_TestShaderBlob = m_TestShader->Compile({ MacroInfo{"NOUSECB", ""} });
 	}
 
 	void DX12RHI::CopyTextureToSwapChain(std::shared_ptr<Texture2D> tex)
@@ -513,6 +502,7 @@ namespace photon
 		m_MainCmdList->SetPipelineState(m_PipelineState.Get());
 		m_MainCmdList->SetGraphicsRootSignature(m_RootSignature.Get());
 
+
 		auto rtv = m_ResourceToViews[m_RenderTex.get()];
 		auto dsv = m_ResourceToViews[m_DepthStencilTex.get()];
 
@@ -523,6 +513,10 @@ namespace photon
 
 		m_MainCmdList->OMSetRenderTargets(1, &rtv->cpuHandleInHeap, true, &dsv->cpuHandleInHeap);
 
+		ID3D12DescriptorHeap* descriptorHeaps[] = { m_CbvUavSrvHeap->GetDXHeapPtr() };
+		m_MainCmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+		auto tableIndex = m_TestShader->GetPhotonRootSignature()->GetTableParameterIndex(ConstantBufferParameter(1));
+		m_MainCmdList->SetGraphicsRootConstantBufferView(0, m_ConstantBuffer->gpuResource->GetGPUVirtualAddress());
 
 		m_MainCmdList->IASetVertexBuffers(0, 1, &m_RenderMeshCollection->VertexBufferView());
 		m_MainCmdList->IASetIndexBuffer(&m_RenderMeshCollection->IndexBufferView());
@@ -542,6 +536,7 @@ namespace photon
 
 		Present();
 	}
+
 
 	void DX12RHI::CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource)
 	{

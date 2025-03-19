@@ -28,8 +28,8 @@ namespace photon
 		}
 		D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandleByIndex(int index = 0)
 		{
-			D3D12_GPU_DESCRIPTOR_HANDLE handle = m_Heap->GetGPUDescriptorHandleForHeapStart();
-			handle.ptr += index * m_DescriptorSize;
+			CD3DX12_GPU_DESCRIPTOR_HANDLE handle = CD3DX12_GPU_DESCRIPTOR_HANDLE(m_Heap->GetGPUDescriptorHandleForHeapStart());
+			handle.Offset(index, m_DescriptorSize);
 			return handle;
 		}
 		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandleByViewGuid(int guid)

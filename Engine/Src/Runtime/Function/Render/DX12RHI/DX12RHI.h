@@ -58,6 +58,7 @@ namespace photon
 		void CreateSwapChainRenderTarget() override final;
 		void CreateDescriptorHeaps() override final;
 		void CreateAssetAllocator() override final;
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateRootSignature(Shader* shader, int samplerCount = 0, const D3D12_STATIC_SAMPLER_DESC* samplerDesc = nullptr) override;
 
 
 		void FlushCommandQueue() override final;
@@ -94,6 +95,8 @@ namespace photon
 		void TestRender() override;
 
 
+
+
 	private:
 		Texture2D* GetCurrBackBufferResource() { return m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(); }
 
@@ -128,8 +131,7 @@ namespace photon
 		std::shared_ptr<RenderMeshCollection> m_RenderMeshCollection;
 		OpaqueRenderItem m_RenderItem;
 		std::shared_ptr<TestShader> m_TestShader;
-		TestShader::ShaderBlob* m_TestShaderBlob;
-
+		std::shared_ptr<Buffer> m_ConstantBuffer;
 
 
 		Microsoft::WRL::ComPtr<IDXGIFactory4> m_Factory;

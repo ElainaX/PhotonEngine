@@ -3,11 +3,13 @@
 #include "Resource/ResourceType.h"
 #include "Resource/Texture/Texture2D.h"
 #include "Resource/Texture/Buffer.h"
+#include "Shader/Shader.h"
 
 #include <memory>
 #include <cstdint>
 #include <utility>
 #include <d3d12.h>
+#include <wrl.h>
 
 namespace photon 
 {
@@ -59,6 +61,7 @@ namespace photon
 
 		virtual unsigned int GetCurrBackBufferIndex() = 0;
 		// virtual Resource* GetCurrBackBufferResource() = 0;
+		virtual Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateRootSignature(Shader* shader, int samplerCount = 0, const D3D12_STATIC_SAMPLER_DESC* samplerDesc = nullptr) = 0;
 
 		
 		// 资源相关函数
