@@ -17,27 +17,27 @@ namespace photon
 	{
 		virtual D3D12_SHADER_BYTECODE GetVSShaderByteCode()
 		{
-			return D3D12_SHADER_BYTECODE{ nullptr, 0 };
+			return D3D12_SHADER_BYTECODE{};
 		}
 		virtual D3D12_SHADER_BYTECODE GetPSShaderByteCode()
 		{
-			return D3D12_SHADER_BYTECODE{ nullptr, 0 };
+			return D3D12_SHADER_BYTECODE{};
 		}
 		virtual D3D12_SHADER_BYTECODE GetDSShaderByteCode()
 		{
-			return D3D12_SHADER_BYTECODE{ nullptr, 0 };
+			return D3D12_SHADER_BYTECODE{};
 		}
 		virtual D3D12_SHADER_BYTECODE GetHSShaderByteCode()
 		{
-			return D3D12_SHADER_BYTECODE{ nullptr, 0 };
+			return D3D12_SHADER_BYTECODE{};
 		}
 		virtual D3D12_SHADER_BYTECODE GetGSShaderByteCode()
 		{
-			return D3D12_SHADER_BYTECODE{ nullptr, 0 };
+			return D3D12_SHADER_BYTECODE{};
 		}
 		virtual D3D12_SHADER_BYTECODE GetCSShaderByteCode()
 		{
-			return D3D12_SHADER_BYTECODE{ nullptr, 0 };
+			return D3D12_SHADER_BYTECODE{};
 		}
 	};
 
@@ -56,6 +56,8 @@ namespace photon
 		RootSignature* GetPhotonRootSignature(){
 			return &m_Signature;
 		}
+
+		virtual ShaderBlob* Compile(const std::vector<MacroInfo>& macros) = 0;
 
 		std::wstring sourceFilepath;
 		

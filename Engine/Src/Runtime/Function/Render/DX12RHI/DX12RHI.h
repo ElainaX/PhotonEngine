@@ -23,6 +23,7 @@
 #include "DescriptorHeap/RtvDescriptorHeap.h"
 #include "DescriptorHeap/SamplerDescriptorHeap.h"
 #include "../Shader/TestShader.h"
+#include "DXPipeline/DXGraphicsPipeline.h"
 
 namespace photon 
 {
@@ -31,6 +32,9 @@ namespace photon
 
 	struct FrameContext
 	{
+		//std::shared_ptr<Buffer> bigConstantBuffer = nullptr;
+		//std::shared_ptr<Buffer> bigUploadConstantBuffer = nullptr;
+
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAllocator = nullptr;
 		UINT64 fenceValue = 0;
 	};
@@ -59,6 +63,7 @@ namespace photon
 		void CreateDescriptorHeaps() override final;
 		void CreateAssetAllocator() override final;
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateRootSignature(Shader* shader, int samplerCount = 0, const D3D12_STATIC_SAMPLER_DESC* samplerDesc = nullptr) override;
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateGraphicsPipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc) override;
 
 
 		void FlushCommandQueue() override final;
@@ -97,6 +102,8 @@ namespace photon
 
 
 
+
+
 	private:
 		Texture2D* GetCurrBackBufferResource() { return m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(); }
 
@@ -121,15 +128,20 @@ namespace photon
 		//Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_DsvHeap;
 
 		std::map<Resource*, ViewBase*> m_ResourceToViews;
+		ViewBase* m_ColorAView;
+		ViewBase* m_ColorBView;
 		Microsoft::WRL::ComPtr<ID3DBlob> m_VertexShaderBlob;
 		Microsoft::WRL::ComPtr<ID3DBlob> m_PixelShaderBlob;
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
-		Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
+		std::shared_ptr<DXGraphicsPipeline> m_GraphicsPipeline;
+		std::shared_ptr<DXGraphicsPipeline> m_GraphicsPipeline2;
+		//Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
 		std::shared_ptr<Texture2D> m_RenderTex;
 		std::shared_ptr<Texture2D> m_DepthStencilTex;
 		std::shared_ptr<ResourceManager> m_ResourceManager;
 		std::shared_ptr<RenderMeshCollection> m_RenderMeshCollection;
 		OpaqueRenderItem m_RenderItem;
+		OpaqueRenderItem m_RenderItem2;
 		std::shared_ptr<TestShader> m_TestShader;
 		std::shared_ptr<Buffer> m_ConstantBuffer;
 

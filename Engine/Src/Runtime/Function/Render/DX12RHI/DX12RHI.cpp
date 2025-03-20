@@ -91,63 +91,102 @@ namespace photon
 			VertexSimple{Vector3{0.5f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
 		};
 
+		VertexSimple vertices2[] =
+		{
+			VertexSimple{Vector3{-0.0f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+			VertexSimple{Vector3{0.5f, 0.5f, 0.0f}  , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+			VertexSimple{Vector3{1.0f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+		};
+
 		uint32_t indices[] = { 0, 1, 2 };
 
 
 		MeshDesc triMeshDesc;
 		triMeshDesc.name = "Triangle";
 		triMeshDesc.type = VertexType::VertexSimple;
-		DX_LogIfFailed(D3DCreateBlob(sizeof(VertexSimple) * 3, &triMeshDesc.vertexRawData));
-		CopyMemory(triMeshDesc.vertexRawData->GetBufferPointer(), (void*)vertices, triMeshDesc.vertexRawData->GetBufferSize());
-
-		DX_LogIfFailed(D3DCreateBlob(sizeof(uint32_t) * 3, &triMeshDesc.indexRawData));
-		CopyMemory(triMeshDesc.indexRawData->GetBufferPointer(), (void*)indices, triMeshDesc.indexRawData->GetBufferSize());
-	
+		triMeshDesc.vertexRawData = RenderUtil::CreateD3DBlob(vertices, sizeof(VertexSimple) * 3);
+		triMeshDesc.indexRawData = RenderUtil::CreateD3DBlob(indices, sizeof(uint32_t) * 3);
 		std::shared_ptr<Mesh> triMesh = m_ResourceManager->CreateMesh(triMeshDesc);
 
+		MeshDesc triMeshDesc2;
+		triMeshDesc2.name = "Triangle2";
+		triMeshDesc2.type = VertexType::VertexSimple;
+		triMeshDesc2.vertexRawData = RenderUtil::CreateD3DBlob(vertices2, sizeof(VertexSimple) * 3);
+		triMeshDesc2.indexRawData = RenderUtil::CreateD3DBlob(indices, sizeof(uint32_t) * 3);
+		std::shared_ptr<Mesh> triMesh2 = m_ResourceManager->CreateMesh(triMeshDesc2);
 
 		m_RenderMeshCollection = std::make_shared<RenderMeshCollection>();
 		m_RenderMeshCollection->PushMesh(triMesh);
+		m_RenderMeshCollection->PushMesh(triMesh2);
 		m_RenderMeshCollection->EndPush(this);
 
 		m_RenderItem.meshCollection = m_RenderMeshCollection.get();
 		m_RenderItem.meshGuid = triMesh->guid;
-
+		m_RenderItem2.meshCollection = m_RenderMeshCollection.get();
+		m_RenderItem2.meshGuid = triMesh2->guid;
 
 		// 创建一个cbv的view
-		Vector4 gcolor = { 1.0, 1.0, 0.5, 1.0 };
+		Vector4 gcolor[2] = { { 1.0, 0.5, 0.5, 0.5 },  { 0.5, 0.9, 0.9, 0.5 } };
 		BufferDesc constantBufferDesc;
-		constantBufferDesc.bufferSizeInBytes = RenderUtil::GetConstantBufferByteSize(sizeof(gcolor));
-		constantBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(&gcolor[0], constantBufferDesc.bufferSizeInBytes, sizeof(gcolor));
+		constantBufferDesc.bufferSizeInBytes = 2 * RenderUtil::GetConstantBufferByteSize(sizeof(gcolor));
+		constantBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(&gcolor[0], constantBufferDesc.bufferSizeInBytes, sizeof(Vector4));
+		void* dst = (char*)constantBufferDesc.cpuResource->GetBufferPointer() + 256;
+		CopyMemory(dst, (const void*)&gcolor[1], sizeof(Vector4));
 		constantBufferDesc.heapProp = ResourceHeapProperties::Default;
 		m_ConstantBuffer = m_ResourceManager->CreateBuffer(constantBufferDesc);
+
+
 		D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferViewDesc;
 		constantBufferViewDesc.BufferLocation = m_ConstantBuffer->gpuResource->GetGPUVirtualAddress();
-		constantBufferViewDesc.SizeInBytes = constantBufferDesc.bufferSizeInBytes;
-		m_ResourceToViews[m_ConstantBuffer.get()] = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
-
+		constantBufferViewDesc.SizeInBytes = 256;
+		m_ColorAView = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
+		constantBufferViewDesc.BufferLocation = m_ConstantBuffer->gpuResource->GetGPUVirtualAddress() + 256;
+		constantBufferViewDesc.SizeInBytes = 256;
+		m_ColorBView = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
 
 		m_RootSignature = CreateRootSignature(m_TestShader.get());
-		auto& inputLayout = m_TestShader->GetShaderInputLayout();
-		auto shaderBlob = m_TestShader->Compile({});
+		m_GraphicsPipeline = std::make_shared<DXGraphicsPipeline>();
+		m_GraphicsPipeline->SetShaderMust(m_TestShader.get(), {}, m_RootSignature.Get());
+		m_GraphicsPipeline->SetRenderTargetMust({ DXGI_FORMAT_R8G8B8A8_UNORM });
 
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
-		ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-		psoDesc.InputLayout = { inputLayout.data(), (unsigned int)inputLayout.size() };
-		psoDesc.pRootSignature = m_RootSignature.Get();
-		psoDesc.VS = shaderBlob->GetVSShaderByteCode();
-		psoDesc.PS = shaderBlob->GetPSShaderByteCode();
-		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		psoDesc.SampleMask = UINT_MAX;
-		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		psoDesc.SampleDesc.Count = 1;
-		psoDesc.SampleDesc.Quality = 0;
-		psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		DX_LogIfFailed(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PipelineState)));
+		m_GraphicsPipeline->FinishOffRenderSet(this);
+
+		m_GraphicsPipeline2 = std::make_shared<DXGraphicsPipeline>(*m_GraphicsPipeline);
+
+		//BlendState
+		BlendColorEquation colorEquation(BlendSrc{}, BlendSrcF{ BlendFactorValueType::srcAlpha }, BlendOp::add, BlendDst{}, BlendDstF{ BlendFactorValueType::oneMinusSrcAlpha });
+		BlendEquation equation(colorEquation);
+		BlendState blendState(equation);
+		m_GraphicsPipeline2->SetBlendState(blendState);
+	
+		DepthState dpState;
+		dpState.isDepthTestEnbale = false;
+		DepthStencilState depthStencilState;
+		depthStencilState.depthState = dpState;
+		m_GraphicsPipeline2->SetDepthStencilState(depthStencilState);
+		m_GraphicsPipeline2->FinishOffRenderSet(this);
+
+
+		//auto& inputLayout = m_TestShader->GetShaderInputLayout();
+		//auto shaderBlob = m_TestShader->Compile({});
+
+		//D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
+		//ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+		//psoDesc.InputLayout = { inputLayout.data(), (unsigned int)inputLayout.size() };
+		//psoDesc.pRootSignature = m_RootSignature.Get();
+		//psoDesc.VS = shaderBlob->GetVSShaderByteCode();
+		//psoDesc.PS = shaderBlob->GetPSShaderByteCode();
+		//psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		//psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		//psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		//psoDesc.SampleMask = UINT_MAX;
+		//psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		//psoDesc.NumRenderTargets = 1;
+		//psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		//psoDesc.SampleDesc.Count = 1;
+		//psoDesc.SampleDesc.Quality = 0;
+		//psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		//DX_LogIfFailed(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PipelineState)));
 
 		EndSingleRenderPass();
 
@@ -499,7 +538,8 @@ namespace photon
 			0.0f, 1.0f};
 		m_MainCmdList->RSSetViewports(1, &d3dViewport);
 		m_MainCmdList->RSSetScissorRects(1, &d3dScissorRect);
-		m_MainCmdList->SetPipelineState(m_PipelineState.Get());
+		//m_MainCmdList->SetPipelineState(m_PipelineState.Get());
+		m_MainCmdList->SetPipelineState(m_GraphicsPipeline->GetDXPipelineState());
 		m_MainCmdList->SetGraphicsRootSignature(m_RootSignature.Get());
 
 
@@ -516,16 +556,23 @@ namespace photon
 		ID3D12DescriptorHeap* descriptorHeaps[] = { m_CbvUavSrvHeap->GetDXHeapPtr() };
 		m_MainCmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 		auto tableIndex = m_TestShader->GetPhotonRootSignature()->GetTableParameterIndex(ConstantBufferParameter(1));
-		m_MainCmdList->SetGraphicsRootConstantBufferView(0, m_ConstantBuffer->gpuResource->GetGPUVirtualAddress());
+		auto cbvView = m_ColorAView;
+		m_MainCmdList->SetGraphicsRootDescriptorTable(tableIndex, cbvView->gpuHandleInHeap);
+		//m_MainCmdList->SetGraphicsRootConstantBufferView(0, m_ConstantBuffer->gpuResource->GetGPUVirtualAddress());
 
 		m_MainCmdList->IASetVertexBuffers(0, 1, &m_RenderMeshCollection->VertexBufferView());
 		m_MainCmdList->IASetIndexBuffer(&m_RenderMeshCollection->IndexBufferView());
 
 		auto mesh = m_RenderMeshCollection->GetMesh(m_RenderItem.meshGuid);
 		m_MainCmdList->IASetPrimitiveTopology(m_RenderItem.primitiveType);
-
 		m_MainCmdList->DrawIndexedInstanced(mesh->indexCount, 1, mesh->startIndexLocation, mesh->baseVertexLocation, 0);
 
+		cbvView = m_ColorBView;
+		m_MainCmdList->SetPipelineState(m_GraphicsPipeline2->GetDXPipelineState());
+		m_MainCmdList->SetGraphicsRootDescriptorTable(tableIndex, cbvView->gpuHandleInHeap);
+		auto mesh2 = m_RenderMeshCollection->GetMesh(m_RenderItem2.meshGuid);
+		m_MainCmdList->IASetPrimitiveTopology(m_RenderItem2.primitiveType);
+		m_MainCmdList->DrawIndexedInstanced(mesh2->indexCount, 1, mesh2->startIndexLocation, mesh2->baseVertexLocation, 0);
 
 
 		CopyTextureToSwapChain(m_RenderTex);
@@ -537,6 +584,13 @@ namespace photon
 		Present();
 	}
 
+
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> DX12RHI::CreateGraphicsPipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc)
+	{
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> ret;
+		DX_LogIfFailed(m_Device->CreateGraphicsPipelineState(desc, IID_PPV_ARGS(&ret)));
+		return ret;
+	}
 
 	void DX12RHI::CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource)
 	{

@@ -20,7 +20,6 @@ namespace photon
 
 	struct Mesh : public Resource
 	{
-		Mesh() = default;
 		Mesh(MeshDesc desc);
 
 		// 创建的时候需要填写

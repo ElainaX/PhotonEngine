@@ -62,7 +62,7 @@ namespace photon
 		virtual unsigned int GetCurrBackBufferIndex() = 0;
 		// virtual Resource* GetCurrBackBufferResource() = 0;
 		virtual Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateRootSignature(Shader* shader, int samplerCount = 0, const D3D12_STATIC_SAMPLER_DESC* samplerDesc = nullptr) = 0;
-
+		virtual Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateGraphicsPipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc) = 0;
 		
 		// 资源相关函数
 		virtual std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) = 0;

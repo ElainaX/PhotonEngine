@@ -42,8 +42,8 @@ namespace photon
 			CopyMemory(vertDst, mesh->vertexRawData->GetBufferPointer(), meshVertSize);
 			CopyMemory(indexDst, mesh->indexRawData->GetBufferPointer(), meshIndexSize);
 
-			mesh->baseVertexLocation = vertOffset;
-			mesh->startIndexLocation = indexOffset;
+			mesh->baseVertexLocation = vertOffset / vertexStride;
+			mesh->startIndexLocation = indexOffset / indexStride;
 			mesh->indexCount = meshIndexSize / indexStride;
 
 			vertOffset += meshVertSize;
