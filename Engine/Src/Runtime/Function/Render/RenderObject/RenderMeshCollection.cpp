@@ -50,8 +50,8 @@ namespace photon
 			indexOffset += meshIndexSize;
 		}
 
-		vertexBufferGpu = std::make_shared<VertexBuffer>(rhi, vertexType, AllVertBuffer, vertexSizeInBytes);
-		indexBufferGpu = std::make_shared<IndexBuffer>(rhi, AllIndexBuffer, indexSizeInBytes);
+		vertexBufferGpu = rhi->CreateVertexBuffer(vertexType, AllVertBuffer, vertexSizeInBytes);
+		indexBufferGpu = rhi->CreateIndexBuffer(AllIndexBuffer, indexSizeInBytes);
 
 		delete[] AllVertBuffer;
 		delete[] AllIndexBuffer;

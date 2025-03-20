@@ -5,29 +5,18 @@
 namespace photon 
 {
 
-	IndexBuffer::IndexBuffer(RHI* rhi, const void* indexData, UINT64 sizeInBytes)
+	IndexBuffer::IndexBuffer(std::shared_ptr<Buffer> _indexBuffer)
 	{
-		CreateBuffer(rhi, indexData, sizeInBytes);
+		CreateBuffer(_indexBuffer);
 	}
 
-	void IndexBuffer::CreateBuffer(RHI* rhi, const void* indexData, UINT64 sizeInBytes)
+	void IndexBuffer::CreateBuffer(std::shared_ptr<Buffer> _indexBuffer)
 	{
-		BufferDesc defaultBufferDesc;
-		defaultBufferDesc.bufferSizeInBytes = sizeInBytes;
-		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
-		indexBuffer = rhi->CreateBuffer(defaultBufferDesc);
-
-		BufferDesc uploadBufferDesc;
-		uploadBufferDesc.bufferSizeInBytes = sizeInBytes;
-		uploadBufferDesc.heapProp = ResourceHeapProperties::Upload;
-		uploadBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(indexData, sizeInBytes);
-		uploadBuffer = rhi->CreateBuffer(uploadBufferDesc);
-
-		rhi->CopyDataGpuToGpu(indexBuffer.get(), uploadBuffer.get());
+		indexBuffer = _indexBuffer;
 
 		view.BufferLocation = indexBuffer->gpuResource->GetGPUVirtualAddress();
 		view.Format = DXGI_FORMAT_R32_UINT;
-		view.SizeInBytes = sizeInBytes;
+		view.SizeInBytes = indexBuffer->gpuResource->GetDesc().Width;
 	}
 
 }

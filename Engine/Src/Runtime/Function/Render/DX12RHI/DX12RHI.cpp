@@ -585,6 +585,33 @@ namespace photon
 	}
 
 
+	std::shared_ptr<photon::ResourceManager> DX12RHI::GetResourceManager()
+	{
+		return m_ResourceManager;
+	}
+
+	std::shared_ptr<photon::VertexBuffer> DX12RHI::CreateVertexBuffer(VertexType type, const void* data, UINT64 sizeInBytes)
+	{
+
+		BufferDesc defaultBufferDesc;
+		defaultBufferDesc.bufferSizeInBytes = sizeInBytes;
+		defaultBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(data, sizeInBytes);
+		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
+		auto vertexBuffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
+		
+		return std::make_shared<VertexBuffer>(vertexBuffer, type);
+	}
+
+	std::shared_ptr<photon::IndexBuffer> DX12RHI::CreateIndexBuffer(const void* data, UINT64 sizeInBytes)
+	{
+		BufferDesc defaultBufferDesc;
+		defaultBufferDesc.bufferSizeInBytes = sizeInBytes;
+		defaultBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(data, sizeInBytes);
+		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
+		auto indexBuffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
+		return std::make_shared<IndexBuffer>(indexBuffer);
+	}
+
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> DX12RHI::CreateGraphicsPipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc)
 	{
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> ret;

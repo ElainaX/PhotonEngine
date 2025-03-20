@@ -12,13 +12,10 @@ namespace photon
 	{
 	public:
 		IndexBuffer() = default;
-		IndexBuffer(RHI* rhi,
-			const void* indexData, UINT64 sizeInBytes);
+		IndexBuffer(std::shared_ptr<Buffer> _indexBuffer);
 		
-		void CreateBuffer(RHI* rhi,
-			const void* indexData, UINT64 sizeInBytes);
+		void CreateBuffer(std::shared_ptr<Buffer> _indexBuffer);
 
-		std::shared_ptr<Buffer> uploadBuffer;
 		std::shared_ptr<Buffer> indexBuffer;
 
 		D3D12_INDEX_BUFFER_VIEW view;

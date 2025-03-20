@@ -9,34 +9,19 @@
 namespace photon
 {
 
-	VertexBuffer::VertexBuffer(RHI* rhi, VertexType vertType, const void* vertexData, UINT64 sizeInBytes)
+	VertexBuffer::VertexBuffer(std::shared_ptr<Buffer> _vertexBuffer, VertexType type)
 	{
-		CreateBuffer(rhi, vertType, vertexData, sizeInBytes);
+		CreateBuffer(_vertexBuffer, type);
 	}
 
-	void VertexBuffer::CreateBuffer(RHI* rhi,
-		VertexType vertType, const void* vertexData, UINT64 sizeInBytes)
+	void VertexBuffer::CreateBuffer(std::shared_ptr<Buffer> _vertexBuffer, VertexType type)
 	{
-		vertexType = vertType;
+		vertexBuffer = _vertexBuffer;
+		vertexType = type;
 
-		BufferDesc defaultBufferDesc;
-		defaultBufferDesc.bufferSizeInBytes = sizeInBytes;
-		defaultBufferDesc.cpuResource = nullptr;
-		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
-		vertexBuffer = rhi->CreateBuffer(defaultBufferDesc);
-
-		BufferDesc uploadBufferDesc;
-		uploadBufferDesc.bufferSizeInBytes = sizeInBytes;
-		uploadBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(vertexData, sizeInBytes);
-		uploadBufferDesc.heapProp = ResourceHeapProperties::Upload;
-		uploadBuffer = rhi->CreateBuffer(uploadBufferDesc);
-
-		rhi->CopyDataGpuToGpu(vertexBuffer.get(), uploadBuffer.get());
-	
 		view.BufferLocation = vertexBuffer->gpuResource->GetGPUVirtualAddress();
-		view.SizeInBytes = sizeInBytes;
+		view.SizeInBytes = vertexBuffer->gpuResource->GetDesc().Width;
 		view.StrideInBytes = VertexTypeToSizeInBytes(vertexType);
-
 	}
 
 }

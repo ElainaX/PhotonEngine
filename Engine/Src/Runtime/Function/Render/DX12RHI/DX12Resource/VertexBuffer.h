@@ -12,15 +12,10 @@ namespace photon
 	{
 	public:
 		VertexBuffer() = default;
-		VertexBuffer(RHI* rhi,
-			VertexType vertType, const void* vertexData, UINT64 sizeInBytes);
-
-		void CreateBuffer(RHI* rhi,
-			VertexType vertType, const void* vertexData, UINT64 sizeInBytes);
+		VertexBuffer(std::shared_ptr<Buffer> _vertexBuffer, VertexType type);
+		void CreateBuffer(std::shared_ptr<Buffer> _vertexBuffer, VertexType type);
 
 
-
-		std::shared_ptr<Buffer> uploadBuffer;
 		std::shared_ptr<Buffer> vertexBuffer;
 		VertexType vertexType;
 		D3D12_VERTEX_BUFFER_VIEW view;

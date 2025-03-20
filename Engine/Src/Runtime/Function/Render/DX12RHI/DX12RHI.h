@@ -64,7 +64,8 @@ namespace photon
 		void CreateAssetAllocator() override final;
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateRootSignature(Shader* shader, int samplerCount = 0, const D3D12_STATIC_SAMPLER_DESC* samplerDesc = nullptr) override;
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateGraphicsPipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc) override;
-
+		std::shared_ptr<VertexBuffer> CreateVertexBuffer(VertexType type, const void* data, UINT64 sizeInBytes) override;
+		std::shared_ptr<IndexBuffer> CreateIndexBuffer(const void* data, UINT64 sizeInBytes) override;
 
 		void FlushCommandQueue() override final;
 		void WaitForFenceValue(uint64_t fenceValue) override final;
@@ -73,6 +74,7 @@ namespace photon
 		void Clear() override;
 
 		unsigned int GetCurrBackBufferIndex() override final;
+		std::shared_ptr<ResourceManager> GetResourceManager() override;
 
 
 		std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) override final;
@@ -104,6 +106,12 @@ namespace photon
 
 
 
+
+
+
+
+
+
 	private:
 		Texture2D* GetCurrBackBufferResource() { return m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(); }
 
@@ -119,6 +127,8 @@ namespace photon
 		std::shared_ptr<DsvDescriptorHeap> m_DsvHeap;
 		std::shared_ptr<CbvSrvUavDescriptorHeap> m_CbvUavSrvHeap;
 		std::shared_ptr<SamplerDescriptorHeap> m_SamplerHeap;
+
+		std::shared_ptr<ResourceManager> m_ResourceManager;
 
 		// temp resource
 		// delete when has more class
@@ -138,7 +148,6 @@ namespace photon
 		//Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState;
 		std::shared_ptr<Texture2D> m_RenderTex;
 		std::shared_ptr<Texture2D> m_DepthStencilTex;
-		std::shared_ptr<ResourceManager> m_ResourceManager;
 		std::shared_ptr<RenderMeshCollection> m_RenderMeshCollection;
 		OpaqueRenderItem m_RenderItem;
 		OpaqueRenderItem m_RenderItem2;
