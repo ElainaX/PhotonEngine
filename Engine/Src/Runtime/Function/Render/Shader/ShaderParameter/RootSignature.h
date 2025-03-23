@@ -8,6 +8,7 @@
 #include <d3d12.h>
 #include <unordered_map>
 #include <string>
+#include <list>
 
 namespace photon 
 {
@@ -70,6 +71,6 @@ namespace photon
 		int m_SignatureSize = 0;
 		std::unordered_map<std::string, int> m_RootParameterStringToSignatureIndex;
 		std::vector<D3D12_ROOT_PARAMETER> m_RootParameters;
-		std::vector<D3D12_DESCRIPTOR_RANGE> m_Ranges;
+		std::list<D3D12_DESCRIPTOR_RANGE> m_Ranges;
 	};
 }

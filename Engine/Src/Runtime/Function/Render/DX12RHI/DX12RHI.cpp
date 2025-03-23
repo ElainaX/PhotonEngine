@@ -52,119 +52,120 @@ namespace photon
 			{
 				this->OnWindowResize(event);
 			};
+
 		m_WindowSystem->RegisterOnWindowResizeCallback(OnWindowResizeLambda);
 
 		// 做一些Test的准备
-		FlushCommandQueue();
+		//FlushCommandQueue();
 
-		BeginSingleRenderPass();
+		//BeginSingleRenderPass();
 
-		CompileShaders();
-
-
-		Texture2DDesc desc;
-		desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		desc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-		desc.heapProp = ResourceHeapProperties::Default;
-		desc.clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
-		desc.width = m_WindowSystem->GetClientWidthAndHeight().x;
-		desc.height = m_WindowSystem->GetClientWidthAndHeight().y;
-
-		m_RenderTex = m_ResourceManager->CreateTexture2D(desc);
-		m_ResourceToViews.insert({m_RenderTex.get(), m_RtvHeap->CreateRenderTargetView(m_RenderTex.get(), nullptr)});
-
-		Texture2DDesc dsvtex;
-		dsvtex.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		dsvtex.flag = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		dsvtex.heapProp = ResourceHeapProperties::Default;
-		dsvtex.width = desc.width;
-		dsvtex.height = desc.height;
-		dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
-		m_DepthStencilTex = m_ResourceManager->CreateTexture2D(dsvtex);
-		m_ResourceToViews.insert({ m_DepthStencilTex.get(), m_DsvHeap->CreateDepthStencilView(m_DepthStencilTex.get(), nullptr) });
-		ResourceStateTransform(m_DepthStencilTex.get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-		VertexSimple vertices[] =
-		{
-			VertexSimple{Vector3{-0.5f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-			VertexSimple{Vector3{0.0f, 0.5f, 0.0f}  , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-			VertexSimple{Vector3{0.5f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-		};
-
-		VertexSimple vertices2[] =
-		{
-			VertexSimple{Vector3{-0.0f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-			VertexSimple{Vector3{0.5f, 0.5f, 0.0f}  , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-			VertexSimple{Vector3{1.0f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-		};
-
-		uint32_t indices[] = { 0, 1, 2 };
+		//CompileShaders();
 
 
-		MeshDesc triMeshDesc;
-		triMeshDesc.name = "Triangle";
-		triMeshDesc.type = VertexType::VertexSimple;
-		triMeshDesc.vertexRawData = RenderUtil::CreateD3DBlob(vertices, sizeof(VertexSimple) * 3);
-		triMeshDesc.indexRawData = RenderUtil::CreateD3DBlob(indices, sizeof(uint32_t) * 3);
-		std::shared_ptr<Mesh> triMesh = m_ResourceManager->CreateMesh(triMeshDesc);
+		//Texture2DDesc desc;
+		//desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		//desc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		//desc.heapProp = ResourceHeapProperties::Default;
+		//desc.clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
+		//desc.width = m_WindowSystem->GetClientWidthAndHeight().x;
+		//desc.height = m_WindowSystem->GetClientWidthAndHeight().y;
 
-		MeshDesc triMeshDesc2;
-		triMeshDesc2.name = "Triangle2";
-		triMeshDesc2.type = VertexType::VertexSimple;
-		triMeshDesc2.vertexRawData = RenderUtil::CreateD3DBlob(vertices2, sizeof(VertexSimple) * 3);
-		triMeshDesc2.indexRawData = RenderUtil::CreateD3DBlob(indices, sizeof(uint32_t) * 3);
-		std::shared_ptr<Mesh> triMesh2 = m_ResourceManager->CreateMesh(triMeshDesc2);
+		//m_RenderTex = m_ResourceManager->CreateTexture2D(desc);
+		//m_ResourceToViews.insert({m_RenderTex.get(), m_RtvHeap->CreateRenderTargetView(m_RenderTex.get(), nullptr)});
 
-		m_RenderMeshCollection = std::make_shared<RenderMeshCollection>();
-		m_RenderMeshCollection->PushMesh(triMesh);
-		m_RenderMeshCollection->PushMesh(triMesh2);
-		m_RenderMeshCollection->EndPush(this);
+		//Texture2DDesc dsvtex;
+		//dsvtex.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		//dsvtex.flag = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		//dsvtex.heapProp = ResourceHeapProperties::Default;
+		//dsvtex.width = desc.width;
+		//dsvtex.height = desc.height;
+		//dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
+		//m_DepthStencilTex = m_ResourceManager->CreateTexture2D(dsvtex);
+		//m_ResourceToViews.insert({ m_DepthStencilTex.get(), m_DsvHeap->CreateDepthStencilView(m_DepthStencilTex.get(), nullptr) });
+		//ResourceStateTransform(m_DepthStencilTex.get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-		m_RenderItem.meshCollection = m_RenderMeshCollection.get();
-		m_RenderItem.meshGuid = triMesh->guid;
-		m_RenderItem2.meshCollection = m_RenderMeshCollection.get();
-		m_RenderItem2.meshGuid = triMesh2->guid;
+		//VertexSimple vertices[] =
+		//{
+		//	VertexSimple{Vector3{-0.5f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+		//	VertexSimple{Vector3{0.0f, 0.5f, 0.0f}  , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+		//	VertexSimple{Vector3{0.5f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+		//};
 
-		// 创建一个cbv的view
-		Vector4 gcolor[2] = { { 1.0, 0.5, 0.5, 0.5 },  { 0.5, 0.9, 0.9, 0.5 } };
-		BufferDesc constantBufferDesc;
-		constantBufferDesc.bufferSizeInBytes = 2 * RenderUtil::GetConstantBufferByteSize(sizeof(gcolor));
-		constantBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(&gcolor[0], constantBufferDesc.bufferSizeInBytes, sizeof(Vector4));
-		void* dst = (char*)constantBufferDesc.cpuResource->GetBufferPointer() + 256;
-		CopyMemory(dst, (const void*)&gcolor[1], sizeof(Vector4));
-		constantBufferDesc.heapProp = ResourceHeapProperties::Default;
-		m_ConstantBuffer = m_ResourceManager->CreateBuffer(constantBufferDesc);
+		//VertexSimple vertices2[] =
+		//{
+		//	VertexSimple{Vector3{-0.0f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+		//	VertexSimple{Vector3{0.5f, 0.5f, 0.0f}  , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+		//	VertexSimple{Vector3{1.0f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
+		//};
+
+		//uint32_t indices[] = { 0, 1, 2 };
 
 
-		D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferViewDesc;
-		constantBufferViewDesc.BufferLocation = m_ConstantBuffer->gpuResource->GetGPUVirtualAddress();
-		constantBufferViewDesc.SizeInBytes = 256;
-		m_ColorAView = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
-		constantBufferViewDesc.BufferLocation = m_ConstantBuffer->gpuResource->GetGPUVirtualAddress() + 256;
-		constantBufferViewDesc.SizeInBytes = 256;
-		m_ColorBView = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
+		//MeshDesc triMeshDesc;
+		//triMeshDesc.name = "Triangle";
+		//triMeshDesc.type = VertexType::VertexSimple;
+		//triMeshDesc.vertexRawData = RenderUtil::CreateD3DBlob(vertices, sizeof(VertexSimple) * 3);
+		//triMeshDesc.indexRawData = RenderUtil::CreateD3DBlob(indices, sizeof(uint32_t) * 3);
+		//std::shared_ptr<Mesh> triMesh = m_ResourceManager->CreateMesh(triMeshDesc);
 
-		m_RootSignature = CreateRootSignature(m_TestShader.get());
-		m_GraphicsPipeline = std::make_shared<DXGraphicsPipeline>();
-		m_GraphicsPipeline->SetShaderMust(m_TestShader.get(), {}, m_RootSignature.Get());
-		m_GraphicsPipeline->SetRenderTargetMust({ DXGI_FORMAT_R8G8B8A8_UNORM });
+		//MeshDesc triMeshDesc2;
+		//triMeshDesc2.name = "Triangle2";
+		//triMeshDesc2.type = VertexType::VertexSimple;
+		//triMeshDesc2.vertexRawData = RenderUtil::CreateD3DBlob(vertices2, sizeof(VertexSimple) * 3);
+		//triMeshDesc2.indexRawData = RenderUtil::CreateD3DBlob(indices, sizeof(uint32_t) * 3);
+		//std::shared_ptr<Mesh> triMesh2 = m_ResourceManager->CreateMesh(triMeshDesc2);
 
-		m_GraphicsPipeline->FinishOffRenderSet(this);
+		//m_RenderMeshCollection = std::make_shared<RenderMeshCollection>();
+		//m_RenderMeshCollection->PushMesh(triMesh);
+		//m_RenderMeshCollection->PushMesh(triMesh2);
+		//m_RenderMeshCollection->EndPush(this);
 
-		m_GraphicsPipeline2 = std::make_shared<DXGraphicsPipeline>(*m_GraphicsPipeline);
+		//m_RenderItem.meshCollection = m_RenderMeshCollection.get();
+		//m_RenderItem.meshGuid = triMesh->guid;
+		//m_RenderItem2.meshCollection = m_RenderMeshCollection.get();
+		//m_RenderItem2.meshGuid = triMesh2->guid;
 
-		//BlendState
-		BlendColorEquation colorEquation(BlendSrc{}, BlendSrcF{ BlendFactorValueType::srcAlpha }, BlendOp::add, BlendDst{}, BlendDstF{ BlendFactorValueType::oneMinusSrcAlpha });
-		BlendEquation equation(colorEquation);
-		BlendState blendState(equation);
-		m_GraphicsPipeline2->SetBlendState(blendState);
+		//// 创建一个cbv的view
+		//Vector4 gcolor[2] = { { 1.0, 0.5, 0.5, 0.5 },  { 0.5, 0.9, 0.9, 0.5 } };
+		//BufferDesc constantBufferDesc;
+		//constantBufferDesc.bufferSizeInBytes = 2 * RenderUtil::GetConstantBufferByteSize(sizeof(gcolor));
+		//constantBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(&gcolor[0], constantBufferDesc.bufferSizeInBytes, sizeof(Vector4));
+		//void* dst = (char*)constantBufferDesc.cpuResource->GetBufferPointer() + 256;
+		//CopyMemory(dst, (const void*)&gcolor[1], sizeof(Vector4));
+		//constantBufferDesc.heapProp = ResourceHeapProperties::Default;
+		//m_ConstantBuffer = m_ResourceManager->CreateBuffer(constantBufferDesc);
+
+
+		//D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferViewDesc;
+		//constantBufferViewDesc.BufferLocation = m_ConstantBuffer->gpuResource->GetGPUVirtualAddress();
+		//constantBufferViewDesc.SizeInBytes = 256;
+		//m_ColorAView = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
+		//constantBufferViewDesc.BufferLocation = m_ConstantBuffer->gpuResource->GetGPUVirtualAddress() + 256;
+		//constantBufferViewDesc.SizeInBytes = 256;
+		//m_ColorBView = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
+
+		//m_RootSignature = CreateRootSignature(m_TestShader.get());
+		//m_GraphicsPipeline = std::make_shared<DXGraphicsPipeline>();
+		//m_GraphicsPipeline->SetShaderMust(m_TestShader.get(), {}, m_RootSignature.Get());
+		//m_GraphicsPipeline->SetRenderTargetMust({ DXGI_FORMAT_R8G8B8A8_UNORM });
+
+		//m_GraphicsPipeline->FinishOffRenderSet(this);
+
+		//m_GraphicsPipeline2 = std::make_shared<DXGraphicsPipeline>(*m_GraphicsPipeline);
+
+		////BlendState
+		//BlendColorEquation colorEquation(BlendSrc{}, BlendSrcF{ BlendFactorValueType::srcAlpha }, BlendOp::add, BlendDst{}, BlendDstF{ BlendFactorValueType::oneMinusSrcAlpha });
+		//BlendEquation equation(colorEquation);
+		//BlendState blendState(equation);
+		//m_GraphicsPipeline2->SetBlendState(blendState);
 	
-		DepthState dpState;
-		dpState.isDepthTestEnbale = false;
-		DepthStencilState depthStencilState;
-		depthStencilState.depthState = dpState;
-		m_GraphicsPipeline2->SetDepthStencilState(depthStencilState);
-		m_GraphicsPipeline2->FinishOffRenderSet(this);
+		//DepthState dpState;
+		//dpState.isDepthTestEnbale = false;
+		//DepthStencilState depthStencilState;
+		//depthStencilState.depthState = dpState;
+		//m_GraphicsPipeline2->SetDepthStencilState(depthStencilState);
+		//m_GraphicsPipeline2->FinishOffRenderSet(this);
 
 
 		//auto& inputLayout = m_TestShader->GetShaderInputLayout();
@@ -188,9 +189,9 @@ namespace photon
 		//psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 		//DX_LogIfFailed(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PipelineState)));
 
-		EndSingleRenderPass();
+		//EndSingleRenderPass();
 
-		FlushCommandQueue();
+		//FlushCommandQueue();
 	}
 
 	void DX12RHI::CreateSwapChain()
@@ -295,16 +296,20 @@ namespace photon
 
 
 		DX_LogIfFailed(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_MainCmdAllocator)));
-		for(int i = 0; i < g_FrameResourceCount; ++i)
+		for(int i = 0; i < g_FrameContextCount; ++i)
 		{
 			Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator;
 			DX_LogIfFailed(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocator)));
-			m_FrameContexts[i] = std::make_shared<FrameContext>(FrameContext{ allocator , 0});  
+			m_FrameContexts[i] = std::make_shared<FrameContext>();  
+			m_FrameContexts[i]->cmdAllocator = allocator;
 		}
 
 		// CmdList刚开启的时候是打开状态，需要手动关闭
 		DX_LogIfFailed(m_Device->CreateCommandList(0u, D3D12_COMMAND_LIST_TYPE_DIRECT, m_MainCmdAllocator.Get(), nullptr, IID_PPV_ARGS(&m_MainCmdList)));
+		DX_LogIfFailed(m_Device->CreateCommandList(0u, D3D12_COMMAND_LIST_TYPE_DIRECT, m_FrameContexts[m_CurrFrameContextIndex]->cmdAllocator.Get(), nullptr, IID_PPV_ARGS(&m_FrameResourceCmdList)));
 		DX_LogIfFailed(m_MainCmdList->Close());
+		m_CurrCmdList = m_FrameResourceCmdList.Get();
+		m_CurrFrameContext = m_FrameContexts[m_CurrFrameContextIndex].get();
 	}
 
 	void DX12RHI::CreateSwapChainRenderTarget()
@@ -356,7 +361,7 @@ namespace photon
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> DX12RHI::CreateRootSignature(Shader* shader, int samplerCount /*= 0*/, const D3D12_STATIC_SAMPLER_DESC* samplerDesc /*= nullptr*/)
 	{
 		Microsoft::WRL::ComPtr<ID3D12RootSignature> ret;
-		auto signature = m_TestShader->GetDXSerializedRootSignatureBlob(samplerCount, samplerDesc);
+		auto signature = shader->GetDXSerializedRootSignatureBlob(samplerCount, samplerDesc);
 		DX_LogIfFailed(m_Device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&ret)));
 		return ret;
 	}
@@ -381,11 +386,14 @@ namespace photon
 
 	void DX12RHI::WaitForFenceValue(uint64_t fenceValue)
 	{
+		if (fenceValue <= 0)
+			return;
+
 		if (m_Fence->GetCompletedValue() < fenceValue)
 		{
 			HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
-			m_Fence->SetEventOnCompletion(fenceValue, eventHandle);
-			WaitForSingleObjectEx(eventHandle, TRUE, INFINITE);
+			DX_LogIfFailed(m_Fence->SetEventOnCompletion(fenceValue, eventHandle));
+			WaitForSingleObjectEx(eventHandle, INFINITE, false);
 			bool closed = CloseHandle(eventHandle);
 		}
 	}
@@ -473,32 +481,48 @@ namespace photon
 
 	void DX12RHI::CompileShaders()
 	{
-		m_TestShader = std::make_shared<TestShader>(L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders/TestShader.hlsl");
+		//m_TestShader = std::make_shared<TestShader>(L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders/TestShader.hlsl");
 		//m_TestShaderBlob = m_TestShader->Compile({ MacroInfo{"NOUSECB", ""} });
 	}
 
-	void DX12RHI::CopyTextureToSwapChain(std::shared_ptr<Texture2D> tex)
+	void DX12RHI::CopyTextureToSwapChain(Texture2D* tex)
 	{
-		ResourceStateTransform(tex.get(), D3D12_RESOURCE_STATE_COPY_SOURCE);
+		ResourceStateTransform(tex, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		ResourceStateTransform(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(), D3D12_RESOURCE_STATE_COPY_DEST);
 
 		if(tex->dxDesc.SampleDesc.Count == 1)
 		{
-			m_MainCmdList->CopyResource(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer->gpuResource.Get(), tex->gpuResource.Get());
+			m_CurrCmdList->CopyResource(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer->gpuResource.Get(), tex->gpuResource.Get());
 		}
 	}
 
 	void DX12RHI::Present()
 	{
+		DX_LogIfFailed(m_FrameResourceCmdList->Close());
+		ID3D12CommandList* cmdsLists[] = { m_FrameResourceCmdList.Get() };
+		m_CmdQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
 		DX_LogIfFailed(m_SwapChain->Present(0, 0));
 		m_CurrBackBufferIndex = (m_CurrBackBufferIndex + 1) % g_SwapChainCount;
-		FlushCommandQueue();
+		m_CurrFrameContext->fenceValue = ++m_FenceValue;
+		m_CmdQueue->Signal(m_Fence.Get(), m_CurrFrameContext->fenceValue);
+
+		m_CurrFrameContextIndex = (m_CurrFrameContextIndex + 1) % g_FrameContextCount;
+		m_CurrFrameContext = m_FrameContexts[m_CurrFrameContextIndex].get();
+		WaitForFenceValue(m_CurrFrameContext->fenceValue);
+		DX_LogIfFailed(m_CurrFrameContext->cmdAllocator->Reset());
+		m_FrameResourceCmdList->Reset(m_CurrFrameContext->cmdAllocator.Get(), nullptr);
+		m_CurrCmdList = m_FrameResourceCmdList.Get();
+		
+
+		/*FlushCommandQueue();*/
 	}
 
 	void DX12RHI::BeginSingleRenderPass()
 	{
 		DX_LogIfFailed(m_MainCmdAllocator->Reset());
 		DX_LogIfFailed(m_MainCmdList->Reset(m_MainCmdAllocator.Get(), nullptr));
+		m_CurrCmdList = m_MainCmdList.Get();
 	}
 
 	void DX12RHI::EndSingleRenderPass()
@@ -506,6 +530,8 @@ namespace photon
 		DX_LogIfFailed(m_MainCmdList->Close());
 		ID3D12CommandList* cmdsLists[] = { m_MainCmdList.Get() };
 		m_CmdQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+		FlushCommandQueue();
+		m_CurrCmdList = m_FrameResourceCmdList.Get();
 	}
 
 	void DX12RHI::ResourceStateTransform(Resource* resource, D3D12_RESOURCE_STATES stateAfter)
@@ -515,7 +541,7 @@ namespace photon
 			return;
 		
 		auto resourceTrans = CD3DX12_RESOURCE_BARRIER::Transition(resource->gpuResource.Get(), stateBefore, stateAfter);
-		m_MainCmdList->ResourceBarrier(1, &resourceTrans);
+		m_CurrCmdList->ResourceBarrier(1, &resourceTrans);
 
 		resource->state = stateAfter;
 	}
@@ -529,61 +555,190 @@ namespace photon
 
 	void DX12RHI::TestRender()
 	{
-		BeginSingleRenderPass();
 
-		ResourceStateTransform(m_RenderTex.get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
-		auto [width, height] = m_WindowSystem->GetClientWidthAndHeight();
-		D3D12_RECT d3dScissorRect = { 0, 0, (LONG)width, (LONG)height };
-		D3D12_VIEWPORT d3dViewport{ (FLOAT)0,(FLOAT)0, (FLOAT)width, (FLOAT)height,
-			0.0f, 1.0f};
-		m_MainCmdList->RSSetViewports(1, &d3dViewport);
-		m_MainCmdList->RSSetScissorRects(1, &d3dScissorRect);
-		//m_MainCmdList->SetPipelineState(m_PipelineState.Get());
-		m_MainCmdList->SetPipelineState(m_GraphicsPipeline->GetDXPipelineState());
-		m_MainCmdList->SetGraphicsRootSignature(m_RootSignature.Get());
-
-
-		auto rtv = m_ResourceToViews[m_RenderTex.get()];
-		auto dsv = m_ResourceToViews[m_DepthStencilTex.get()];
-
-		Vector4 clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
-		m_MainCmdList->ClearRenderTargetView(rtv->cpuHandleInHeap, (float*)&clearValue, 0, nullptr);
-		m_MainCmdList->ClearDepthStencilView(dsv->cpuHandleInHeap,
-			D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-
-		m_MainCmdList->OMSetRenderTargets(1, &rtv->cpuHandleInHeap, true, &dsv->cpuHandleInHeap);
-
-		ID3D12DescriptorHeap* descriptorHeaps[] = { m_CbvUavSrvHeap->GetDXHeapPtr() };
-		m_MainCmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-		auto tableIndex = m_TestShader->GetPhotonRootSignature()->GetTableParameterIndex(ConstantBufferParameter(1));
-		auto cbvView = m_ColorAView;
-		m_MainCmdList->SetGraphicsRootDescriptorTable(tableIndex, cbvView->gpuHandleInHeap);
-		//m_MainCmdList->SetGraphicsRootConstantBufferView(0, m_ConstantBuffer->gpuResource->GetGPUVirtualAddress());
-
-		m_MainCmdList->IASetVertexBuffers(0, 1, &m_RenderMeshCollection->VertexBufferView());
-		m_MainCmdList->IASetIndexBuffer(&m_RenderMeshCollection->IndexBufferView());
-
-		auto mesh = m_RenderMeshCollection->GetMesh(m_RenderItem.meshGuid);
-		m_MainCmdList->IASetPrimitiveTopology(m_RenderItem.primitiveType);
-		m_MainCmdList->DrawIndexedInstanced(mesh->indexCount, 1, mesh->startIndexLocation, mesh->baseVertexLocation, 0);
-
-		cbvView = m_ColorBView;
-		m_MainCmdList->SetPipelineState(m_GraphicsPipeline2->GetDXPipelineState());
-		m_MainCmdList->SetGraphicsRootDescriptorTable(tableIndex, cbvView->gpuHandleInHeap);
-		auto mesh2 = m_RenderMeshCollection->GetMesh(m_RenderItem2.meshGuid);
-		m_MainCmdList->IASetPrimitiveTopology(m_RenderItem2.primitiveType);
-		m_MainCmdList->DrawIndexedInstanced(mesh2->indexCount, 1, mesh2->startIndexLocation, mesh2->baseVertexLocation, 0);
-
-
-		CopyTextureToSwapChain(m_RenderTex);
-
-		PrepareForPresent();
-
-		EndSingleRenderPass();
-
-		Present();
 	}
 
+
+	void DX12RHI::CmdSetViewportsAndScissorRects(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport)
+	{
+		m_CurrCmdList->RSSetViewports(1, &viewport);
+		m_CurrCmdList->RSSetScissorRects(1, &scissorRect);
+	}
+
+	void DX12RHI::CmdSetPipelineState(ID3D12PipelineState* pipeline)
+	{
+		m_CurrCmdList->SetPipelineState(pipeline);
+	}
+
+	void DX12RHI::CmdSetGraphicsRootSignature(ID3D12RootSignature* rootSignature)
+	{
+		m_CurrCmdList->SetGraphicsRootSignature(rootSignature);
+	}
+
+	void DX12RHI::CmdSetRenderTargets(UINT numRenderTargetViews, const D3D12_CPU_DESCRIPTOR_HANDLE* pRenderTargetDescriptors, bool RTsSingleHandleToDescriptorRange, const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor)
+	{
+		m_CurrCmdList->OMSetRenderTargets(numRenderTargetViews, pRenderTargetDescriptors, RTsSingleHandleToDescriptorRange, pDepthStencilDescriptor);
+	}
+
+	void DX12RHI::CmdSetDescriptorHeaps(const std::vector<ID3D12DescriptorHeap*>& descriptorHeaps)
+	{
+		m_CurrCmdList->SetDescriptorHeaps(descriptorHeaps.size(), &descriptorHeaps[0]);
+	}
+
+	void DX12RHI::CmdSetDescriptorHeaps()
+	{
+		ID3D12DescriptorHeap* descriptorHeaps[] = { m_CbvUavSrvHeap->GetDXHeapPtr(), m_SamplerHeap->GetDXHeapPtr() };
+		m_CurrCmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	}
+
+	void DX12RHI::CmdSetGraphicsRootDescriptorTable(UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
+	{
+		m_CurrCmdList->SetGraphicsRootDescriptorTable(RootParameterIndex, BaseDescriptor);
+	}
+
+	void DX12RHI::CmdSetGraphicsRootConstantBufferView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+	{
+		m_CurrCmdList->SetGraphicsRootConstantBufferView(RootParameterIndex, BufferLocation);
+	}
+
+	void DX12RHI::CmdSetVertexBuffers(UINT startSlot, UINT numViews, const D3D12_VERTEX_BUFFER_VIEW* pViews)
+	{
+		m_CurrCmdList->IASetVertexBuffers(startSlot, numViews, pViews);
+	}
+
+	void DX12RHI::CmdSetIndexBuffer(const D3D12_INDEX_BUFFER_VIEW* pView)
+	{
+		m_CurrCmdList->IASetIndexBuffer(pView);
+	}
+
+	void DX12RHI::CmdSetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY PrimitiveTopology)
+	{
+		m_CurrCmdList->IASetPrimitiveTopology(PrimitiveTopology);
+	}
+
+	void DX12RHI::CmdDrawIndexedInstanced(UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation)
+	{
+		m_CurrCmdList->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
+	}
+
+	photon::FrameResource* DX12RHI::GetCurrFrameResource(FrameResourceType type)
+	{
+		return m_FrameContexts[m_CurrFrameContextIndex]->frameResources[type].get();
+	}
+
+	void DX12RHI::CreateFrameResource(FrameResourceType type, FrameResourceDesc* desc)
+	{
+		for(int i = 0; i < g_FrameContextCount; ++i)
+		{
+			switch (type)
+			{
+			case photon::FrameResourceType::StaticModelFrameResource: 
+			{
+				auto _desc = dynamic_cast<StaticModelFrameResourceDesc*>(desc);
+				auto frameResource = std::make_shared<StaticModelFrameResource>(this, *_desc);
+				m_FrameContexts[i]->frameResources[type] = frameResource;
+				break;
+			}
+			case photon::FrameResourceType::DynamicModelFrameResource:
+				break;
+			default:
+				break;
+			}
+
+
+		}
+	}
+
+	void DX12RHI::CmdClearDepthStencil(DepthStencilView* view, D3D12_CLEAR_FLAGS ClearFlags, float depth, UINT8 stencil, UINT numRects, const D3D12_RECT* clearRect /*= nullptr*/)
+	{
+		m_CurrCmdList->ClearDepthStencilView(view->cpuHandleInHeap, ClearFlags, depth, stencil, numRects, clearRect);
+	}
+
+	void DX12RHI::CmdClearRenderTarget(RenderTargetView* view, Vector4 clearRGBA, UINT numRects, const D3D12_RECT* clearRect /*= nullptr*/)
+	{
+		float clearRGBAFloats[4] = { clearRGBA.x, clearRGBA.y, clearRGBA.z, clearRGBA.w };
+		m_CurrCmdList->ClearRenderTargetView(view->cpuHandleInHeap, clearRGBAFloats, numRects, clearRect);
+	}
+
+	photon::ConstantBufferView* DX12RHI::CreateConstantBufferView(const D3D12_CONSTANT_BUFFER_VIEW_DESC* pDesc, ConstantBufferView* thisView /*= nullptr*/)
+	{
+		return m_CbvUavSrvHeap->CreateConstantBufferView(pDesc, thisView);
+	}
+
+	photon::ConstantBufferView* DX12RHI::CreateConstantBufferView()
+	{
+		return m_CbvUavSrvHeap->CreateConstantBufferView();
+	}
+
+	photon::ShaderResourceView* DX12RHI::CreateShaderResourceView(Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc, ShaderResourceView* thisView /*= nullptr*/)
+	{
+		return m_CbvUavSrvHeap->CreateShaderResourceView(resource, pDesc, thisView);
+	}
+
+	photon::ShaderResourceView* DX12RHI::CreateShaderResourceView()
+	{
+		return m_CbvUavSrvHeap->CreateShaderResourceView();
+	}
+
+	photon::UnorderedAccessView* DX12RHI::CreateUnorderedAccessView(Resource* resource, Resource* counterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* pDesc, UnorderedAccessView* thisView /*= nullptr*/)
+	{
+		return m_CbvUavSrvHeap->CreateUnorderedAccessView(resource, counterResource, pDesc, thisView);
+	}
+
+	photon::UnorderedAccessView* DX12RHI::CreateUnorderedAccessView()
+	{
+		return m_CbvUavSrvHeap->CreateUnorderedAccessView();
+	}
+
+	photon::DepthStencilView* DX12RHI::CreateDepthStencilView(Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* pDesc, DepthStencilView* thisView /*= nullptr*/)
+	{
+		return m_DsvHeap->CreateDepthStencilView(resource, pDesc, thisView);
+	}
+
+	photon::DepthStencilView* DX12RHI::CreateDepthStencilView()
+	{
+		return m_DsvHeap->CreateDepthStencilView();
+	}
+
+	photon::RenderTargetView* DX12RHI::CreateRenderTargetView(Resource* resource, const D3D12_RENDER_TARGET_VIEW_DESC* pDesc, RenderTargetView* thisView /*= nullptr*/)
+	{
+		return m_RtvHeap->CreateRenderTargetView(resource, pDesc, thisView);
+	}
+
+	photon::RenderTargetView* DX12RHI::CreateRenderTargetView()
+	{
+		return m_RtvHeap->CreateRenderTargetView();
+	}
+
+	photon::SamplerView* DX12RHI::CreateSampler(const D3D12_SAMPLER_DESC* pDesc, SamplerView* thisView /*= nullptr*/)
+	{
+		return m_SamplerHeap->CreateSampler(pDesc, thisView);
+	}
+
+	photon::SamplerView* DX12RHI::CreateSampler()
+	{
+		return m_SamplerHeap->CreateSampler();
+	}
+
+	std::shared_ptr<photon::ConstantBuffer> DX12RHI::CreateConstantBuffer(unsigned int elementCount, unsigned int singleElementSizeInBytes)
+	{
+		unsigned int constantBufferStrideBytes = RenderUtil::GetConstantBufferByteSize(singleElementSizeInBytes);
+		UINT64 constantBufferSizeInBytes = elementCount * constantBufferStrideBytes;
+		
+		BufferDesc defaultBufferDesc;
+		defaultBufferDesc.bufferSizeInBytes = constantBufferSizeInBytes;
+		defaultBufferDesc.cpuResource = nullptr;
+		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
+		auto buffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
+
+		BufferDesc uploadBufferDesc;
+		uploadBufferDesc.bufferSizeInBytes = constantBufferSizeInBytes;
+		defaultBufferDesc.cpuResource = nullptr;
+		defaultBufferDesc.heapProp = ResourceHeapProperties::Upload;
+		auto uploadBuffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
+
+		return std::make_shared<ConstantBuffer>(buffer, uploadBuffer, elementCount, singleElementSizeInBytes, constantBufferStrideBytes, constantBufferStrideBytes);
+	}
 
 	std::shared_ptr<photon::ResourceManager> DX12RHI::GetResourceManager()
 	{
@@ -598,6 +753,7 @@ namespace photon
 		defaultBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(data, sizeInBytes);
 		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
 		auto vertexBuffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
+		ResourceStateTransform(vertexBuffer.get(), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 		
 		return std::make_shared<VertexBuffer>(vertexBuffer, type);
 	}
@@ -609,6 +765,7 @@ namespace photon
 		defaultBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(data, sizeInBytes);
 		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
 		auto indexBuffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
+		ResourceStateTransform(indexBuffer.get(), D3D12_RESOURCE_STATE_INDEX_BUFFER);
 		return std::make_shared<IndexBuffer>(indexBuffer);
 	}
 
@@ -623,7 +780,14 @@ namespace photon
 	{
 		ResourceStateTransform(dstResource, D3D12_RESOURCE_STATE_COPY_DEST);
 		ResourceStateTransform(srcResource, D3D12_RESOURCE_STATE_GENERIC_READ);
-		m_MainCmdList->CopyResource(dstResource->gpuResource.Get(), srcResource->gpuResource.Get());
+		m_CurrCmdList->CopyResource(dstResource->gpuResource.Get(), srcResource->gpuResource.Get());
+	}
+
+	void DX12RHI::CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource, UINT64 dstStartPosInBytes, UINT64 srcStartPosInBytes, UINT64 sizeInBytes)
+	{
+		ResourceStateTransform(dstResource, D3D12_RESOURCE_STATE_COPY_DEST);
+		ResourceStateTransform(srcResource, D3D12_RESOURCE_STATE_GENERIC_READ);
+		m_CurrCmdList->CopyBufferRegion(dstResource->gpuResource.Get(), dstStartPosInBytes, srcResource->gpuResource.Get(), srcStartPosInBytes, sizeInBytes);
 	}
 
 	void DX12RHI::CopyDataCpuToGpu(Resource* dstResource, const void* data, UINT64 sizeInBytes)
@@ -635,6 +799,15 @@ namespace photon
 		dst->Unmap(0, nullptr);
 	}
 
+
+	void DX12RHI::CopyDataCpuToGpu(Resource* dstResource, UINT64 startPosInBytes, const void* data, UINT64 sizeInBytes)
+	{
+		auto dst = dstResource->gpuResource.Get();
+		void* mappedData = nullptr;
+		dst->Map(0, nullptr, &mappedData);
+		CopyMemory((char*)mappedData + startPosInBytes, data, sizeInBytes);
+		dst->Unmap(0, nullptr);
+	}
 
 	void DX12RHI::Clear()
 	{

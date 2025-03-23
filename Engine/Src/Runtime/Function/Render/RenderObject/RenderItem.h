@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include "Mesh.h"
 #include "RenderMeshCollection.h"
+#include "../DX12RHI/FrameResource/StaticModelFrameResource.h"
+#include "../DX12RHI/DX12Define.h"
 
 namespace photon 
 {
@@ -13,19 +15,22 @@ namespace photon
 
 	struct RenderItem 
 	{
-		RenderItem(RenderLayer _layer)
-			: layer(_layer){}
-
-		RenderLayer layer;
+		RenderItem(){}
+		virtual ~RenderItem(){}
 	};
 
 
 
-	struct OpaqueRenderItem : public RenderItem
+	struct CommonRenderItem : public RenderItem
 	{
-		OpaqueRenderItem()
-			: RenderItem(RenderLayer::Opaque)
+		CommonRenderItem()
+			: RenderItem()
 		{}
+
+		static FrameResourceType s_FrameResourceType;
+		using TFrameResource = StaticModelFrameResource;
+
+		UINT numFrameDirty = g_FrameContextCount;
 
 		// submesh data in RenderMeshCollection
 		// MeshData
@@ -33,8 +38,14 @@ namespace photon
 		D3D12_PRIMITIVE_TOPOLOGY primitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		UINT64 meshGuid = 0;
 
+		Shader* shader = nullptr;
+
+		RenderLayer renderLayer = RenderLayer::Opaque;
+
+		StaticModelFrameResourceRenderItemInfo frameResourceInfo;
+
 		// MaterialData
-		
+
 
 	};
 }

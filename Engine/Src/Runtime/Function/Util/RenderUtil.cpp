@@ -2,6 +2,7 @@
 #include "Macro.h"
 
 #include <map>
+#include <cmath>
 
 
 namespace photon 
@@ -21,6 +22,11 @@ namespace photon
 	UINT RenderUtil::GetConstantBufferByteSize(UINT byteSize)
 	{
 		return (byteSize + 256) & ~255;
+	}
+
+	UINT RenderUtil::FloatRoundToUINT(float a)
+	{
+		return (UINT)std::round(a);
 	}
 
 }

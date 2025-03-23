@@ -25,8 +25,10 @@ namespace photon
 			std::shared_ptr<Buffer> uploadBuffer = m_Rhi->CreateBuffer(desc);
 			m_Rhi->CopyDataGpuToGpu(newBuffer.get(), uploadBuffer.get());
 			m_Buffers.insert({ uploadBuffer->guid, uploadBuffer });
+			m_BufferToUploadBuffer[newBuffer.get()] = uploadBuffer;
 		}
 		m_Buffers.insert({ newBuffer->guid, newBuffer });
+		
 		return newBuffer;
 	}
 
@@ -64,6 +66,30 @@ namespace photon
 			return m_Meshs[guid];
 		}
 		return nullptr;
+	}
+
+	std::shared_ptr<photon::Buffer> ResourceManager::GetBufferUploadBuffer(Buffer* buffer)
+	{
+		if (m_BufferToUploadBuffer.find(buffer) != m_BufferToUploadBuffer.end())
+		{
+			return m_BufferToUploadBuffer[buffer];
+		}
+		return nullptr;
+	}
+
+	std::shared_ptr<photon::Buffer> ResourceManager::GetBufferUploadBuffer(UINT64 bufferGuid)
+	{
+		Buffer* buffer = GetBuffer(bufferGuid).get();
+		if (m_BufferToUploadBuffer.find(buffer) != m_BufferToUploadBuffer.end())
+		{
+			return m_BufferToUploadBuffer[buffer];
+		}
+		return nullptr;
+	}
+
+	void ResourceManager::BindBufferUploadBuffer(Buffer* buffer, std::shared_ptr<Buffer> uploadBuffer)
+	{
+		m_BufferToUploadBuffer[buffer] = uploadBuffer;
 	}
 
 	void ResourceManager::DestoryTexture2D(UINT64 guid)

@@ -8,10 +8,15 @@ struct VertexOutput
 	float3 color: COLOR;
 };
 
+cbuffer cbObject : register(b0)
+{
+	float4 gobjColor;
+}
 cbuffer cbPass : register(b1)
 {
 	float4 gColor;
 }
+
 
 
 VertexOutput VS(VertexInput vin)
@@ -28,5 +33,5 @@ VertexOutput VS(VertexInput vin)
 float4 PS(VertexOutput pin) : SV_Target
 {
 	//return float4(pin.color, 1.0);
-	return gColor;
+	return gColor + gobjColor;
 }

@@ -2,12 +2,18 @@
 
 namespace photon 
 {
+	class RHI;
 	enum class FrameResourceType
 	{
 		StaticModelFrameResource,
 		DynamicModelFrameResource
 	};
 
+
+	struct FrameResourceDesc
+	{
+		virtual ~FrameResourceDesc(){}
+	};
 
 	class FrameResource
 	{
@@ -16,9 +22,10 @@ namespace photon
 		{
 			return m_FrameResourceType;
 		}
-
+		virtual ~FrameResource() {}
 	
 	protected:
 		FrameResourceType m_FrameResourceType;
+		RHI* m_Rhi = nullptr;
 	};
 }

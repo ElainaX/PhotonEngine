@@ -6,27 +6,38 @@
 namespace photon 
 {
 
-	void ForwardRenderPipeline::Initialize(std::shared_ptr<RHI> rhi)
+	void ForwardRenderPipeline::Initialize(RenderPipelineCreateInfo* createInfo)
 	{
-		
+		ForwardPipelineCreateInfo* info = dynamic_cast<ForwardPipelineCreateInfo*>(createInfo);
+		m_Rhi = info->rhi;
+		m_WindowSystem = info->windowSystem;
+
+		m_MainCameraRenderPass = std::make_shared<MainCameraPass>();
+		m_MainCameraRenderPass->Initialize(m_Rhi, m_WindowSystem);
 	}
 
-	void ForwardRenderPipeline::Render(std::shared_ptr<RHI> rhi, std::shared_ptr<RenderResourceData> renderData)
+	void ForwardRenderPipeline::PrepareContext(RenderResourceData* data)
 	{
-		
-		rhi->TestRender();
+		ForwardPipelineRenderResourceData* resourceData = dynamic_cast<ForwardPipelineRenderResourceData*>(data);
 
-		//rhi->BeginSingleRenderPass();
 
-		//auto tex = renderData->texA;
-		//rhi->CopyTextureToSwapChain(tex);
+		// MainCameraPass 
+		MainPassRenderResourceData mainCameraPassData;
+		mainCameraPassData.allRenderItems = resourceData->allRenderItems;
+		mainCameraPassData.renderTarget = resourceData->renderTarget;
+		mainCameraPassData.depthStencil = resourceData->depthStencil;
+		m_MainCameraRenderPass->PrepareContext(&mainCameraPassData);
 
-		//rhi->PrepareForPresent();
 
-		//rhi->EndSingleRenderPass();
-		//
-		//rhi->Present();
+
 	}
+
+	void ForwardRenderPipeline::Render()
+	{
+		m_MainCameraRenderPass->Draw();
+	}
+
+
 
 }
 

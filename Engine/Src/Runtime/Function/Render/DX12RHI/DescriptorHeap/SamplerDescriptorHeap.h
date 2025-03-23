@@ -88,7 +88,7 @@ namespace photon
 			D3D12_DESCRIPTOR_HEAP_DESC desc;
 			desc.NumDescriptors = size;
 			desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
-			desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+			desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			desc.NodeMask = 0;
 			DX_LogIfFailed(m_Device->CreateDescriptorHeap(&desc,
 				IID_PPV_ARGS(&m_Heap)));

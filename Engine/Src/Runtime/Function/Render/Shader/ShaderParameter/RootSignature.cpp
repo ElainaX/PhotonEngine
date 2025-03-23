@@ -18,7 +18,7 @@ namespace photon
 
 		D3D12_ROOT_DESCRIPTOR_TABLE table;
 		table.NumDescriptorRanges = rangeNum;
-		table.pDescriptorRanges = &m_Ranges[m_Ranges.size() - 1];
+		table.pDescriptorRanges = &m_Ranges.back();
 
 
 		D3D12_ROOT_PARAMETER parameter;

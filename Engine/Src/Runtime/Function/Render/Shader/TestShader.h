@@ -93,6 +93,7 @@ namespace photon
 
 		void InitializeRootSignature() override
 		{
+			m_Signature.PushAsDescriptorTable(ConstantBufferParameter(0), 1);
 			m_Signature.PushAsDescriptorTable(ConstantBufferParameter(1), 1);
 			//m_Signature.PushAsRootDescriptor(ConstantBufferParameter(1));
 		}
@@ -106,7 +107,15 @@ namespace photon
 			D3D12_ROOT_SIGNATURE_DESC rootSigDesc((UINT)parameters.size(), parameters.data(), samplerCount, samplerDesc, flag);
 			ComPtr<ID3DBlob> serializedRootSig = nullptr;
 			ComPtr<ID3DBlob> errorBlob = nullptr;
-			DX_LogIfFailed(D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSig, &errorBlob));
+			auto hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, &serializedRootSig, &errorBlob);
+			if(FAILED(hr))
+			{
+				char* cstr = (char*)errorBlob->GetBufferPointer();
+				std::string str(cstr);
+				LOG_ERROR("{}", str);
+			}
+
+
 			return serializedRootSig;
 		}
 

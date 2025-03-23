@@ -57,6 +57,10 @@ namespace photon
 			return &m_Signature;
 		}
 
+		ShaderMacros* GetMacros(){
+			return &m_Macros;
+		}
+
 		virtual ShaderBlob* Compile(const std::vector<MacroInfo>& macros) = 0;
 
 		std::wstring sourceFilepath;

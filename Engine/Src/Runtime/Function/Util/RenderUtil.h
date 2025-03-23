@@ -13,6 +13,8 @@ namespace photon
 
 		// constant buffer必须256B对齐
 		static UINT GetConstantBufferByteSize(UINT byteSize);
+
+		static UINT FloatRoundToUINT(float a);
 	};
 
 
