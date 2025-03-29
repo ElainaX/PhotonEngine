@@ -5,7 +5,7 @@ namespace photon
 {
 	// FileSystem
 	
-	std::vector<std::filesystem::path> FileSystem::GetFiles(const std::filesystem::path& directory, const std::string& extension /*= ""*/)
+	std::vector<std::filesystem::path> FileSystem::GetFiles(const std::filesystem::path& directory, const std::wstring& extension /*= ""*/)
 	{
 		// extension
 		std::vector<std::filesystem::path> fileLists;
@@ -20,7 +20,7 @@ namespace photon
 		return fileLists;
 	}
 
-	std::vector<std::filesystem::path> FileSystem::GetFilesRecursive(const std::filesystem::path& directory, const std::string& extension /*= ""*/)
+	std::vector<std::filesystem::path> FileSystem::GetFilesRecursive(const std::filesystem::path& directory, const std::wstring& extension /*= ""*/)
 	{
 		std::vector<std::filesystem::path> fileLists;
 		for (const auto& directoryEntry : std::filesystem::recursive_directory_iterator{ directory })
@@ -42,7 +42,7 @@ namespace photon
 		if(directory.empty())
 		{
 			auto dir = std::filesystem::current_path();
-			LOG_WARN("Not Specify Correct Directory, Using Source File Directory: {}", dir.generic_string());
+			LOG_WARN("Not Specify Correct Directory, Using Source File Directory: {}", WString2String(dir.generic_wstring()));
 			return filePath.lexically_relative(dir);
 		}
 		else 
@@ -51,32 +51,32 @@ namespace photon
 		}
 	}
 
-	const std::vector<std::string> Path::GetPathSegments(const std::filesystem::path& filePath)
+	const std::vector<std::wstring> Path::GetPathSegments(const std::filesystem::path& filePath)
 	{
-		std::vector<std::string> segments;
+		std::vector<std::wstring> segments;
 		for(auto& iter : filePath)
 		{
-			if (iter.generic_string() == "/" || iter.generic_string().empty())
+			if (iter.generic_wstring() == L"/" || iter.generic_wstring().empty())
 				continue;
-			segments.emplace_back(iter.generic_string());
+			segments.emplace_back(iter.generic_wstring());
 		}
 		return segments;
 	}
 
-	const std::tuple<std::string, std::string, std::string> Path::GetFileExtensions(const std::filesystem::path& filePath)
+	const std::tuple<std::wstring, std::wstring, std::wstring> Path::GetFileExtensions(const std::filesystem::path& filePath)
 	{
-		return std::make_tuple<std::string, std::string, std::string>(
-			filePath.extension().generic_string(),
-			filePath.stem().extension().generic_string(),
-			filePath.stem().stem().extension().generic_string()); // 防止多个extension后缀，比如archive.tar.gz
+		return std::make_tuple<std::wstring, std::wstring, std::wstring>(
+			filePath.extension().generic_wstring(),
+			filePath.stem().extension().generic_wstring(),
+			filePath.stem().stem().extension().generic_wstring()); // 防止多个extension后缀，比如archive.tar.gz
 	}
 
 	// path without extension
-	const std::string Path::GetFilePureName(const std::string& fileFullName)
+	const std::wstring Path::GetFilePureName(const std::wstring& fileFullName)
 	{
-		std::string filePureName = fileFullName;
+		std::wstring filePureName = fileFullName;
 		auto lastPos = fileFullName.find_first_of('.');
-		if(lastPos != std::string::npos)
+		if(lastPos != std::wstring::npos)
 		{
 			filePureName = fileFullName.substr(0, lastPos);
 		}

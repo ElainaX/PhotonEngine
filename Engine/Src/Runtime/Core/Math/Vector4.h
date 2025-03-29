@@ -1,7 +1,10 @@
 ﻿#pragma once
 
 #include "Math.h"
+#include "Vector2.h"
 #include "Vector3.h"
+
+#include <DirectXMath.h>
 
 namespace photon
 {
@@ -13,7 +16,8 @@ namespace photon
 	public:
 		Vector4() = default;
 		Vector4(float x_, float y_, float z_, float w_) : x {x_}, y {y_}, z {z_}, w {w_} {}
-		Vector4(const Vector3& v3, float w_) : x {v3.x}, y {v3.y}, z {v3.z}, w {w_} {}
+		Vector4(const Vector3& v3, float w_) : x{ v3.x }, y{ v3.y }, z{ v3.z }, w{ w_ } {}
+		Vector4(const DirectX::XMFLOAT4& dxfloat4) : x{ dxfloat4.x }, y{ dxfloat4.y }, z{ dxfloat4.z }, w{ dxfloat4.w } {}
 
 		explicit Vector4(float coords[4]) : x {coords[0]}, y {coords[1]}, z {coords[2]}, w {coords[3]} {}
 

@@ -20,12 +20,16 @@ namespace photon
 	{
 		ForwardPipelineRenderResourceData* resourceData = dynamic_cast<ForwardPipelineRenderResourceData*>(data);
 
+		// Update RenderItem Constants
 
 		// MainCameraPass 
 		MainPassRenderResourceData mainCameraPassData;
 		mainCameraPassData.allRenderItems = resourceData->allRenderItems;
+		//mainCameraPassData.diffuseMap = resourceData->diffuseMap;
 		mainCameraPassData.renderTarget = resourceData->renderTarget;
 		mainCameraPassData.depthStencil = resourceData->depthStencil;
+		mainCameraPassData.mainCamera = resourceData->mainCamera;
+		mainCameraPassData.gameTimer = resourceData->gameTimer;
 		m_MainCameraRenderPass->PrepareContext(&mainCameraPassData);
 
 

@@ -94,8 +94,8 @@ namespace photon
 
 	std::string RootSignature::TableParameterToString(const RootParameter& p)
 	{
-		std::string ret = std::format("{}:space{},register{}", 
-			s_TableString, p.shaderParam.space, p.shaderParam.slot);
+		std::string ret = std::format("{}:space{},register{},type{}", 
+			s_TableString, p.shaderParam.space, p.shaderParam.slot, (int)p.type);
 		return ret;
 	}
 

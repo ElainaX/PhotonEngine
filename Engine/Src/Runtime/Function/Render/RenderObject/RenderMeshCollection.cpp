@@ -8,7 +8,7 @@ namespace photon
 	{
 		if(mesh->bIsLoad)
 		{
-			LOG_ERROR("mesh {} can't load in two meshCollection!", mesh->name);
+			LOG_ERROR("mesh {} can't load in two meshCollection!", WString2String(mesh->name));
 			return;
 		}
 		m_Meshes.insert({ mesh->guid, mesh });
@@ -16,10 +16,13 @@ namespace photon
 		vertexSizeInBytes += mesh->vertexRawData->GetBufferSize();
 		indexSizeInBytes += mesh->indexRawData->GetBufferSize();
 		mesh->bIsLoad = true;
+		bShouldRecreateBuffer = true;
 	}
 
 	void RenderMeshCollection::EndPush(RHI* rhi)
 	{
+		if (!bShouldRecreateBuffer)
+			return;
 		UINT vertexStride = VertexTypeToSizeInBytes(vertexType);
 		UINT indexStride = 4;
 
@@ -57,6 +60,8 @@ namespace photon
 		delete[] AllIndexBuffer;
 		AllVertBuffer = nullptr;
 		AllIndexBuffer = nullptr;
+
+		bShouldRecreateBuffer = false;
 	}
 
 	photon::Mesh* RenderMeshCollection::GetMesh(UINT64 guid)
@@ -66,6 +71,11 @@ namespace photon
 			return m_Meshes[guid].get();
 		}
 		return nullptr;
+	}
+
+	bool RenderMeshCollection::IsMeshLoaded(UINT64 guid)
+	{
+		return m_Meshes.find(guid) != m_Meshes.end();
 	}
 
 }

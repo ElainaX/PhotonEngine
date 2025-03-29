@@ -19,5 +19,9 @@ namespace photon
 
 		static Vector2i WindowToClient(HWND hwnd, int x, int y);
 		static Vector2i WindowToClient(HWND hwnd, Vector2i p);
+
+		static Vector2i GetScreenMousePos();
+		static void SetScreenMousePos(Vector2i pos);
+		static Vector2i SetMousePosToWndCenter(HWND wnd);
 	};
 }

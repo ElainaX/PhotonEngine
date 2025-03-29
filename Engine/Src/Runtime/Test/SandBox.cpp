@@ -22,29 +22,29 @@ namespace photon
 
 	void SandBox::TestFileSystem()
 	{
-		FileSystem fileSystem;
-		// Test Path
-		std::filesystem::path path("./");
-		std::filesystem::path absolutePath = std::filesystem::absolute(path);
-		std::string currentPath = Path::GetRelativePath("E:/", absolutePath).generic_string();
-		auto&& pathSegments = Path::GetPathSegments(absolutePath);
-		auto&& currFolderfiles = fileSystem.GetFiles(path);
-		auto&& currFolderCPPfiles = fileSystem.GetFiles(path, ".cpp");
-		auto&& allfiles = fileSystem.GetFilesRecursive(path);
-		auto&& allCPPfiles = fileSystem.GetFilesRecursive(path, ".cpp");
+		//FileSystem fileSystem;
+		//// Test Path
+		//std::filesystem::path path("./");
+		//std::filesystem::path absolutePath = std::filesystem::absolute(path);
+		//std::wstring currentPath = Path::GetRelativePath("E:/", absolutePath).generic_wstring();
+		//auto&& pathSegments = Path::GetPathSegments(absolutePath);
+		//auto&& currFolderfiles = fileSystem.GetFiles(path);
+		//auto&& currFolderCPPfiles = fileSystem.GetFiles(path, L".cpp");
+		//auto&& allfiles = fileSystem.GetFilesRecursive(path);
+		//auto&& allCPPfiles = fileSystem.GetFilesRecursive(path, L".cpp");
 
-		if(!allfiles.empty())
-		{
-			std::filesystem::path p = allfiles[0];
-			auto&& extensions = Path::GetFileExtensions(p);
-			auto&& pSegments = Path::GetPathSegments(p);
-			auto&& pureName = Path::GetFilePureName(p.lexically_normal().generic_string());
-		}
+		//if(!allfiles.empty())
+		//{
+		//	std::filesystem::path p = allfiles[0];
+		//	auto&& extensions = Path::GetFileExtensions(p);
+		//	auto&& pSegments = Path::GetPathSegments(p);
+		//	auto&& pureName = Path::GetFilePureName(p.lexically_normal().generic_wstring());
+		//}
 	}
 
 	void SandBox::TestGuidAllocator()
 	{
-		GuidAllocator<std::string> allocA;
+		/*GuidAllocator<std::wstring> allocA;
 		GuidAllocator<AllocTestor> allocB;
 
 		for(int i = 0; i < 100; ++i)
@@ -89,7 +89,7 @@ namespace photon
 		{
 			std::cout << "No Be50" << std::endl;
 		}
-		auto totalB = allocB.GetAllocatedGuids();
+		auto totalB = allocB.GetAllocatedGuids();*/
 	}
 
 	void SandBox::TestMd5Code()

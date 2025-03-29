@@ -7,6 +7,7 @@ namespace photon
 	class LogManager;
 	class WindowSystem;
 	class RenderSystem;
+	class InputSystem;
 
 	class RuntimeGlobalContext
 	{
@@ -18,6 +19,7 @@ namespace photon
 		std::shared_ptr<LogManager> logManager;
 		std::shared_ptr<WindowSystem> windowSystem;
 		std::shared_ptr<RenderSystem> renderSystem;
+		std::shared_ptr<InputSystem> inputSystem;
 	};
 
 	extern RuntimeGlobalContext g_RuntimeGlobalContext;

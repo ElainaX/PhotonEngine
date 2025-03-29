@@ -15,6 +15,7 @@ namespace photon
 
 	struct VertexSimple
 	{
+		VertexSimple() = default;
 		VertexSimple(Vector3 _pos, Vector3 _normal, Vector3 _tangent, Vector2 _texcoord)
 			: position(_pos), normal(_normal), tangent(_tangent), texCoord(_texcoord){}
 

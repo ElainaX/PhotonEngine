@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "Vector2.h"
+
 #include <cassert>
 #include <cmath>
 
@@ -20,6 +22,12 @@ namespace photon
 		explicit Vector2i(const int v[2]) : x(v[0]), y(v[1]) {}
 
 		explicit Vector2i(int* const r) : x(r[0]), y(r[1]) {}
+
+		operator Vector2() const
+		{
+			return Vector2{ (float)x, (float)y };
+		}
+
 
 		int* ptr() { return &x; }
 

@@ -63,4 +63,25 @@ namespace photon
 
 
 
+	photon::Vector2i WindowUtil::GetScreenMousePos()
+	{
+		POINT p;
+		::GetCursorPos(&p);
+		return Vector2i{ p.x, p.y };
+	}
+
+	void WindowUtil::SetScreenMousePos(Vector2i pos)
+	{
+		::SetCursorPos(pos.x, pos.y);
+	}
+
+	Vector2i WindowUtil::SetMousePosToWndCenter(HWND wnd)
+	{
+		RECT wndRect;
+		::GetWindowRect(wnd, &wndRect);
+		Vector2i center = {  (wndRect.left + wndRect.right) / 2,  (wndRect.bottom + wndRect.top) / 2 };
+		SetScreenMousePos(center);
+		return center;
+	}
+
 }

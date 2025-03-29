@@ -2,6 +2,7 @@
 #include "Core/Log/LogManager.h"
 #include "Function/Render/WindowSystem.h"
 #include "Function/Render/RenderSystem.h"
+#include "Function/Input/InputSystem.h"
 
 namespace photon
 {
@@ -20,10 +21,15 @@ namespace photon
 		RenderSystemInitInfo rsInitInfo;
 		rsInitInfo.windowSystem = windowSystem;
 		renderSystem->Initialize(rsInitInfo);
+
+		inputSystem = std::make_shared<InputSystem>();
+		inputSystem->Initialize();
 	}
 
 	void RuntimeGlobalContext::ShutDownSubSystems()
 	{
+		inputSystem.reset();
+
 		windowSystem->CloseAllWindows();
 		windowSystem.reset();
 

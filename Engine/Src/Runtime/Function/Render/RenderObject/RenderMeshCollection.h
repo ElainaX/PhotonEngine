@@ -21,6 +21,7 @@ namespace photon
 
 		Mesh* GetMesh(UINT64 guid);
 
+		bool IsMeshLoaded(UINT64 guid);
 
 		D3D12_VERTEX_BUFFER_VIEW& VertexBufferView()const
 		{
@@ -42,7 +43,7 @@ namespace photon
 		UINT indexSizeInBytes = 0;
 
 	private:
-
+		bool bShouldRecreateBuffer = false;
 		std::map<UINT64, std::shared_ptr<Mesh>> m_Meshes;
 
 	};

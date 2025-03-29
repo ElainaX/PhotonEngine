@@ -5,6 +5,7 @@
 #include "Function/Render/RHI.h"
 #include "Function/Render/Shader/TestShader.h"
 #include "Function/Render/DX12RHI/DescriptorHeap/RtvDescriptorHeap.h"
+#include "Function/Render/DX12RHI/DescriptorHeap/CbvSrvUavDescriptorHeap.h"
 #include "Function/Render/DX12RHI/DXPipeline/DXGraphicsPipeline.h"
 
 namespace photon 
@@ -17,7 +18,6 @@ namespace photon
 		DepthStencilView* depthStencilView = nullptr;
 		std::vector<CommonRenderItem*> renderItems;
 		UINT passConstantIdx = 0;
-		// 用staticModel FrameResource
 	};
 
 	class TestSubPass
@@ -29,12 +29,15 @@ namespace photon
 
 
 		std::vector<CommonRenderItem*> commonRenderItems;
+		std::map<UINT64, ShaderResourceView*> texGuidToShaderResourceViews;
 		RenderTargetView* renderTargetView;
 		DepthStencilView* depthStencilView;
 		std::shared_ptr<DXGraphicsPipeline> pipeline;
 
 		ConstantBufferParameter objectConstantInTable = ConstantBufferParameter(0);
 		ConstantBufferParameter passConstantInTable = ConstantBufferParameter(1);
+		ConstantBufferParameter matDataConstantInTable = ConstantBufferParameter(2);
+		TextureParameter textureInTable = TextureParameter(0);
 		FrameResourceType frameResourceType = FrameResourceType::StaticModelFrameResource;
 
 	private:

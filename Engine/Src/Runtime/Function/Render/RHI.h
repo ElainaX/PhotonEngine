@@ -4,12 +4,15 @@
 #include "Resource/Texture/Texture2D.h"
 #include "Resource/Texture/Buffer.h"
 #include "Shader/Shader.h"
+#include "DX12RHI/d3dx12.h"
 
 #include <memory>
 #include <cstdint>
 #include <utility>
 #include <d3d12.h>
 #include <wrl.h>
+#include <array>
+#include <string>
 
 namespace photon 
 {
@@ -79,6 +82,7 @@ namespace photon
 		// 常用功能
 		virtual FrameResource* GetCurrFrameResource(FrameResourceType type) = 0;
 		virtual void CreateFrameResource(FrameResourceType type, FrameResourceDesc* desc) = 0;
+		virtual std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers() = 0;
 
 
 		virtual void FlushCommandQueue() = 0;
@@ -92,9 +96,6 @@ namespace photon
 
 		virtual void BeginSingleRenderPass() = 0;
 		virtual void EndSingleRenderPass() = 0;
-
-
-		virtual void TestRender() = 0;
 
 
 		virtual unsigned int GetCurrBackBufferIndex() = 0;
@@ -117,17 +118,19 @@ namespace photon
 		virtual RenderTargetView* CreateRenderTargetView() = 0;
 		virtual SamplerView* CreateSampler(const D3D12_SAMPLER_DESC* pDesc, SamplerView* thisView = nullptr) = 0;
 		virtual SamplerView* CreateSampler() = 0;
-		// virtual void CreateFrameResources() = 0;
+
+		
 
 		// 资源相关函数
 		virtual std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) = 0;
+		virtual std::shared_ptr<Texture2D> LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize = 0) = 0;
 		virtual std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc) = 0;
 		virtual std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes) = 0;
 		virtual void CopyDataCpuToGpu(Resource* dstResource, const void* data, UINT64 sizeInBytes) = 0;
 		virtual void CopyDataCpuToGpu(Resource* dstResource, UINT64 startPosInBytes, const void* data, UINT64 sizeInBytes) = 0;
 		virtual void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource) = 0;
 		virtual void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource, UINT64 dstStartPosInBytes, UINT64 srcStartPosInBytes, UINT64 sizeInBytes) = 0;
-
+		virtual void CopySubResourceDataCpuToGpu(Resource* dest, Resource* upload, UINT64 uploadOffsetInBytes, D3D12_SUBRESOURCE_DATA* resources, UINT resourcesStartIdx = 0, UINT resourcesNum = 1) = 0;
 
 		virtual void ResourceStateTransform(Resource* resource, D3D12_RESOURCE_STATES stateAfter) = 0;
 

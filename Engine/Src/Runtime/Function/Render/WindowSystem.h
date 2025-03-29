@@ -39,9 +39,11 @@ namespace photon
 		bool ShouldClose() const;
 		void SetShouldClose(bool bShouldClose = true);
 		void SetTitle(const std::wstring& title);
+		void SetFocusMode(bool bShouldFocus = true);
 
 		HWND GetHwnd() { return m_WndHandle; }
-		Vector2i GetWidthAndHeight() { return Vector2i(m_Width, m_Height); }
+		bool GetFocusMode() const { return m_bFocusMode; }
+		Vector2i GetWidthAndHeight() { return Vector2i{ m_Width, m_Height }; }
 		Vector2i GetClientWidthAndHeight() { return WindowUtil::WindowToClient(m_WndHandle, m_Width, m_Height);}
 		
 
@@ -110,6 +112,8 @@ namespace photon
 		int m_Height;
 
 		bool m_bShouldClose = false;
+		bool m_bFocusMode = false;
+		Vector2i m_BeforeFocusMousePos;
 
 		std::vector<std::pair<int, OnMouseButtonDownFunc>> m_OnMouseButtonDownCallbacks;
 		std::vector<std::pair<int, OnMouseButtonUpFunc>> m_OnMouseButtonUpCallbacks;

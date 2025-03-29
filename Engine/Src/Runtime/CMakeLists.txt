@@ -38,6 +38,7 @@ set_target_properties(PhotonRuntime PROPERTIES
 set_source_files_properties(${HLSL_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
 if(MSVC)
     target_compile_options(PhotonRuntime PUBLIC "/Zc:preprocessor")
+    target_compile_options(PhotonRuntime PUBLIC /fp:fast)
 endif()
 # Clear Variable
 # unset(SOURCE_FILES)

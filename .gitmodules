@@ -1,0 +1,6 @@
+[submodule "Engine/3rdparty/DirectXTex"]
+	path = Engine/3rdparty/DirectXTex
+	url = ./
+[submodule "Engine/3rdparty/stb"]
+	path = Engine/3rdparty/stb
+	url = ./

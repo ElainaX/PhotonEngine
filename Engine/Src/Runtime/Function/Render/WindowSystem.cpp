@@ -98,6 +98,37 @@ namespace photon
 		::SetWindowTextW(m_WndHandle, m_Title.c_str());
 	}
 
+	void WindowSystem::SetFocusMode(bool bShouldFocus /*= true*/)
+	{
+		if(m_bFocusMode != bShouldFocus)
+		{
+			if(bShouldFocus)
+			{
+				m_BeforeFocusMousePos = WindowUtil::GetScreenMousePos();
+				auto center = WindowUtil::SetMousePosToWndCenter(m_WndHandle);
+				Win32WndProcInfo procInfo;
+				procInfo.hwnd = m_WndHandle;
+				procInfo.msg = WM_MOUSEMOVE;
+				procInfo.wparam = 0;
+				procInfo.lparam = MAKELPARAM(center.x, center.y);
+				MouseMoveEvent e(procInfo);
+				OnMouseMove(e);
+			}
+			else 
+			{
+				WindowUtil::SetScreenMousePos(m_BeforeFocusMousePos);
+				Win32WndProcInfo procInfo;
+				procInfo.hwnd = m_WndHandle;
+				procInfo.msg = WM_MOUSEMOVE;
+				procInfo.wparam = 0;
+				procInfo.lparam = MAKELPARAM(m_BeforeFocusMousePos.x, m_BeforeFocusMousePos.y);
+				MouseMoveEvent e(procInfo);
+				OnMouseMove(e);
+			}
+			m_bFocusMode = bShouldFocus;
+		}
+	}
+
 	void WindowSystem::CloseAllWindows()
 	{
 		::DestroyWindow(m_WndHandle);
@@ -382,7 +413,6 @@ namespace photon
 				callback.second(e);
 			}
 		}
-
 	}
 
 	void WindowSystem::OnMouseDoubleClick(const MouseDoubleClickEvent& mouseDoubleClick)

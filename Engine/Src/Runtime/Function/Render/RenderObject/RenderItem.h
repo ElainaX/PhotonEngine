@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Mesh.h"
+#include "Material.h"
 #include "RenderMeshCollection.h"
 #include "../DX12RHI/FrameResource/StaticModelFrameResource.h"
 #include "../DX12RHI/DX12Define.h"
@@ -37,6 +38,8 @@ namespace photon
 		RenderMeshCollection* meshCollection = nullptr;
 		D3D12_PRIMITIVE_TOPOLOGY primitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		UINT64 meshGuid = 0;
+
+		Material* material = nullptr;
 
 		Shader* shader = nullptr;
 

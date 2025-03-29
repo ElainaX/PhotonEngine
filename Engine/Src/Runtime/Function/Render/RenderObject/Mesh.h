@@ -11,8 +11,9 @@ namespace photon
 {
 	struct MeshDesc 
 	{
-		std::string name = "Mesh";
+		std::wstring name = L"Mesh";
 		VertexType type;
+		D3D12_PRIMITIVE_TOPOLOGY topology;
 		Microsoft::WRL::ComPtr<ID3DBlob> vertexRawData;
 		Microsoft::WRL::ComPtr<ID3DBlob> indexRawData;
 
@@ -24,6 +25,7 @@ namespace photon
 
 		// 创建的时候需要填写
 		VertexType type;
+		D3D12_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		Microsoft::WRL::ComPtr<ID3DBlob> vertexRawData;
 		Microsoft::WRL::ComPtr<ID3DBlob> indexRawData;
 

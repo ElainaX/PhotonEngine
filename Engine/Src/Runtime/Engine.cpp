@@ -3,6 +3,7 @@
 #include "Function/Global/RuntimeGlobalContext.h"
 #include "Function/Render/WindowSystem.h"
 #include "Function/Render/RenderSystem.h"
+#include "Function/Input/InputSystem.h"
 
 #include <cassert>
 
@@ -29,6 +30,7 @@ namespace photon
 	void PhotonEngine::TickLogical(GameTimer& timer)
 	{
 		g_RuntimeGlobalContext.windowSystem->PollEvents();
+		g_RuntimeGlobalContext.inputSystem->Tick(timer);
 	}
 
 	void PhotonEngine::TickRenderer(GameTimer& timer)

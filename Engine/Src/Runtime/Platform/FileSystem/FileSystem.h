@@ -11,10 +11,10 @@ namespace photon
 	public:
 
 		static std::vector<std::filesystem::path> GetFiles(const std::filesystem::path& directory, 
-			const std::string& extension = "");
+			const std::wstring& extension = L"");
 
 		static std::vector<std::filesystem::path> GetFilesRecursive(const std::filesystem::path& directory, 
-			const std::string& extension = "");
+			const std::wstring& extension = L"");
 	};
 
 	class Path 
@@ -23,12 +23,12 @@ namespace photon
 		static const std::filesystem::path GetRelativePath(const std::filesystem::path& directory, 
 			const std::filesystem::path& filePath);
 
-		static const std::vector<std::string> GetPathSegments(const std::filesystem::path& filePath);
+		static const std::vector<std::wstring> GetPathSegments(const std::filesystem::path& filePath);
 
-		static const std::tuple<std::string, std::string, std::string>
+		static const std::tuple<std::wstring, std::wstring, std::wstring>
 			GetFileExtensions(const std::filesystem::path& filePath);
 
-		static const std::string GetFilePureName(const std::string& filePath);
+		static const std::wstring GetFilePureName(const std::wstring& filePath);
 	};
 
 }

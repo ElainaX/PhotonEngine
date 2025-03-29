@@ -4,6 +4,8 @@
 #include <cmath>
 #include <algorithm>
 
+#include <DirectXMath.h>
+
 namespace photon
 {
 	class Vector3
@@ -15,7 +17,8 @@ namespace photon
 
 	public:
 		Vector3() = default;
-		Vector3(float x_, float y_, float z_) : x {x_}, y {y_}, z {z_} {}
+		Vector3(float x_, float y_, float z_) : x{ x_ }, y{ y_ }, z{ z_ } {}
+		Vector3(const DirectX::XMFLOAT3& dxfloat3) : x{ dxfloat3.x }, y{ dxfloat3.y }, z{ dxfloat3.z } {}
 
 		explicit Vector3(const float coords[3]) : x {coords[0]}, y {coords[1]}, z {coords[2]} {}
 

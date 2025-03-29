@@ -18,14 +18,30 @@ namespace photon
 		if(!shader->GetMacros()->IsVariantLoaded(data.macros) || pipeline == nullptr)
 		{
 			pipeline = pipeline == nullptr ? std::make_shared<DXGraphicsPipeline>() : std::make_shared<DXGraphicsPipeline>(*pipeline);
-			rootSignature = rhi->CreateRootSignature(shader);
+			rootSignature = rhi->CreateRootSignature(shader, 6, rhi->GetStaticSamplers().data());
 			pipeline->SetShaderMust(shader, data.macros, rootSignature.Get());
 			pipeline->SetRenderTargetMust({ data.renderTargetView->resource->dxDesc.Format });
+			pipeline->SetWireFrameMode();
 			pipeline->FinishOffRenderSet(rhi);
 		}
 		if (data.renderItems.empty())
 			return;
 		commonRenderItems = std::move(data.renderItems);
+		for(auto& ritem : commonRenderItems)
+		{
+			if(texGuidToShaderResourceViews.contains(ritem->material->diffuseMap->guid))
+			{
+				continue;
+			}
+			D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+			auto resourceTex = ritem->material->diffuseMap;
+			desc.Texture2D.MipLevels = resourceTex->dxDesc.MipLevels;
+			desc.Format = resourceTex->dxDesc.Format;
+			desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			texGuidToShaderResourceViews[resourceTex->guid] = rhi->CreateShaderResourceView(resourceTex, &desc, texGuidToShaderResourceViews[resourceTex->guid]);
+			
+		}
 	}
 
 	void TestSubPass::Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport)
@@ -54,13 +70,18 @@ namespace photon
 		auto passView = currFrameResource->GetPassConstantBufferView(passConstantIdx);
 		auto passConstantTableIndex = shader->GetPhotonRootSignature()->GetTableParameterIndex(passConstantInTable);
 		auto objectConstantTableIndex = shader->GetPhotonRootSignature()->GetTableParameterIndex(objectConstantInTable);
+		auto matDataConstantTableIndex = shader->GetPhotonRootSignature()->GetTableParameterIndex(matDataConstantInTable);
+		auto tex0TableIndex = shader->GetPhotonRootSignature()->GetTableParameterIndex(textureInTable);
 		rhi->CmdSetGraphicsRootDescriptorTable(passConstantTableIndex, passView->gpuHandleInHeap);
 
 		for(int i = 0; i < commonRenderItems.size(); ++i)
 		{
 			auto ritem = commonRenderItems[i];
 			auto objectView = currFrameResource->GetObjectConstantBufferView(ritem->frameResourceInfo.objConstantIdx);
+			auto matView = currFrameResource->GetMatDataConstantBufferView(ritem->material->matCBufferIdx);
 			rhi->CmdSetGraphicsRootDescriptorTable(objectConstantTableIndex, objectView->gpuHandleInHeap);
+			rhi->CmdSetGraphicsRootDescriptorTable(matDataConstantTableIndex, matView->gpuHandleInHeap);
+			rhi->CmdSetGraphicsRootDescriptorTable(tex0TableIndex, texGuidToShaderResourceViews[ritem->material->diffuseMap->guid]->gpuHandleInHeap);
 			
 			auto meshCollection = ritem->meshCollection;
 			rhi->CmdSetVertexBuffers(0, 1, &meshCollection->VertexBufferView());
@@ -71,29 +92,6 @@ namespace photon
 			rhi->CmdDrawIndexedInstanced(mesh->indexCount, 1, mesh->startIndexLocation, mesh->baseVertexLocation, 0);
 
 		}
-
-		//auto passConstantTableIndex = shader->GetPhotonRootSignature()->GetTableParameterIndex(passConstantInTable);
-		//auto passView = commonRenderItems[0]->frameResourceInfo.passConstantView;
-		//
-
-
-		//auto cbvView = m_ColorAView;
-		//rhi->SetGraphicsRootDescriptorTable(tableIndex, cbvView->gpuHandleInHeap);
-		////rhi->SetGraphicsRootConstantBufferView(0, m_ConstantBuffer->gpuResource->GetGPUVirtualAddress());
-
-		//rhi->IASetVertexBuffers(0, 1, &m_RenderMeshCollection->VertexBufferView());
-		//rhi->IASetIndexBuffer(&m_RenderMeshCollection->IndexBufferView());
-
-		//auto mesh = m_RenderMeshCollection->GetMesh(m_RenderItem.meshGuid);
-		//rhi->IASetPrimitiveTopology(m_RenderItem.primitiveType);
-		//rhi->DrawIndexedInstanced(mesh->indexCount, 1, mesh->startIndexLocation, mesh->baseVertexLocation, 0);
-
-		//cbvView = m_ColorBView;
-		//rhi->SetPipelineState(m_GraphicsPipeline2->GetDXPipelineState());
-		//rhi->SetGraphicsRootDescriptorTable(tableIndex, cbvView->gpuHandleInHeap);
-		//auto mesh2 = m_RenderMeshCollection->GetMesh(m_RenderItem2.meshGuid);
-		//rhi->IASetPrimitiveTopology(m_RenderItem2.primitiveType);
-		//rhi->DrawIndexedInstanced(mesh2->indexCount, 1, mesh2->startIndexLocation, mesh2->baseVertexLocation, 0);
 	}
 
 }

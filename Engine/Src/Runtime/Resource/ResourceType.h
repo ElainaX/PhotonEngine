@@ -30,7 +30,7 @@ namespace photon
 
 		size_t GetHashValue() const
 		{
-			size_t h1 = std::hash<std::string>{}(name);
+			size_t h1 = std::hash<std::wstring>{}(name);
 			size_t h2 = std::hash<UINT64>{}(guid);
 			return h1 ^ (h2 << 1);
 		}
@@ -39,7 +39,7 @@ namespace photon
 
 	public:
 		UINT64 guid = 0;
-		std::string name = "Basic Resource";
+		std::wstring name = L"Basic Resource";
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 
 

@@ -10,6 +10,7 @@
 
 #include "../DX12RHI/DX12Resource/VertexType.h"
 #include "Macro.h"
+#include "ShaderParameter/TextureParameter.h"
 
 namespace photon 
 {
@@ -50,11 +51,11 @@ namespace photon
 			ID3DInclude* pInclude = D3D_COMPILE_STANDARD_FILE_INCLUDE;
 
 			LPCSTR pEntryPointVS = "VS";
-			LPCSTR pTargetVS = "vs_5_0";
+			LPCSTR pTargetVS = "vs_5_1";
 
 
 			LPCSTR pEntryPointPS = "PS";
-			LPCSTR pTargetPS = "ps_5_0";
+			LPCSTR pTargetPS = "ps_5_1";
 
 			TestShaderBlob blob;
 
@@ -69,6 +70,7 @@ namespace photon
 
 			ID3DBlob* errorBlob = nullptr;
 			HRESULT result;
+			
 			result = D3DCompileFromFile(sourceFilepath.c_str(), pMacro, pInclude,
 				pEntryPointVS, pTargetVS, GetFlag1(), 0, &blob.vsBlob, &errorBlob);
 			if(FAILED(result))
@@ -95,6 +97,8 @@ namespace photon
 		{
 			m_Signature.PushAsDescriptorTable(ConstantBufferParameter(0), 1);
 			m_Signature.PushAsDescriptorTable(ConstantBufferParameter(1), 1);
+			m_Signature.PushAsDescriptorTable(ConstantBufferParameter(2), 1);
+			m_Signature.PushAsDescriptorTable(TextureParameter(0), 1);
 			//m_Signature.PushAsRootDescriptor(ConstantBufferParameter(1));
 		}
 

@@ -6,6 +6,7 @@
 #include "../Shader/TestShader.h"
 #include "../ResourceManager.h"
 #include "Function/Util/RenderUtil.h"
+#include "DirectXTK/WICTextureLoader12.h"
 
 
 #include <dxgi1_4.h>
@@ -319,7 +320,7 @@ namespace photon
 			ID3D12Resource* pBackBuffer = nullptr;
 			m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
 			m_SwapChainContents[i].backBuffer = std::make_shared<Texture2D>(pBackBuffer->GetDesc(), ResourceHeapProperties::Default, pBackBuffer, nullptr);
-			m_SwapChainContents[i].backBuffer->name = "SwapChain Buffer" + std::to_string(i);
+			m_SwapChainContents[i].backBuffer->name = L"SwapChain Buffer" + std::to_wstring(i);
 			m_RtvHeap->CreateRenderTargetView(m_SwapChainContents[i].backBuffer.get(), nullptr, m_SwapChainContents[i].view);
 		}
 	}
@@ -479,12 +480,6 @@ namespace photon
 		return buffer;
 	}
 
-	void DX12RHI::CompileShaders()
-	{
-		//m_TestShader = std::make_shared<TestShader>(L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders/TestShader.hlsl");
-		//m_TestShaderBlob = m_TestShader->Compile({ MacroInfo{"NOUSECB", ""} });
-	}
-
 	void DX12RHI::CopyTextureToSwapChain(Texture2D* tex)
 	{
 		ResourceStateTransform(tex, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -549,13 +544,6 @@ namespace photon
 	void DX12RHI::PrepareForPresent()
 	{
 		ResourceStateTransform(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(), D3D12_RESOURCE_STATE_PRESENT);
-	}
-
-
-
-	void DX12RHI::TestRender()
-	{
-
 	}
 
 
@@ -649,13 +637,56 @@ namespace photon
 		}
 	}
 
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> DX12RHI::GetStaticSamplers()
+	{
+		const CD3DX12_STATIC_SAMPLER_DESC pointWrap(0, D3D12_FILTER_MIN_MAG_MIP_POINT,
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
+		const CD3DX12_STATIC_SAMPLER_DESC pointClamp(1, D3D12_FILTER_MIN_MAG_MIP_POINT,
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+		const CD3DX12_STATIC_SAMPLER_DESC linearWrap(2, D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
+		const CD3DX12_STATIC_SAMPLER_DESC linearClamp(3, D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+		const CD3DX12_STATIC_SAMPLER_DESC anisotropicWrap(4, D3D12_FILTER_ANISOTROPIC,
+			D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
+		const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(5, D3D12_FILTER_ANISOTROPIC,
+			D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+
+		return { pointWrap, pointClamp,
+				linearWrap, linearClamp,
+				anisotropicWrap, anisotropicClamp };
+	}
+
+	std::shared_ptr<photon::Texture2D> DX12RHI::LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize /*= 0*/)
+	{
+		Texture2DDesc desc;
+		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+		DX_LogIfFailed(DirectX::LoadWICTextureFromFile(m_Device.Get(), filepath.c_str(), &resource, decodedData, subresource)); 
+		
+		D3D12_HEAP_PROPERTIES heapProp;
+		D3D12_HEAP_FLAGS heapFlags;
+		resource->GetHeapProperties(&heapProp, &heapFlags);
+		desc = Texture2D::ToPhotonDesc(resource->GetDesc(), (ResourceHeapProperties)(heapProp.Type));
+		std::shared_ptr<Texture2D> retTex = std::make_shared<Texture2D>(desc, resource);
+		return retTex;
+	}
+
+	void DX12RHI::CopySubResourceDataCpuToGpu(Resource* dest, Resource* upload, UINT64 uploadOffsetInBytes, D3D12_SUBRESOURCE_DATA* resources, UINT resourcesStartIdx /*= 0*/, UINT resourcesNum /*= 1*/)
+	{
+		ResourceStateTransform(upload, D3D12_RESOURCE_STATE_GENERIC_READ);
+		ResourceStateTransform(dest, D3D12_RESOURCE_STATE_COPY_DEST);
+		UpdateSubresources(m_CurrCmdList, dest->gpuResource.Get(), upload->gpuResource.Get(), uploadOffsetInBytes, resourcesStartIdx, resourcesNum, resources);
+	}
+
 	void DX12RHI::CmdClearDepthStencil(DepthStencilView* view, D3D12_CLEAR_FLAGS ClearFlags, float depth, UINT8 stencil, UINT numRects, const D3D12_RECT* clearRect /*= nullptr*/)
 	{
+		ResourceStateTransform(view->resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 		m_CurrCmdList->ClearDepthStencilView(view->cpuHandleInHeap, ClearFlags, depth, stencil, numRects, clearRect);
 	}
 
 	void DX12RHI::CmdClearRenderTarget(RenderTargetView* view, Vector4 clearRGBA, UINT numRects, const D3D12_RECT* clearRect /*= nullptr*/)
 	{
+		ResourceStateTransform(view->resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		float clearRGBAFloats[4] = { clearRGBA.x, clearRGBA.y, clearRGBA.z, clearRGBA.w };
 		m_CurrCmdList->ClearRenderTargetView(view->cpuHandleInHeap, clearRGBAFloats, numRects, clearRect);
 	}

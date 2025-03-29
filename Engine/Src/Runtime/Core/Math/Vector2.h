@@ -3,6 +3,9 @@
 #include <cassert>
 #include <cmath>
 
+#include <DirectXMath.h>
+#include <DirectXPackedVector.h>
+
 namespace photon
 {
 	class Vector2
@@ -14,6 +17,8 @@ namespace photon
 		Vector2() = default;
 
 		Vector2(float x_, float y_) : x(x_), y(y_) {}
+		
+		Vector2(const DirectX::XMFLOAT2& dxfloat2) : x(dxfloat2.x), y(dxfloat2.y) {}
 
 		explicit Vector2(float scaler) : x(scaler), y(scaler) {}
 
