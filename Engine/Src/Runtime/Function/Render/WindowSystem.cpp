@@ -129,6 +129,11 @@ namespace photon
 		}
 	}
 
+	void WindowSystem::SetViewportSize(Vector2i sz)
+	{
+		m_ViewportSize = sz;
+	}
+
 	void WindowSystem::CloseAllWindows()
 	{
 		::DestroyWindow(m_WndHandle);
@@ -137,6 +142,18 @@ namespace photon
 	LRESULT WINAPI WindowSystem::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 		std::shared_ptr<WindowSystem> wndSystem = g_RuntimeGlobalContext.windowSystem;
+
+		Win32WndProcInfo procInfo;
+		procInfo.hwnd = hWnd;
+		procInfo.msg = msg;
+		procInfo.wparam = wParam;
+		procInfo.lparam = lParam;
+
+		bool shouldContinue = true;
+		wndSystem->BeforeAllEvent(procInfo, shouldContinue);
+		if (!shouldContinue)
+			return true;
+
 		if (wndSystem)
 		{
 			// Dispatch Msg
@@ -147,7 +164,7 @@ namespace photon
 			case WM_RBUTTONDOWN:
 			case WM_MBUTTONDOWN:
 			{
-				MouseButtonDownEvent mouseButtonDownEvent(hWnd, msg, wParam, lParam);
+				MouseButtonDownEvent mouseButtonDownEvent(procInfo);
 				wndSystem->OnMouseButtonDown(mouseButtonDownEvent);
 				return 0;
 			}
@@ -156,14 +173,14 @@ namespace photon
 			case WM_RBUTTONUP:
 			case WM_MBUTTONUP:
 			{
-				MouseButtonUpEvent mouseButtonUpEvent(hWnd, msg, wParam, lParam);
+				MouseButtonUpEvent mouseButtonUpEvent(procInfo);
 				wndSystem->OnMouseButtonUp(mouseButtonUpEvent);
 				return 0;
 			}
 
 			case WM_MOUSEWHEEL:
 			{
-				MouseWheelEvent mouseWheelEvent(hWnd, msg, wParam, lParam);
+				MouseWheelEvent mouseWheelEvent(procInfo);
 				wndSystem->OnMouseWheel(mouseWheelEvent);
 				return 0;
 			}
@@ -172,14 +189,14 @@ namespace photon
 			case WM_RBUTTONDBLCLK:
 			case WM_MBUTTONDBLCLK:
 			{
-				MouseDoubleClickEvent mouseDblClkEvent(hWnd, msg, wParam, lParam);
+				MouseDoubleClickEvent mouseDblClkEvent(procInfo);
 				wndSystem->OnMouseDoubleClick(mouseDblClkEvent);
 				return 0;
 			}
 
 			case WM_MOUSEMOVE:
 			{
-				MouseMoveEvent mouseMoveEvent(hWnd, msg, wParam, lParam);
+				MouseMoveEvent mouseMoveEvent(procInfo);
 				wndSystem->OnMouseMove(mouseMoveEvent);
 				return 0;
 			}
@@ -188,7 +205,7 @@ namespace photon
 			case WM_KEYDOWN:
 			case WM_SYSKEYDOWN:
 			{
-				KeyDownEvent keyDownEvent(hWnd, msg, wParam, lParam);
+				KeyDownEvent keyDownEvent(procInfo);
 				wndSystem->OnKeyDown(keyDownEvent);
 				return 0;
 			}
@@ -196,14 +213,14 @@ namespace photon
 			case WM_KEYUP:
 			case WM_SYSKEYUP:
 			{
-				KeyUpEvent keyUpEvent(hWnd, msg, wParam, lParam);
+				KeyUpEvent keyUpEvent(procInfo);
 				wndSystem->OnKeyUp(keyUpEvent);
 				return 0;
 			}
 
 			case WM_CHAR:
 			{
-				KeyCharEvent keyCharEvent(hWnd, msg, wParam, lParam);
+				KeyCharEvent keyCharEvent(procInfo);
 				wndSystem->OnKeyChar(keyCharEvent);
 				return 0;
 			}
@@ -211,14 +228,14 @@ namespace photon
 			// Window Event
 			case WM_SIZE:
 			{
-				WindowResizeEvent wndResizeEvent(hWnd, msg, wParam, lParam);
+				WindowResizeEvent wndResizeEvent(procInfo);
 				wndSystem->OnWindowResize(wndResizeEvent);
 				return 0;
 			}
 
 			case WM_MOVE:
 			{
-				WindowMoveEvent wndMoveEvent(hWnd, msg, wParam, lParam);
+				WindowMoveEvent wndMoveEvent(procInfo);
 				wndSystem->OnWindowMove(wndMoveEvent);
 				return 0;
 			}
@@ -226,8 +243,8 @@ namespace photon
 
 			case WM_EXITSIZEMOVE:
 			{
-				WindowMoveEvent wndMoveEvent(hWnd, msg, wParam, lParam);
-				WindowResizeEvent wndResizeEvent(hWnd, msg, wParam, lParam);
+				WindowMoveEvent wndMoveEvent(procInfo);
+				WindowResizeEvent wndResizeEvent(procInfo);
 				wndSystem->OnWindowResize(wndResizeEvent);
 				wndSystem->OnWindowMove(wndMoveEvent);
 				return 0;
@@ -235,14 +252,14 @@ namespace photon
 
 			case WM_CREATE:
 			{
-				WindowCreateEvent wndCreateEvent(hWnd, msg, wParam, lParam);
+				WindowCreateEvent wndCreateEvent(procInfo);
 				wndSystem->OnWindowCreate(wndCreateEvent);
 				return 0;
 			}
 
 			case WM_DESTROY:
 			{
-				WindowDestroyEvent wndDestroyEvent(hWnd, msg, wParam, lParam);
+				WindowDestroyEvent wndDestroyEvent(procInfo);
 				wndSystem->OnWindowDestroy(wndDestroyEvent);
 				return 0;
 			}
@@ -250,7 +267,7 @@ namespace photon
 			}
 		}
 
-		return ::DefWindowProc(hWnd, msg, wParam, lParam);
+		return ::DefWindowProc(procInfo.hwnd, procInfo.msg, procInfo.wparam, procInfo.lparam);
 
 	}
 
@@ -353,6 +370,11 @@ namespace photon
 		m_OnKeyCharCallbacks.insert(insertIter, currCallback);
 	}
 
+
+	void WindowSystem::RegisterBeforeAllEventCallBack(BeforeAllEventFunc func)
+	{
+		m_BeforeAllEventCallbacks.push_back(func);
+	}
 
 	void WindowSystem::OnMouseButtonDown(const MouseButtonDownEvent& mouseButtonDown)
 	{
@@ -487,6 +509,10 @@ namespace photon
 		m_Width = wndSize.x;
 		m_Height = wndSize.y;
 
+		Vector2i wndClientSize = wndResize.GetClientWindowSize();
+		m_ClientWidth = wndClientSize.x;
+		m_ClientHeight = wndClientSize.y;
+
 		WindowResizeEvent e = wndResize;
 		for (auto& callback : m_OnWindowResizeCallbacks)
 		{
@@ -544,6 +570,17 @@ namespace photon
 			{
 				callback.second(e);
 			}
+		}
+	}
+
+	void WindowSystem::BeforeAllEvent(Win32WndProcInfo& wndProcInfo, bool& bShouldContinue)
+	{
+		for(auto& callback : m_BeforeAllEventCallbacks)
+		{
+			if (bShouldContinue)
+				callback(wndProcInfo, bShouldContinue);
+			else
+				break;
 		}
 	}
 

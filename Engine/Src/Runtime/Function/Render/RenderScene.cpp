@@ -16,11 +16,11 @@ namespace photon
 		spotLights.reserve(MaxSpotLights);
 	}
 
-	photon::CommonRenderItem* RenderScene::AddCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticModelObjectConstants objConstants)
+	photon::CommonRenderItem* RenderScene::AddCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor)
 	{
 		auto commonRenderItem = std::make_shared<CommonRenderItem>();
 		commonRenderItem->frameResourceInfo.objConstantIdx = StaticModelObjectConstants::s_CurrObjectIndex++;
-		commonRenderItem->frameResourceInfo.objectConstants = objConstants;
+		commonRenderItem->frameResourceInfo.objectConstants = frameResourceEditor.ToObjectConstants();
 		commonRenderItem->material = mat;
 		commonRenderItem->meshCollection = m_MeshCollection.get();
 		commonRenderItem->primitiveType = mesh->topology;
@@ -28,23 +28,28 @@ namespace photon
 		commonRenderItem->shader = shader;
 		commonRenderItem->renderLayer = renderLayer;
 		commonRenderItem->numFrameDirty = g_FrameContextCount;
+		
 		if(!m_MeshCollection->IsMeshLoaded(mesh->guid))
 		{
 			m_MeshCollection->PushMesh(mesh);
 		}
 		m_RenderItems.push_back(commonRenderItem);
+
+		frameResourceEditor.bDirty = false;
+		m_StaticFrameResourceEditors[commonRenderItem->GameObjectId] = frameResourceEditor;
+
 		return commonRenderItem.get();
 	}
 
-	photon::Light* RenderScene::AddDirectionalLight(Vector3 strength, Vector3 dir)
+	photon::DirLight* RenderScene::AddDirectionalLight(Vector3 strength, Vector3 dir)
 	{
 		if (directionalLights.size() >= MaxDirLights)
 			return nullptr;
-		directionalLights.push_back(CreateDirectionalLight(strength, dir));
+		directionalLights.push_back(CreateDirectionalLight(strength, dir.normalisedCopy()));
 		return &directionalLights.back();
 	}
 
-	photon::Light* RenderScene::AddPointLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd)
+	photon::PointLight* RenderScene::AddPointLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd)
 	{
 		if (pointLights.size() >= MaxPointLights)
 			return nullptr;
@@ -52,7 +57,7 @@ namespace photon
 		return &pointLights.back();
 	}
 
-	photon::Light* RenderScene::AddSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower)
+	photon::SpotLight* RenderScene::AddSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower)
 	{
 		if (spotLights.size() >= MaxSpotLights)
 			return nullptr;
@@ -107,10 +112,26 @@ namespace photon
 		std::vector<photon::CommonRenderItem*> ret(m_RenderItems.size());
 		for(int i = 0; i < ret.size(); ++i)
 		{
+			auto frameResourceEditor = GetCommonRItemFrameResourceEditor(m_RenderItems[i]->GameObjectId);
+			if(frameResourceEditor->bDirty)
+			{
+				m_RenderItems[i]->frameResourceInfo.objectConstants = frameResourceEditor->ToObjectConstants();
+				frameResourceEditor->bDirty = false;
+			}
 			ret[i] = m_RenderItems[i].get();
 		}
 		return ret;
 	}
 
+
+	photon::StaticFrameResourceEditor* RenderScene::GetCommonRItemFrameResourceEditor(uint64_t gameObjectId)
+	{
+		auto find_it = m_StaticFrameResourceEditors.find(gameObjectId);
+		if(find_it != m_StaticFrameResourceEditors.end())
+		{
+			return &(find_it->second);
+		}
+		return nullptr;
+	}
 
 }

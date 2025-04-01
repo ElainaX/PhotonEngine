@@ -69,32 +69,32 @@ namespace photon
 			auto renderCamera = g_RuntimeGlobalContext.renderSystem->GetRenderCamera();
 			if (m_GameCommand & (unsigned int)GameCommand::forward)
 			{
-				LOG_ERROR("MoveForward {}", moveSpeed * gt.DeltaTime());
+				//LOG_ERROR("MoveForward {}", moveSpeed * gt.DeltaTime());
 				renderCamera->MoveForward(moveSpeed * gt.DeltaTime());
 			}
 			if (m_GameCommand & (unsigned int)GameCommand::backward)
 			{
-				LOG_ERROR("MoveBackward {}", moveSpeed * gt.DeltaTime());
+				//LOG_ERROR("MoveBackward {}", moveSpeed * gt.DeltaTime());
 				renderCamera->MoveForward(-moveSpeed * gt.DeltaTime());
 			}
 			if (m_GameCommand & (unsigned int)GameCommand::left)
 			{
-				LOG_ERROR("MoveLeft {}", moveSpeed * gt.DeltaTime());
+				//LOG_ERROR("MoveLeft {}", moveSpeed * gt.DeltaTime());
 				renderCamera->MoveRight(-moveSpeed * gt.DeltaTime());
 			}
 			if (m_GameCommand & (unsigned int)GameCommand::right)
 			{
-				LOG_ERROR("MoveRight {}", moveSpeed * gt.DeltaTime());
+				//LOG_ERROR("MoveRight {}", moveSpeed * gt.DeltaTime());
 				renderCamera->MoveRight(moveSpeed * gt.DeltaTime());
 			}
 			if (m_GameCommand & (unsigned int)GameCommand::jump)
 			{
-				LOG_ERROR("MoveUp {}", moveSpeed * gt.DeltaTime());
+				//LOG_ERROR("MoveUp {}", moveSpeed * gt.DeltaTime());
 				renderCamera->MoveUp(moveSpeed * gt.DeltaTime());
 			}
 			if (m_GameCommand & (unsigned int)GameCommand::squat)
 			{
-				LOG_ERROR("MoveDown {}", moveSpeed * gt.DeltaTime());
+				//LOG_ERROR("MoveDown {}", moveSpeed * gt.DeltaTime());
 				renderCamera->MoveUp(- moveSpeed * gt.DeltaTime());
 			}
 		}

@@ -8,7 +8,7 @@
 #include "../DX12RHI/DXPipeline/DXGraphicsPipeline.h"
 #include "Function/Render/WindowSystem.h"
 #include "SubPass/TestSubPass.h"
-#include "../RenderResourceData/MainPassRenderResourceData.h"
+#include "SubPass/UISubPass.h"
 #include "../DX12RHI/FrameResource/StaticModelFrameResource.h"
 
 #include <map>
@@ -27,6 +27,7 @@ namespace photon
 		
 	private:
 		std::shared_ptr<TestSubPass> m_TestSubpass;
+		std::shared_ptr<UISubPass> m_UISubpass;
 		RenderTargetView* m_TestRenderTargetView = nullptr;
 		DepthStencilView* m_TestDepthStencilView = nullptr;
 		ShaderResourceView* m_TestShaderResourceView = nullptr;

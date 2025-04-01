@@ -12,6 +12,9 @@ namespace photon
 
 		m_TestSubpass = std::make_shared<TestSubPass>();
 		m_TestSubpass->Initialize(rhi);
+
+		m_UISubpass = std::make_shared<UISubPass>();
+		m_UISubpass->Initialize(rhi);
 	}
 
 	void MainCameraPass::PrepareContext(RenderResourceData* data)
@@ -51,34 +54,36 @@ namespace photon
 		m_PassConstants.totalTime = totalTime;
 		m_PassConstants.deltaTime = deltaTime;
 		m_PassConstants.ambientLight = { 0.1, 0.1, 0.1, 1.0 };
+		for (int i = 0; i < renderResource->directionalLights.size(); ++i)
+		{
+			int index = 0 + i;
+			m_PassConstants.lights[index] = *renderResource->directionalLights[i];
+		}
+		// Update FramePassConstants
+		StaticModelFrameResource* frameResource = (StaticModelFrameResource*)m_Rhi->GetCurrFrameResource(FrameResourceType::StaticModelFrameResource);
+		frameResource->UpdatePassConstantBuffer(m_PassConstantsIdx, &m_PassConstants);
+
+
 
 		m_TestRenderTargetView = m_Rhi->CreateRenderTargetView(renderResource->renderTarget.get(), nullptr, m_TestRenderTargetView);
 		m_TestDepthStencilView = m_Rhi->CreateDepthStencilView(renderResource->depthStencil.get(), nullptr, m_TestDepthStencilView);
 
-		//auto resourceTex = renderResource->resourceTex;
-		//D3D12_SHADER_RESOURCE_VIEW_DESC resourceViewDesc = {};
-		//resourceViewDesc.Texture2D.MipLevels = resourceTex->dxDesc.MipLevels;
-		//resourceViewDesc.Format = resourceTex->dxDesc.Format;
-		//resourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		//resourceViewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		//m_TestShaderResourceView = m_Rhi->CreateShaderResourceView(resourceTex.get(), &resourceViewDesc, m_TestShaderResourceView);
-
 		TestSubPassData TestSubpassData;
-		//TestSubpassData.texView = m_TestShaderResourceView;
 		TestSubpassData.renderTargetView = m_TestRenderTargetView;
 		TestSubpassData.depthStencilView = m_TestDepthStencilView;
 		TestSubpassData.renderItems = renderResource->allRenderItems;
 		TestSubpassData.shader = TestSubpassData.renderItems[0]->shader;
-		TestSubpassData.macros = {};
+		TestSubpassData.macros = { MacroInfo{"MaxLights", std::to_string(MaxLights)},
+									MacroInfo{"NumDirLights", std::to_string(renderResource->directionalLights.size())} };
 		TestSubpassData.passConstantIdx = m_PassConstantsIdx;
 
-		// Update FramePassConstants
+		m_TestSubpass->PrepareForData(&TestSubpassData);
 
-		StaticModelFrameResource* frameResource = (StaticModelFrameResource*)m_Rhi->GetCurrFrameResource(FrameResourceType::StaticModelFrameResource);
-		frameResource->UpdatePassConstantBuffer(m_PassConstantsIdx, &m_PassConstants);
 
-		m_TestSubpass->PrepareForData(TestSubpassData);
-
+		UISubPassData UISubpassData;
+		UISubpassData.depthStencilView = m_TestDepthStencilView;
+		UISubpassData.renderTargetView = m_Rhi->GetCurrBackBufferAsRenderTarget();
+		m_UISubpass->PrepareForData(&UISubpassData);
 	}
 
 	void MainCameraPass::Draw()
@@ -89,10 +94,10 @@ namespace photon
 		
 		
 		m_TestSubpass->Draw(scissorRect, viewport);
+		m_UISubpass->Draw(scissorRect, viewport);
 
 
-
-		m_Rhi->CopyTextureToSwapChain(dynamic_cast<Texture2D*>(m_TestRenderTargetView->resource));
+		//m_Rhi->CopyTextureToSwapChain(dynamic_cast<Texture2D*>(m_TestRenderTargetView->resource));
 		m_Rhi->PrepareForPresent();
 		m_Rhi->Present();
 	}

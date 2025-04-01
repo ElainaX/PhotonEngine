@@ -39,9 +39,9 @@ cbuffer cbPass : register(b1)
 	float gDeltaTime;
 	float4 gAmbientLight;
 	
-//#ifdef MaxLights
-//	Light gLights[MaxLights];
-//#endif
+#ifdef MaxLights
+	Light gLights[MaxLights];
+#endif
 }
 
 cbuffer cbMaterial : register(b2)
@@ -79,7 +79,7 @@ float4 PS(VertexOutput pin) : SV_Target
 	mat.fresnelR0 = gFresnelR0;
 	mat.roughness = gRoughness;
 	
-	//float3 result = 5*gAmbientLight;
+	float3 result = float3(0.0, 0.0, 0.0);
 	float3 viewDir = normalize(gEyePos - pin.posWorld.xyz);
 #ifdef NumDirLights
 	for (int i = 0; i < NumDirLights; ++i)
@@ -89,6 +89,6 @@ float4 PS(VertexOutput pin) : SV_Target
 		result += L_dir;
 	}
 #endif
-	return float4(1.0, 0.0, 0.0, 1.0);
-	//return float4(result, 1.0f);
+	//return float4(1.0, 0.0, 0.0, 1.0);
+	return float4(result, 1.0f);
 }

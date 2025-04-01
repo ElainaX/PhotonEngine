@@ -44,7 +44,8 @@ namespace photon
 	struct SwapChainContent
 	{
 		std::shared_ptr<Texture2D> backBuffer = nullptr;
-		RenderTargetView* view = nullptr;
+		RenderTargetView* rtview = nullptr;
+		ShaderResourceView* srview = nullptr;
 	};
 
 	class DX12RHI : public RHI 
@@ -53,6 +54,8 @@ namespace photon
 		virtual ~DX12RHI() override;
 
 		void Initialize(RHIInitInfo initializeInfo) override final;
+		void InitializeImGui() override;
+
 		void CreateSwapChain() override final;
 		void ReCreateSwapChain() override final;
 		void CreateFactory() override final;
@@ -131,6 +134,7 @@ namespace photon
 		void CmdDrawIndexedInstanced(UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation) override;
 		void CmdClearRenderTarget(RenderTargetView* view, Vector4 clearRGBA, UINT numRects = 0, const D3D12_RECT* clearRect = nullptr) override;
 		void CmdClearDepthStencil(DepthStencilView* view, D3D12_CLEAR_FLAGS ClearFlags, float depth, UINT8 stencil, UINT numRects = 0, const D3D12_RECT* clearRect = nullptr) override;
+		void CmdDrawImGui() override;
 
 
 		FrameResource* GetCurrFrameResource(FrameResourceType type) override;
@@ -140,11 +144,11 @@ namespace photon
 
 
 
-
-
+		std::shared_ptr<Texture2D> GetCurrBackBufferResource() override { return m_SwapChainContents[m_CurrBackBufferIndex].backBuffer; }
+		RenderTargetView* GetCurrBackBufferAsRenderTarget() override;
+		ShaderResourceView* GetCurrBackBufferAsShaderResource(const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc) override;
 
 	private:
-		Texture2D* GetCurrBackBufferResource() { return m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(); }
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> GetCurrFrameContextCmdAllocator() { return m_FrameContexts[m_CurrFrameContextIndex]->cmdAllocator; }
 		void OnWindowResize(const WindowResizeEvent& e);
 

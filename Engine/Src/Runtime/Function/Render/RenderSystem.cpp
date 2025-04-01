@@ -33,6 +33,7 @@ namespace photon
 		m_RenderPipelines[RenderPipelineType::ForwardPipeline] = 
 			std::make_shared<ForwardRenderPipeline>();
 		m_RenderPipelines[RenderPipelineType::ForwardPipeline]->Initialize(&forwardCreateInfo);
+		m_CurrRenderPipeline = m_RenderPipelines[RenderPipelineType::ForwardPipeline].get();
 
 		//m_ResourceData = std::make_shared<RenderResourceData>();
 		Texture2DDesc texDesc;
@@ -57,7 +58,8 @@ namespace photon
 
 		auto camera = std::make_shared<RenderCamera>(swapchainWidthAndHeight.x / (float)swapchainWidthAndHeight.y);
 		m_RenderScene.push_back(std::make_shared<RenderScene>(camera));
-
+		m_RenderScene[0]->AddDirectionalLight(Vector3{ 0.7f, 0.2f, 0.2f }, Vector3{ 1.0f, -1.0f, 0.2f });
+		m_RenderScene[0]->AddDirectionalLight(Vector3{ 0.1f, 0.4f, 0.1f }, Vector3{ -1.0f, 0.0f, 0.0f });
 		//VertexSimple vertices[] =
 		//{
 		//	VertexSimple{Vector3{-0.5f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 1.0f}},
@@ -117,17 +119,15 @@ namespace photon
 		matData.roughness = 0.5f;
 		auto sphereMat = m_ResourceManager->CreateMaterial(matData, m_ResourceTex->guid, m_ResourceTex->name);
 	
-		StaticModelObjectConstants objConstant;
+		
+		StaticFrameResourceEditor standardEditor;
 
-		auto identityMat = XMMatrixIdentity();
-		XMStoreFloat4x4(&objConstant.world, identityMat);
 		auto testShader = m_ShaderFactory->Create(L"TestShader");
 
-		m_RenderScene[0]->AddCommonRenderItem(sphereMesh, sphereMat.get(), testShader, RenderLayer::Opaque, objConstant);
+		m_RenderScene[0]->AddCommonRenderItem(sphereMesh, sphereMat.get(), testShader, RenderLayer::Opaque, standardEditor);
 
-		auto transMat = XMMatrixTranslation(0.0f, -1.0f, 0.0f);
-		XMStoreFloat4x4(&objConstant.world, transMat);
-		m_RenderScene[0]->AddCommonRenderItem(gridMesh, sphereMat.get(), testShader, RenderLayer::Opaque, objConstant);
+		standardEditor.translation = { 0.0f, -1.0f, 0.0f };
+		m_RenderScene[0]->AddCommonRenderItem(gridMesh, sphereMat.get(), testShader, RenderLayer::Opaque, standardEditor);
 
 		StaticModelFrameResourceDesc resourceDesc;
 		resourceDesc.allObjectNum = StaticModelObjectConstants::s_CurrObjectIndex;
@@ -135,6 +135,12 @@ namespace photon
 		resourceDesc.allMatDatasNum = StaticModelMaterialDataConstants::s_CurrMatDataIndex;
 		m_Rhi->CreateFrameResource(FrameResourceType::StaticModelFrameResource, &resourceDesc);
 
+	}
+
+	void RenderSystem::InitializeEditorUI(WindowUI* windowUI)
+	{
+		m_Rhi->InitializeImGui();
+		m_CurrRenderPipeline->SetCurrEditorUI(windowUI);
 	}
 
 	void RenderSystem::Tick(GameTimer& gt)
@@ -154,6 +160,7 @@ namespace photon
 		m_Rhi->CmdSetDescriptorHeaps();
 		RenderScene* currRenderScene = m_RenderScene[0].get();
 		ForwardPipelineRenderResourceData forwardPipelineData;
+
 		auto ritems = currRenderScene->GetCommonRenderItems(m_Rhi.get());
 		forwardPipelineData.allRenderItems.resize(ritems.size());
 		for(int i = 0; i< ritems.size(); ++i)
@@ -169,14 +176,28 @@ namespace photon
 			}
 			forwardPipelineData.allRenderItems[i] = ritem;
 		}
+
+		auto& dirLights = m_RenderScene[0]->directionalLights;
+		forwardPipelineData.directionalLights.resize(dirLights.size());
+		for(int i = 0; i < dirLights.size(); ++i)
+		{
+			forwardPipelineData.directionalLights[i] = &dirLights[i].data;
+		}
+		
+		
 		forwardPipelineData.depthStencil = m_DepthStencil;
 		forwardPipelineData.renderTarget = m_RenderTarget;
 		forwardPipelineData.gameTimer = &gt;
 		forwardPipelineData.mainCamera = currRenderScene->GetMainCamera();
-		m_RenderPipelines[RenderPipelineType::ForwardPipeline]->PrepareContext(&forwardPipelineData);
+		
+		
+		
+		m_CurrRenderPipeline->PrepareContext(&forwardPipelineData);
 
 
-		m_RenderPipelines[RenderPipelineType::ForwardPipeline]->Render();
+
+
+		m_CurrRenderPipeline->Render();
 	}
 
 	void RenderSystem::ReCreateRenderTargetTexAndDepthStencilTex(Vector2i size)
@@ -208,6 +229,12 @@ namespace photon
 		return m_Rhi;
 	}
 
+	photon::ShaderResourceView* RenderSystem::GetFinalOutputShaderResourceView()
+	{
+		m_RenderTargetSRV = m_Rhi->CreateShaderResourceView(m_RenderTarget.get(), nullptr, m_RenderTargetSRV);
+		return m_RenderTargetSRV;
+	}
+
 	void RenderSystem::SetRenderPipelineType(RenderPipelineType renderType)
 	{
 
@@ -216,6 +243,21 @@ namespace photon
 	photon::RenderCamera* RenderSystem::GetRenderCamera()
 	{
 		return m_RenderScene[0]->GetMainCamera();
+	}
+
+	photon::ResourceManager* RenderSystem::GetResourceManager()
+	{
+		return m_ResourceManager.get();
+	}
+
+	photon::GeometryGenerator* RenderSystem::GetGeometryGenerator()
+	{
+		return m_GeometryGenerator.get();
+	}
+
+	photon::RenderScene* RenderSystem::GetRenderScene()
+	{
+		return m_RenderScene[0].get();
 	}
 
 }

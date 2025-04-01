@@ -7,6 +7,8 @@
 #include "../ResourceManager.h"
 #include "Function/Util/RenderUtil.h"
 #include "DirectXTK/WICTextureLoader12.h"
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_dx12.h"
 
 
 #include <dxgi1_4.h>
@@ -56,143 +58,6 @@ namespace photon
 
 		m_WindowSystem->RegisterOnWindowResizeCallback(OnWindowResizeLambda);
 
-		// 做一些Test的准备
-		//FlushCommandQueue();
-
-		//BeginSingleRenderPass();
-
-		//CompileShaders();
-
-
-		//Texture2DDesc desc;
-		//desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		//desc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-		//desc.heapProp = ResourceHeapProperties::Default;
-		//desc.clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
-		//desc.width = m_WindowSystem->GetClientWidthAndHeight().x;
-		//desc.height = m_WindowSystem->GetClientWidthAndHeight().y;
-
-		//m_RenderTex = m_ResourceManager->CreateTexture2D(desc);
-		//m_ResourceToViews.insert({m_RenderTex.get(), m_RtvHeap->CreateRenderTargetView(m_RenderTex.get(), nullptr)});
-
-		//Texture2DDesc dsvtex;
-		//dsvtex.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		//dsvtex.flag = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		//dsvtex.heapProp = ResourceHeapProperties::Default;
-		//dsvtex.width = desc.width;
-		//dsvtex.height = desc.height;
-		//dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
-		//m_DepthStencilTex = m_ResourceManager->CreateTexture2D(dsvtex);
-		//m_ResourceToViews.insert({ m_DepthStencilTex.get(), m_DsvHeap->CreateDepthStencilView(m_DepthStencilTex.get(), nullptr) });
-		//ResourceStateTransform(m_DepthStencilTex.get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-		//VertexSimple vertices[] =
-		//{
-		//	VertexSimple{Vector3{-0.5f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-		//	VertexSimple{Vector3{0.0f, 0.5f, 0.0f}  , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-		//	VertexSimple{Vector3{0.5f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-		//};
-
-		//VertexSimple vertices2[] =
-		//{
-		//	VertexSimple{Vector3{-0.0f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-		//	VertexSimple{Vector3{0.5f, 0.5f, 0.0f}  , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-		//	VertexSimple{Vector3{1.0f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 0.0f}},
-		//};
-
-		//uint32_t indices[] = { 0, 1, 2 };
-
-
-		//MeshDesc triMeshDesc;
-		//triMeshDesc.name = "Triangle";
-		//triMeshDesc.type = VertexType::VertexSimple;
-		//triMeshDesc.vertexRawData = RenderUtil::CreateD3DBlob(vertices, sizeof(VertexSimple) * 3);
-		//triMeshDesc.indexRawData = RenderUtil::CreateD3DBlob(indices, sizeof(uint32_t) * 3);
-		//std::shared_ptr<Mesh> triMesh = m_ResourceManager->CreateMesh(triMeshDesc);
-
-		//MeshDesc triMeshDesc2;
-		//triMeshDesc2.name = "Triangle2";
-		//triMeshDesc2.type = VertexType::VertexSimple;
-		//triMeshDesc2.vertexRawData = RenderUtil::CreateD3DBlob(vertices2, sizeof(VertexSimple) * 3);
-		//triMeshDesc2.indexRawData = RenderUtil::CreateD3DBlob(indices, sizeof(uint32_t) * 3);
-		//std::shared_ptr<Mesh> triMesh2 = m_ResourceManager->CreateMesh(triMeshDesc2);
-
-		//m_RenderMeshCollection = std::make_shared<RenderMeshCollection>();
-		//m_RenderMeshCollection->PushMesh(triMesh);
-		//m_RenderMeshCollection->PushMesh(triMesh2);
-		//m_RenderMeshCollection->EndPush(this);
-
-		//m_RenderItem.meshCollection = m_RenderMeshCollection.get();
-		//m_RenderItem.meshGuid = triMesh->guid;
-		//m_RenderItem2.meshCollection = m_RenderMeshCollection.get();
-		//m_RenderItem2.meshGuid = triMesh2->guid;
-
-		//// 创建一个cbv的view
-		//Vector4 gcolor[2] = { { 1.0, 0.5, 0.5, 0.5 },  { 0.5, 0.9, 0.9, 0.5 } };
-		//BufferDesc constantBufferDesc;
-		//constantBufferDesc.bufferSizeInBytes = 2 * RenderUtil::GetConstantBufferByteSize(sizeof(gcolor));
-		//constantBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(&gcolor[0], constantBufferDesc.bufferSizeInBytes, sizeof(Vector4));
-		//void* dst = (char*)constantBufferDesc.cpuResource->GetBufferPointer() + 256;
-		//CopyMemory(dst, (const void*)&gcolor[1], sizeof(Vector4));
-		//constantBufferDesc.heapProp = ResourceHeapProperties::Default;
-		//m_ConstantBuffer = m_ResourceManager->CreateBuffer(constantBufferDesc);
-
-
-		//D3D12_CONSTANT_BUFFER_VIEW_DESC constantBufferViewDesc;
-		//constantBufferViewDesc.BufferLocation = m_ConstantBuffer->gpuResource->GetGPUVirtualAddress();
-		//constantBufferViewDesc.SizeInBytes = 256;
-		//m_ColorAView = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
-		//constantBufferViewDesc.BufferLocation = m_ConstantBuffer->gpuResource->GetGPUVirtualAddress() + 256;
-		//constantBufferViewDesc.SizeInBytes = 256;
-		//m_ColorBView = m_CbvUavSrvHeap->CreateConstantBufferView(&constantBufferViewDesc);
-
-		//m_RootSignature = CreateRootSignature(m_TestShader.get());
-		//m_GraphicsPipeline = std::make_shared<DXGraphicsPipeline>();
-		//m_GraphicsPipeline->SetShaderMust(m_TestShader.get(), {}, m_RootSignature.Get());
-		//m_GraphicsPipeline->SetRenderTargetMust({ DXGI_FORMAT_R8G8B8A8_UNORM });
-
-		//m_GraphicsPipeline->FinishOffRenderSet(this);
-
-		//m_GraphicsPipeline2 = std::make_shared<DXGraphicsPipeline>(*m_GraphicsPipeline);
-
-		////BlendState
-		//BlendColorEquation colorEquation(BlendSrc{}, BlendSrcF{ BlendFactorValueType::srcAlpha }, BlendOp::add, BlendDst{}, BlendDstF{ BlendFactorValueType::oneMinusSrcAlpha });
-		//BlendEquation equation(colorEquation);
-		//BlendState blendState(equation);
-		//m_GraphicsPipeline2->SetBlendState(blendState);
-	
-		//DepthState dpState;
-		//dpState.isDepthTestEnbale = false;
-		//DepthStencilState depthStencilState;
-		//depthStencilState.depthState = dpState;
-		//m_GraphicsPipeline2->SetDepthStencilState(depthStencilState);
-		//m_GraphicsPipeline2->FinishOffRenderSet(this);
-
-
-		//auto& inputLayout = m_TestShader->GetShaderInputLayout();
-		//auto shaderBlob = m_TestShader->Compile({});
-
-		//D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
-		//ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-		//psoDesc.InputLayout = { inputLayout.data(), (unsigned int)inputLayout.size() };
-		//psoDesc.pRootSignature = m_RootSignature.Get();
-		//psoDesc.VS = shaderBlob->GetVSShaderByteCode();
-		//psoDesc.PS = shaderBlob->GetPSShaderByteCode();
-		//psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		//psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		//psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		//psoDesc.SampleMask = UINT_MAX;
-		//psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		//psoDesc.NumRenderTargets = 1;
-		//psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		//psoDesc.SampleDesc.Count = 1;
-		//psoDesc.SampleDesc.Quality = 0;
-		//psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		//DX_LogIfFailed(m_Device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_PipelineState)));
-
-		//EndSingleRenderPass();
-
-		//FlushCommandQueue();
 	}
 
 	void DX12RHI::CreateSwapChain()
@@ -225,7 +90,8 @@ namespace photon
 		for(int i = 0; i < g_SwapChainCount; ++i)
 		{
 			m_SwapChainContents[i] = SwapChainContent();
-			m_SwapChainContents[i].view = m_RtvHeap->CreateRenderTargetView();
+			m_SwapChainContents[i].rtview = m_RtvHeap->CreateRenderTargetView();
+			m_SwapChainContents[i].srview = m_CbvUavSrvHeap->CreateShaderResourceView();
 		}
 
 		CreateSwapChainRenderTarget();
@@ -242,7 +108,7 @@ namespace photon
 		// Clean Up SwapChain Resource
 		for (UINT i = 0; i < g_SwapChainCount; i++)
 		{
-			if (m_SwapChainContents[i].view != nullptr)
+			if (m_SwapChainContents[i].backBuffer != nullptr)
 			{
 				m_SwapChainContents[i].backBuffer->gpuResource->Release();
 				m_SwapChainContents[i].backBuffer->gpuResource = nullptr;
@@ -321,7 +187,7 @@ namespace photon
 			m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
 			m_SwapChainContents[i].backBuffer = std::make_shared<Texture2D>(pBackBuffer->GetDesc(), ResourceHeapProperties::Default, pBackBuffer, nullptr);
 			m_SwapChainContents[i].backBuffer->name = L"SwapChain Buffer" + std::to_wstring(i);
-			m_RtvHeap->CreateRenderTargetView(m_SwapChainContents[i].backBuffer.get(), nullptr, m_SwapChainContents[i].view);
+			auto rtView = m_RtvHeap->CreateRenderTargetView(m_SwapChainContents[i].backBuffer.get(), nullptr, m_SwapChainContents[i].rtview);
 		}
 	}
 
@@ -655,6 +521,40 @@ namespace photon
 		return { pointWrap, pointClamp,
 				linearWrap, linearClamp,
 				anisotropicWrap, anisotropicClamp };
+	}
+
+	photon::RenderTargetView* DX12RHI::GetCurrBackBufferAsRenderTarget()
+	{
+		return m_SwapChainContents[m_CurrBackBufferIndex].rtview;
+	}
+
+	photon::ShaderResourceView* DX12RHI::GetCurrBackBufferAsShaderResource(const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc)
+	{
+		auto currBackBufferCtx = m_SwapChainContents[m_CurrBackBufferIndex];
+		CreateShaderResourceView(currBackBufferCtx.backBuffer.get(), pDesc, currBackBufferCtx.srview);
+		return currBackBufferCtx.srview;
+	}
+
+	void DX12RHI::InitializeImGui()
+	{
+		DXGI_SWAP_CHAIN_DESC1 desc;
+		m_SwapChain->GetDesc1(&desc);
+		ShaderResourceView* srvView = CreateShaderResourceView();
+		ImGui_ImplDX12_Init(m_Device.Get(), g_FrameContextCount, desc.Format, m_CbvUavSrvHeap->GetDXHeapPtr(),
+			srvView->cpuHandleInHeap, srvView->gpuHandleInHeap);
+	}
+
+	void DX12RHI::CmdDrawImGui()
+	{
+		// Update and Render additional Platform Windows
+		ImGuiIO& io = ImGui::GetIO();
+
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_CurrCmdList);
+		}
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_CurrCmdList);
 	}
 
 	std::shared_ptr<photon::Texture2D> DX12RHI::LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize /*= 0*/)

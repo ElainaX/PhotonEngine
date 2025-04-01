@@ -1,8 +1,8 @@
 ﻿#pragma once
 #include "RenderPipeline.h"
-#include "RenderResourceData/ForwardPipelineRenderResourceData.h"
-#include "RenderResourceData/MainPassRenderResourceData.h"
+#include "RenderResourceData.h"
 #include "RenderPass/MainCameraPass.h"
+#include "Function/UI/WindowUI.h"
 
 namespace photon 
 {
@@ -33,6 +33,9 @@ namespace photon
 		
 
 
+
+		void SetCurrEditorUI(WindowUI* ui) override;
+
 	private:
 
 		//std::shared_ptr<RenderPass> m_DirectionalLightShadowPass;
@@ -43,6 +46,6 @@ namespace photon
 		std::shared_ptr<Texture2D> m_RenderTarget;
 		RHI* m_Rhi = nullptr;
 		WindowSystem* m_WindowSystem = nullptr;
-
+		WindowUI* m_UI = nullptr;
 	};
 }

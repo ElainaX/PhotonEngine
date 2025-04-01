@@ -21,10 +21,10 @@ namespace photon
 
 		void Initialize(std::shared_ptr<RenderCamera> mainCamera);
 
-		CommonRenderItem* AddCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticModelObjectConstants objConstants);
-		Light* AddDirectionalLight(Vector3 strength, Vector3 dir);
-		Light* AddPointLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd);
-		Light* AddSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower);
+		CommonRenderItem* AddCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor);
+		DirLight* AddDirectionalLight(Vector3 strength, Vector3 dir);
+		PointLight* AddPointLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd);
+		SpotLight* AddSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower);
 
 		void SetMainRenderCamera(RenderCamera* mainCam);
 		RenderCamera* AddRenderCamera(std::shared_ptr<RenderCamera> camera, bool bSetMainCamera = false);
@@ -32,15 +32,17 @@ namespace photon
 
 		RenderCamera* GetMainCamera();
 		std::vector<CommonRenderItem*> GetCommonRenderItems(RHI* rhi);
+		StaticFrameResourceEditor* GetCommonRItemFrameResourceEditor(uint64_t gameObjectId);
 
 
 
-		std::vector<Light> directionalLights;
-		std::vector<Light> pointLights;
-		std::vector<Light> spotLights;
+		std::vector<DirLight> directionalLights;
+		std::vector<PointLight> pointLights;
+		std::vector<SpotLight> spotLights;
 
 
 	private:
+		std::unordered_map<uint64_t, StaticFrameResourceEditor> m_StaticFrameResourceEditors;
 
 		std::shared_ptr<RenderMeshCollection> m_MeshCollection;
 		std::vector<std::shared_ptr<CommonRenderItem>> m_RenderItems;

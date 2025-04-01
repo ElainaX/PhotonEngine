@@ -2,6 +2,7 @@
 
 #include "Resource/ResourceType.h"
 #include "../DX12RHI/DX12Resource/VertexType.h"
+#include "Function/Render/GameObject.h"
 
 #include <d3d12.h>
 #include <string>
@@ -34,5 +35,6 @@ namespace photon
 		UINT startIndexLocation = 0;
 		INT baseVertexLocation = 0;
 		bool bIsLoad = false;
+
 	};
 }

@@ -23,10 +23,10 @@ namespace photon
 
 	void RenderCamera::Rotate(Vector2 delta_xy)
 	{
-		if(delta_xy.x > 0.001f || delta_xy.y > 0.001f)
-		{
-			LOG_ERROR("DeltaXY {}, {}", delta_xy.x, delta_xy.y);
-		}
+		//if(delta_xy.x > 0.001f || delta_xy.y > 0.001f)
+		//{
+		//	LOG_ERROR("DeltaXY {}, {}", delta_xy.x, delta_xy.y);
+		//}
 
 		yaw += delta_xy.x;
 		pitch += delta_xy.y;

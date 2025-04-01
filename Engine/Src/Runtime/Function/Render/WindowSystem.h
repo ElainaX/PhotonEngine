@@ -40,11 +40,13 @@ namespace photon
 		void SetShouldClose(bool bShouldClose = true);
 		void SetTitle(const std::wstring& title);
 		void SetFocusMode(bool bShouldFocus = true);
+		void SetViewportSize(Vector2i sz);
 
 		HWND GetHwnd() { return m_WndHandle; }
 		bool GetFocusMode() const { return m_bFocusMode; }
 		Vector2i GetWidthAndHeight() { return Vector2i{ m_Width, m_Height }; }
-		Vector2i GetClientWidthAndHeight() { return WindowUtil::WindowToClient(m_WndHandle, m_Width, m_Height);}
+		Vector2i GetClientWidthAndHeight() { return Vector2i{m_ClientWidth, m_ClientHeight}; }
+		Vector2i GetViewportSize() { return m_ViewportSize; }
 		
 
 		void CloseAllWindows();
@@ -67,7 +69,7 @@ namespace photon
 		using OnKeyUpFunc = std::function<void(KeyUpEvent&)>;
 		using OnKeyCharFunc = std::function<void(KeyCharEvent&)>;
 
-
+		using BeforeAllEventFunc = std::function<void(Win32WndProcInfo&, bool& bShouldContinue)>;
 
 		// Priority从 -5 ~ 5 逐级重要程度递增，默认0级
 		void RegisterOnMouseButtonDownCallback(OnMouseButtonDownFunc func, int priorty = 0);
@@ -85,6 +87,7 @@ namespace photon
 		void RegisterOnKeyUpCallback(OnKeyUpFunc func, int priorty = 0);
 		void RegisterOnKeyCharCallback(OnKeyCharFunc func, int priorty = 0);
 
+		void RegisterBeforeAllEventCallBack(BeforeAllEventFunc func);
 
 	private:
 		void OnMouseButtonDown(const MouseButtonDownEvent& mouseButtonDown);
@@ -102,7 +105,7 @@ namespace photon
 		void OnKeyUp(const KeyUpEvent& keyup);
 		void OnKeyChar(const KeyCharEvent& keychar);
 
-
+		void BeforeAllEvent(Win32WndProcInfo&, bool&);
 
 	private:
 		HWND m_WndHandle;
@@ -110,10 +113,14 @@ namespace photon
 		std::wstring m_Title;
 		int m_Width;
 		int m_Height;
+		int m_ClientWidth;
+		int m_ClientHeight;
 
 		bool m_bShouldClose = false;
 		bool m_bFocusMode = false;
 		Vector2i m_BeforeFocusMousePos;
+
+		Vector2i m_ViewportSize;
 
 		std::vector<std::pair<int, OnMouseButtonDownFunc>> m_OnMouseButtonDownCallbacks;
 		std::vector<std::pair<int, OnMouseButtonUpFunc>> m_OnMouseButtonUpCallbacks;
@@ -130,5 +137,6 @@ namespace photon
 		std::vector<std::pair<int, OnKeyUpFunc>> m_OnKeyUpCallbacks;
 		std::vector<std::pair<int, OnKeyCharFunc>> m_OnKeyCharCallbacks;
 
+		std::vector<BeforeAllEventFunc> m_BeforeAllEventCallbacks;
 	};
 }

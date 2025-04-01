@@ -4,6 +4,8 @@
 
 namespace photon
 {
+	class WindowCreateInfo;
+
 	// 资源管理方式都很简单
 	class PhotonEngine
 	{
@@ -11,8 +13,10 @@ namespace photon
 		PhotonEngine() = default;
 		PhotonEngine(const PhotonEngine&) = delete;
 
-		void StartEngine();
+		void StartEngine(WindowCreateInfo wndCreateInfo);
 		void ShutDownEngine();
+
+		GameTimer* GetTimer();
 
 	public:
 		void TickOneFrame(GameTimer& timer);

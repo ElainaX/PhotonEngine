@@ -6,27 +6,28 @@ namespace photon
 
 	void TestSubPass::Initialize(RHI* _rhi)
 	{
-		rhi = _rhi;
+		m_Rhi = _rhi;
 	}
 
-	void TestSubPass::PrepareForData(const TestSubPassData& data)
+	void TestSubPass::PrepareForData(RenderResourceData* _data)
 	{
-		shader = data.shader;
-		passConstantIdx = data.passConstantIdx;
-		renderTargetView = data.renderTargetView;
-		depthStencilView = data.depthStencilView;
-		if(!shader->GetMacros()->IsVariantLoaded(data.macros) || pipeline == nullptr)
+		auto data = dynamic_cast<TestSubPassData*>(_data);
+		m_Shader = data->shader;
+		m_PassConstantIdx = data->passConstantIdx;
+		renderTargetView = data->renderTargetView;
+		depthStencilView = data->depthStencilView;
+		if(!m_Shader->GetMacros()->IsVariantLoaded(data->macros) || pipeline == nullptr)
 		{
 			pipeline = pipeline == nullptr ? std::make_shared<DXGraphicsPipeline>() : std::make_shared<DXGraphicsPipeline>(*pipeline);
-			rootSignature = rhi->CreateRootSignature(shader, 6, rhi->GetStaticSamplers().data());
-			pipeline->SetShaderMust(shader, data.macros, rootSignature.Get());
-			pipeline->SetRenderTargetMust({ data.renderTargetView->resource->dxDesc.Format });
-			pipeline->SetWireFrameMode();
-			pipeline->FinishOffRenderSet(rhi);
+			m_RootSignature = m_Rhi->CreateRootSignature(m_Shader, 6, m_Rhi->GetStaticSamplers().data());
+			pipeline->SetShaderMust(m_Shader, data->macros, m_RootSignature.Get());
+			pipeline->SetRenderTargetMust({ data->renderTargetView->resource->dxDesc.Format });
+			//pipeline->SetWireFrameMode();
+			pipeline->FinishOffRenderSet(m_Rhi);
 		}
-		if (data.renderItems.empty())
+		if (data->renderItems.empty())
 			return;
-		commonRenderItems = std::move(data.renderItems);
+		commonRenderItems = data->renderItems;
 		for(auto& ritem : commonRenderItems)
 		{
 			if(texGuidToShaderResourceViews.contains(ritem->material->diffuseMap->guid))
@@ -39,7 +40,7 @@ namespace photon
 			desc.Format = resourceTex->dxDesc.Format;
 			desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 			desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			texGuidToShaderResourceViews[resourceTex->guid] = rhi->CreateShaderResourceView(resourceTex, &desc, texGuidToShaderResourceViews[resourceTex->guid]);
+			texGuidToShaderResourceViews[resourceTex->guid] = m_Rhi->CreateShaderResourceView(resourceTex, &desc, texGuidToShaderResourceViews[resourceTex->guid]);
 			
 		}
 	}
@@ -51,45 +52,45 @@ namespace photon
 		auto RenderTex = (Texture2D*)renderTargetView->resource;
 		auto DepthTex = (Texture2D*)depthStencilView->resource;
 
-		rhi->ResourceStateTransform(RenderTex, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		rhi->ResourceStateTransform(DepthTex, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		m_Rhi->ResourceStateTransform(RenderTex, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		m_Rhi->ResourceStateTransform(DepthTex, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-		rhi->CmdClearRenderTarget(renderTargetView, RenderTex->clearValue);
-		rhi->CmdClearDepthStencil(depthStencilView, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, DepthTex->clearValue.x, RenderUtil::FloatRoundToUINT(DepthTex->clearValue.y));
+		m_Rhi->CmdClearRenderTarget(renderTargetView, RenderTex->clearValue);
+		m_Rhi->CmdClearDepthStencil(depthStencilView, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, DepthTex->clearValue.x, RenderUtil::FloatRoundToUINT(DepthTex->clearValue.y));
 
-		rhi->CmdSetViewportsAndScissorRects(scissorRect, viewport);
+		m_Rhi->CmdSetViewportsAndScissorRects(scissorRect, viewport);
 		//rhi->SetPipelineState(m_PipelineState.Get());
-		rhi->CmdSetPipelineState(pipeline->GetDXPipelineState());
-		rhi->CmdSetGraphicsRootSignature(rootSignature.Get());
+		m_Rhi->CmdSetPipelineState(pipeline->GetDXPipelineState());
+		m_Rhi->CmdSetGraphicsRootSignature(m_RootSignature.Get());
 
-		rhi->CmdSetRenderTargets(1, &renderTargetView->cpuHandleInHeap, true, &depthStencilView->cpuHandleInHeap);
+		m_Rhi->CmdSetRenderTargets(1, &renderTargetView->cpuHandleInHeap, true, &depthStencilView->cpuHandleInHeap);
 
 		/*rhi->CmdSetDescriptorHeaps({ m_CbvUavSrvHeap->GetDXHeapPtr() });*/
 
-		auto currFrameResource = (StaticModelFrameResource*)rhi->GetCurrFrameResource(frameResourceType);
-		auto passView = currFrameResource->GetPassConstantBufferView(passConstantIdx);
-		auto passConstantTableIndex = shader->GetPhotonRootSignature()->GetTableParameterIndex(passConstantInTable);
-		auto objectConstantTableIndex = shader->GetPhotonRootSignature()->GetTableParameterIndex(objectConstantInTable);
-		auto matDataConstantTableIndex = shader->GetPhotonRootSignature()->GetTableParameterIndex(matDataConstantInTable);
-		auto tex0TableIndex = shader->GetPhotonRootSignature()->GetTableParameterIndex(textureInTable);
-		rhi->CmdSetGraphicsRootDescriptorTable(passConstantTableIndex, passView->gpuHandleInHeap);
+		auto currFrameResource = (StaticModelFrameResource*)m_Rhi->GetCurrFrameResource(frameResourceType);
+		auto passView = currFrameResource->GetPassConstantBufferView(m_PassConstantIdx);
+		auto passConstantTableIndex = m_Shader->GetPhotonRootSignature()->GetTableParameterIndex(passConstantInTable);
+		auto objectConstantTableIndex = m_Shader->GetPhotonRootSignature()->GetTableParameterIndex(objectConstantInTable);
+		auto matDataConstantTableIndex = m_Shader->GetPhotonRootSignature()->GetTableParameterIndex(matDataConstantInTable);
+		auto tex0TableIndex = m_Shader->GetPhotonRootSignature()->GetTableParameterIndex(textureInTable);
+		m_Rhi->CmdSetGraphicsRootDescriptorTable(passConstantTableIndex, passView->gpuHandleInHeap);
 
 		for(int i = 0; i < commonRenderItems.size(); ++i)
 		{
 			auto ritem = commonRenderItems[i];
 			auto objectView = currFrameResource->GetObjectConstantBufferView(ritem->frameResourceInfo.objConstantIdx);
 			auto matView = currFrameResource->GetMatDataConstantBufferView(ritem->material->matCBufferIdx);
-			rhi->CmdSetGraphicsRootDescriptorTable(objectConstantTableIndex, objectView->gpuHandleInHeap);
-			rhi->CmdSetGraphicsRootDescriptorTable(matDataConstantTableIndex, matView->gpuHandleInHeap);
-			rhi->CmdSetGraphicsRootDescriptorTable(tex0TableIndex, texGuidToShaderResourceViews[ritem->material->diffuseMap->guid]->gpuHandleInHeap);
+			m_Rhi->CmdSetGraphicsRootDescriptorTable(objectConstantTableIndex, objectView->gpuHandleInHeap);
+			m_Rhi->CmdSetGraphicsRootDescriptorTable(matDataConstantTableIndex, matView->gpuHandleInHeap);
+			m_Rhi->CmdSetGraphicsRootDescriptorTable(tex0TableIndex, texGuidToShaderResourceViews[ritem->material->diffuseMap->guid]->gpuHandleInHeap);
 			
 			auto meshCollection = ritem->meshCollection;
-			rhi->CmdSetVertexBuffers(0, 1, &meshCollection->VertexBufferView());
-			rhi->CmdSetIndexBuffer(&meshCollection->IndexBufferView());
+			m_Rhi->CmdSetVertexBuffers(0, 1, &meshCollection->VertexBufferView());
+			m_Rhi->CmdSetIndexBuffer(&meshCollection->IndexBufferView());
 
 			auto mesh = meshCollection->GetMesh(ritem->meshGuid);
-			rhi->CmdSetPrimitiveTopology(ritem->primitiveType);
-			rhi->CmdDrawIndexedInstanced(mesh->indexCount, 1, mesh->startIndexLocation, mesh->baseVertexLocation, 0);
+			m_Rhi->CmdSetPrimitiveTopology(ritem->primitiveType);
+			m_Rhi->CmdDrawIndexedInstanced(mesh->indexCount, 1, mesh->startIndexLocation, mesh->baseVertexLocation, 0);
 
 		}
 	}

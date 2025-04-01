@@ -4,6 +4,7 @@
 #include "../DX12Resource/ConstantBuffer.h"
 #include "Function/Render/RHI.h"
 #include "Core/Math/Vector4.h"
+#include "Function/Render/Light.h"
 
 #include <memory>
 #include <unordered_map>
@@ -54,6 +55,8 @@ namespace photon
 		float totalTime;
 		float deltaTime;
 		Vector4 ambientLight;
+
+		LightData lights[MaxLights];
 	};
 
 	class StaticModelFrameResource : public FrameResource

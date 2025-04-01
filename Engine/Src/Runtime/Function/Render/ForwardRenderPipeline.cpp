@@ -18,8 +18,10 @@ namespace photon
 
 	void ForwardRenderPipeline::PrepareContext(RenderResourceData* data)
 	{
-		ForwardPipelineRenderResourceData* resourceData = dynamic_cast<ForwardPipelineRenderResourceData*>(data);
+		m_UI->PreRender();
 
+
+		ForwardPipelineRenderResourceData* resourceData = dynamic_cast<ForwardPipelineRenderResourceData*>(data);
 		// Update RenderItem Constants
 
 		// MainCameraPass 
@@ -30,6 +32,7 @@ namespace photon
 		mainCameraPassData.depthStencil = resourceData->depthStencil;
 		mainCameraPassData.mainCamera = resourceData->mainCamera;
 		mainCameraPassData.gameTimer = resourceData->gameTimer;
+		mainCameraPassData.directionalLights = std::move(resourceData->directionalLights);
 		m_MainCameraRenderPass->PrepareContext(&mainCameraPassData);
 
 
@@ -42,6 +45,11 @@ namespace photon
 	}
 
 
+
+	void ForwardRenderPipeline::SetCurrEditorUI(WindowUI* ui)
+	{
+		m_UI = ui;
+	}
 
 }
 

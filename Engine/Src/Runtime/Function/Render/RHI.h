@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include "RhiStruct.h"
 #include "Resource/ResourceType.h"
 #include "Resource/Texture/Texture2D.h"
 #include "Resource/Texture/Buffer.h"
@@ -47,6 +46,8 @@ namespace photon
 		
 		// 关于创建的相关函数
 		virtual void Initialize(RHIInitInfo initializeInfo) = 0;
+		virtual void InitializeImGui() = 0;
+
 		virtual void CreateSwapChain() = 0;
 		virtual void ReCreateSwapChain() = 0;
 		virtual void CreateFactory() = 0;
@@ -78,6 +79,7 @@ namespace photon
 		virtual void CmdDrawIndexedInstanced(UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT  BaseVertexLocation,UINT StartInstanceLocation) = 0;
 		virtual void CmdClearRenderTarget(RenderTargetView* view, Vector4 clearRGBA, UINT numRects = 0, const D3D12_RECT* clearRect = nullptr) = 0;
 		virtual void CmdClearDepthStencil(DepthStencilView* view, D3D12_CLEAR_FLAGS ClearFlags, float depth, UINT8 stencil, UINT numRects = 0, const D3D12_RECT* clearRect = nullptr) = 0;
+		virtual void CmdDrawImGui() = 0;
 
 		// 常用功能
 		virtual FrameResource* GetCurrFrameResource(FrameResourceType type) = 0;
@@ -133,6 +135,11 @@ namespace photon
 		virtual void CopySubResourceDataCpuToGpu(Resource* dest, Resource* upload, UINT64 uploadOffsetInBytes, D3D12_SUBRESOURCE_DATA* resources, UINT resourcesStartIdx = 0, UINT resourcesNum = 1) = 0;
 
 		virtual void ResourceStateTransform(Resource* resource, D3D12_RESOURCE_STATES stateAfter) = 0;
+
+
+		virtual std::shared_ptr<Texture2D> GetCurrBackBufferResource() = 0;
+		virtual RenderTargetView* GetCurrBackBufferAsRenderTarget() = 0;
+		virtual ShaderResourceView* GetCurrBackBufferAsShaderResource(const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc) = 0;
 
 	private:
 		// No Private

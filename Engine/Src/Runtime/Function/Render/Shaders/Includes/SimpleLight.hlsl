@@ -51,8 +51,8 @@ float ComputeSmithGeometry(float3 normal, float3 lightDir, float3 viewDir, float
 {
 	float k = (alpha + 1);
 	k = k * k / 8;
-	float NdotV = dot(normal, viewDir);
-	float NdotL = dot(normal, lightDir);
+	float NdotV = max(dot(normal, viewDir), 0.0);
+	float NdotL = max(dot(normal, lightDir), 0.0);
 	float ggx1 = ComputeSchlickGGXGeometry(NdotV, k);
 	float ggx2 = ComputeSchlickGGXGeometry(NdotL, k);
 	return ggx1 * ggx2;
@@ -60,7 +60,7 @@ float ComputeSmithGeometry(float3 normal, float3 lightDir, float3 viewDir, float
 
 float3 ComputeSchlickFresnel(float3 f0, float3 h, float3 viewDir)
 {
-	float cos_theta = dot(h, viewDir);
+	float cos_theta = max(dot(h, viewDir), 0.0);
 	float k = pow(1 - cos_theta, 5);
 	return f0 + (1 - f0) * k;
 }
@@ -70,20 +70,21 @@ float3 ComputeDirectionalLighting(Light light, Material mat,
 {
 	float3 result = 0.0f;
 	
-	float h = normalize(normal + toEye);
-	float f0 = lerp(float3(mat.fresnelR0), mat.diffuseAlbedo.xyz, 1 - mat.roughness);
+	float3 h = normalize(normal + toEye);
+	float3 f0 = lerp(float3(mat.fresnelR0), mat.diffuseAlbedo.xyz, (1 - mat.roughness).xxx);
+	float3 oneMinusF0 = 1 - f0;
 	
 	float3 lightDir = -light.direction;
-	float3 L = light.strength * dot(normal, lightDir);
+	float3 L = light.strength * max(dot(normal, lightDir), 0.0);
 	
 	float N = ComputeGGXNDF(normal, h, mat.roughness);
 	float G = ComputeSmithGeometry(normal, lightDir, toEye, mat.roughness);
 	float3 F = ComputeSchlickFresnel(f0, h, toEye);
 	
-	float denom = 4 * dot(normal, toEye) * dot(normal, light.direction);
+	float denom = 4 * max(dot(normal, toEye), 0.1) * max(dot(normal, light.direction), 1.0);
 
 	float3 specular = N * G * F / denom;
-	float3 diffuse = mat.diffuseAlbedo.xyz / PI;
+	float3 diffuse = oneMinusF0 * mat.diffuseAlbedo.xyz / PI;
 	
 	return (specular + diffuse) * L;
 }

@@ -1,10 +1,11 @@
 ﻿#pragma once
 #include <DirectXMath.h>
 #include "Core/Math/Vector3.h"
+#include "GameObject.h"
 
 namespace photon 
 {
-	struct Light
+	struct LightData
 	{
 		Vector3 strength = { 0.5f, 0.5f, 0.5f }; // 颜色
 		float falloffStart = 1.0f;
@@ -14,23 +15,76 @@ namespace photon
 		float spotPower = 64.0f;
 	};
 
+	class DirLight : public GameObject
+	{
+	public:
+		DirLight(){
+			GameObjectName = GetGameObjectType();
+		}
+		DirLight(LightData _data)
+			: data(_data) {
+			GameObjectName = GetGameObjectType();
+		}
+
+		LightData data;
+
+		std::string GetGameObjectType() override
+		{
+			return "DirLight";
+		}
+	};
+
+	class PointLight : public GameObject
+	{
+	public:
+		PointLight() { GameObjectName = GetGameObjectType(); }
+		PointLight(LightData _data)
+			: data(_data) {
+			GameObjectName = GetGameObjectType();
+		}
+
+		LightData data;
+
+		std::string GetGameObjectType() override
+		{
+			return "PointLight";
+		}
+	};
+
+	class SpotLight : public GameObject
+	{
+	public:
+		SpotLight() { GameObjectName = GetGameObjectType(); }
+		SpotLight(LightData _data)
+			: data(_data) {
+			GameObjectName = GetGameObjectType();
+		}
+
+		LightData data;
+
+		std::string GetGameObjectType() override
+		{
+			return "SpotLight";
+		}
+	};
+
 #define MaxLights 16
 #define MaxDirLights 4
 #define MaxPointLights 6 
 #define MaxSpotLights 6 
 
 
-	inline Light CreateDirectionalLight(Vector3 strength, Vector3 dir)
+	inline DirLight CreateDirectionalLight(Vector3 strength, Vector3 dir)
 	{
-		Light ret;
+		LightData ret;
 		ret.strength = strength;
 		ret.direction = dir;
 		return ret;
 	}
 
-	inline Light CreatePointLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd)
+	inline PointLight CreatePointLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd)
 	{
-		Light ret;
+		LightData ret;
 		ret.strength = strength;
 		ret.position = position;
 		ret.direction = dir;
@@ -39,9 +93,9 @@ namespace photon
 		return ret;
 	}
 
-	inline Light CreateSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower)
+	inline SpotLight CreateSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower)
 	{
-		Light ret;
+		LightData ret;
 		ret.strength = strength;
 		ret.position = position;
 		ret.direction = dir;

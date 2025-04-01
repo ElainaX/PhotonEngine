@@ -7,24 +7,17 @@
 #include "Function/Render/DX12RHI/DescriptorHeap/RtvDescriptorHeap.h"
 #include "Function/Render/DX12RHI/DescriptorHeap/CbvSrvUavDescriptorHeap.h"
 #include "Function/Render/DX12RHI/DXPipeline/DXGraphicsPipeline.h"
+#include "Function/Render/RenderResourceData.h"
 
 namespace photon 
 {
-	struct TestSubPassData
-	{
-		Shader* shader;
-		std::vector<MacroInfo> macros;
-		RenderTargetView* renderTargetView = nullptr;
-		DepthStencilView* depthStencilView = nullptr;
-		std::vector<CommonRenderItem*> renderItems;
-		UINT passConstantIdx = 0;
-	};
+
 
 	class TestSubPass
 	{
 	public:
 		void Initialize(RHI* _rhi);
-		void PrepareForData(const TestSubPassData& data);
+		void PrepareForData(RenderResourceData* data);
 		void Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport);
 
 
@@ -41,9 +34,9 @@ namespace photon
 		FrameResourceType frameResourceType = FrameResourceType::StaticModelFrameResource;
 
 	private:
-		Shader* shader;
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature;
-		RHI* rhi;
-		UINT passConstantIdx = 0;
+		Shader* m_Shader;
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature;
+		RHI* m_Rhi;
+		UINT m_PassConstantIdx = 0;
 	};
 }

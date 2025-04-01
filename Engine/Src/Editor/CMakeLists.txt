@@ -14,6 +14,7 @@ add_executable(PhotonEditor ${SOURCE_FILES} ${HEAD_FILES})
 
 set_target_properties(PhotonEditor PROPERTIES FOLDER "Engine")
 target_link_libraries(PhotonEditor PRIVATE PhotonRuntime)
+target_include_directories(PhotonEditor PRIVATE ${CMAKE_SOURCE_DIR}/3rdParty/include)
 target_compile_options(PhotonEditor PRIVATE $<$<CONFIG:Debug>:/Zi /Od /DDEBUG>)
 target_compile_options(PhotonEditor PRIVATE $<$<CONFIG:Release>:/MP /O2 /DNDEBUG>)
 

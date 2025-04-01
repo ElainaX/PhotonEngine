@@ -9,16 +9,21 @@
 
 namespace photon
 {
-	void PhotonEngine::StartEngine()
+	void PhotonEngine::StartEngine(WindowCreateInfo wndCreateInfo)
 	{
 		// Startup SubSystem
-		g_RuntimeGlobalContext.StartSubSystems();
+		g_RuntimeGlobalContext.StartSubSystems(wndCreateInfo);
 	}
 
 	void PhotonEngine::ShutDownEngine()
 	{
 		// Shutdown SubSystem
 		g_RuntimeGlobalContext.ShutDownSubSystems();
+	}
+
+	photon::GameTimer* PhotonEngine::GetTimer()
+	{
+		return &m_Timer;
 	}
 
 	void PhotonEngine::TickOneFrame(GameTimer& timer)
@@ -40,17 +45,17 @@ namespace photon
 
 	void PhotonEngine::Run()
 	{
-		//// Run Code
-		SandBox sandBox;
-		sandBox.Run();
-		m_Timer.Reset();
-		assert(g_RuntimeGlobalContext.windowSystem);
-		while(!g_RuntimeGlobalContext.windowSystem->ShouldClose())
-		{
-			m_Timer.Tick();
-			TickOneFrame(m_Timer);
+		////// Run Code
+		//SandBox sandBox;
+		//sandBox.Run();
+		//m_Timer.Reset();
+		//assert(g_RuntimeGlobalContext.windowSystem);
+		//while(!g_RuntimeGlobalContext.windowSystem->ShouldClose())
+		//{
+		//	m_Timer.Tick();
+		//	TickOneFrame(m_Timer);
 
-		}
+		//}
 	}
 
 	PhotonEngine::~PhotonEngine()

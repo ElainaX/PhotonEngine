@@ -8,11 +8,12 @@ namespace photon
 	class WindowSystem;
 	class RenderSystem;
 	class InputSystem;
+	class WindowCreateInfo;
 
 	class RuntimeGlobalContext
 	{
 	public:
-		void StartSubSystems();
+		void StartSubSystems(WindowCreateInfo wndCreateInfo);
 		void ShutDownSubSystems();
 
 	public:
