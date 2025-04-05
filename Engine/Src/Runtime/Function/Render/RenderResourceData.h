@@ -27,6 +27,8 @@ namespace photon
 		GameTimer* gameTimer;
 
 		std::vector<LightData*> directionalLights;
+		std::vector<LightData*> pointLights;
+		std::vector<LightData*> spotLights;
 		//std::shared_ptr<Texture2D> diffuseMap;
 		std::shared_ptr<Texture2D> renderTarget;
 		std::shared_ptr<Texture2D> depthStencil;
@@ -39,6 +41,8 @@ namespace photon
 		GameTimer* gameTimer;
 
 		std::vector<LightData*> directionalLights;
+		std::vector<LightData*> pointLights;
+		std::vector<LightData*> spotLights;
 		// std::shared_ptr<Texture2D> diffuseMap;
 		std::shared_ptr<Texture2D> renderTarget;
 		std::shared_ptr<Texture2D> depthStencil;
@@ -61,6 +65,15 @@ namespace photon
 	{
 		RenderTargetView* renderTargetView = nullptr;
 		DepthStencilView* depthStencilView = nullptr;
+	};
+
+	struct DebugDrawLightPassData : public RenderResourceData
+	{
+		RenderTargetView* renderTargetView = nullptr;
+		DepthStencilView* depthStencilView = nullptr;
+
+		std::vector<CommonRenderItem*> lightRenderItems;
+		UINT passConstantIdx = 0;
 	};
 
 }

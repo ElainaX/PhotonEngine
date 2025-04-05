@@ -12,7 +12,7 @@ namespace photon
 	class RenderCamera
 	{
 	public:
-		RenderCamera(float _aspectRatio, float _znear = 0.1f, float _zfar = 100.0f)
+		RenderCamera(float _aspectRatio, float _znear = 0.1f, float _zfar = 1000.0f)
 			: aspectRatio(_aspectRatio), znear(_znear), zfar(_zfar){}
 
 
@@ -41,7 +41,7 @@ namespace photon
 
 
 		float znear = 0.1f;
-		float zfar = 100.0f;
+		float zfar = 1000.0f;
 
 
 		// 大部分时间只需要用yaw和pitch
@@ -51,7 +51,7 @@ namespace photon
 		Vector3 pos = { 0.0f, 0.0f, -3.0f };
 		 
 		float aspectRatio = 1.0f;
-		float fov = DirectX::XM_PIDIV4 * 3;
+		float fov = DirectX::XM_PIDIV4;
 		static constexpr float s_MinFov{ 10.0f };
 		static constexpr float s_MaxFov{ 89.0f };
 

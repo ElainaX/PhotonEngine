@@ -58,8 +58,9 @@ namespace photon
 
 		auto camera = std::make_shared<RenderCamera>(swapchainWidthAndHeight.x / (float)swapchainWidthAndHeight.y);
 		m_RenderScene.push_back(std::make_shared<RenderScene>(camera));
-		m_RenderScene[0]->AddDirectionalLight(Vector3{ 0.7f, 0.2f, 0.2f }, Vector3{ 1.0f, -1.0f, 0.2f });
-		m_RenderScene[0]->AddDirectionalLight(Vector3{ 0.1f, 0.4f, 0.1f }, Vector3{ -1.0f, 0.0f, 0.0f });
+		m_RenderScene[0]->AddDirectionalLight(Vector3{ 0.7f, 0.2f, 0.2f }, Vector3{ 1.0f, -1.0f, 0.4f });
+		m_RenderScene[0]->AddPointLight(Vector3{ 1.0f, 1.0f, 1.0f }, Vector3{ 1.0f, 2.0f, 3.0f }, 3.0f, 8.0f);
+		m_RenderScene[0]->AddSpotLight(Vector3{ 1.0f, 1.0f, 0.8f }, Vector3{ 0.0f, 3.0f, 0.0f }, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, 8.0f, 32.0f);
 		//VertexSimple vertices[] =
 		//{
 		//	VertexSimple{Vector3{-0.5f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 1.0f}},
@@ -68,7 +69,7 @@ namespace photon
 		//};
 		//uint32_t indices[] = { 0, 1, 2 };
 
-		auto sphereMeshData = m_GeometryGenerator->CreateGeosphere(0.5f, 4);
+		auto sphereMeshData = m_GeometryGenerator->CreateSphere(0.5f, 40, 40);
 		auto sphereIndices = sphereMeshData.Indices32;
 		std::vector<VertexSimple> sphereVertices(sphereMeshData.Vertices.size());
 		for (int i = 0; i < sphereMeshData.Vertices.size(); ++i)
@@ -109,16 +110,20 @@ namespace photon
 		auto gridMesh = m_ResourceManager->CreateMesh(gridDesc);
 
 
-		auto fileList = FileSystem::GetFiles(g_AssetTextureFolder);
-		m_ResourceTex = m_ResourceManager->LoadTexture2D(fileList[0]);
+		auto diffuseMap = m_ResourceManager->LoadTexture2D(g_AssetTextureFolder / L"rustediron2_basecolor.png", true);
+		auto roughnessMap = m_ResourceManager->LoadTexture2D(g_AssetTextureFolder / L"rustediron2_roughness.png");
+		auto normalMap = m_ResourceManager->LoadTexture2D(g_AssetTextureFolder / L"rustediron2_normal.png");
 
 
 		StaticModelMaterialDataConstants matData;
 		matData.diffuseAlbedo = { 1.0f, 0.5f, 0.5f, 1.0f };
 		matData.fresnelR0 = {0.03f, 0.03f, 0.03f};
 		matData.roughness = 0.5f;
-		auto sphereMat = m_ResourceManager->CreateMaterial(matData, m_ResourceTex->guid, m_ResourceTex->name);
+		matData.bInverseRoughness = false;
+		auto sphereMat = m_ResourceManager->CreateMaterial(matData, diffuseMap->guid, normalMap->guid, roughnessMap->guid,  L"Simple PBR Mat");
 	
+		
+
 		
 		StaticFrameResourceEditor standardEditor;
 
@@ -129,9 +134,12 @@ namespace photon
 		standardEditor.translation = { 0.0f, -1.0f, 0.0f };
 		m_RenderScene[0]->AddCommonRenderItem(gridMesh, sphereMat.get(), testShader, RenderLayer::Opaque, standardEditor);
 
+		auto model = m_ResourceManager->LoadModel(g_AssetModelFolder / L"FarmerHouse/FarmerHouse.fbx");
+		m_RenderScene[0]->AddModel(model, testShader, RenderLayer::Opaque, StaticFrameResourceEditor{});
+
 		StaticModelFrameResourceDesc resourceDesc;
-		resourceDesc.allObjectNum = StaticModelObjectConstants::s_CurrObjectIndex;
-		resourceDesc.allPassNum = StaticModelPassConstants::s_CurrPassIndex;
+		resourceDesc.allObjectNum = StaticModelObjectConstants::s_CurrObjectIndex + 100;
+		resourceDesc.allPassNum = StaticModelPassConstants::s_CurrPassIndex + 100;
 		resourceDesc.allMatDatasNum = StaticModelMaterialDataConstants::s_CurrMatDataIndex;
 		m_Rhi->CreateFrameResource(FrameResourceType::StaticModelFrameResource, &resourceDesc);
 
@@ -161,7 +169,7 @@ namespace photon
 		RenderScene* currRenderScene = m_RenderScene[0].get();
 		ForwardPipelineRenderResourceData forwardPipelineData;
 
-		auto ritems = currRenderScene->GetCommonRenderItems(m_Rhi.get());
+		auto ritems = currRenderScene->GetCommonRenderItems(m_Rhi.get(), true);
 		forwardPipelineData.allRenderItems.resize(ritems.size());
 		for(int i = 0; i< ritems.size(); ++i)
 		{
@@ -178,12 +186,23 @@ namespace photon
 		}
 
 		auto& dirLights = m_RenderScene[0]->directionalLights;
+		auto& pointLights = m_RenderScene[0]->pointLights;
+		auto& spotLights = m_RenderScene[0]->spotLights;
 		forwardPipelineData.directionalLights.resize(dirLights.size());
+		forwardPipelineData.pointLights.resize(pointLights.size());
+		forwardPipelineData.spotLights.resize(spotLights.size());
 		for(int i = 0; i < dirLights.size(); ++i)
 		{
 			forwardPipelineData.directionalLights[i] = &dirLights[i].data;
 		}
-		
+		for (int i = 0; i < pointLights.size(); ++i)
+		{
+			forwardPipelineData.pointLights[i] = &pointLights[i].data;
+		}
+		for (int i = 0; i < spotLights.size(); ++i)
+		{
+			forwardPipelineData.spotLights[i] = &spotLights[i].data;
+		}
 		
 		forwardPipelineData.depthStencil = m_DepthStencil;
 		forwardPipelineData.renderTarget = m_RenderTarget;
@@ -258,6 +277,11 @@ namespace photon
 	photon::RenderScene* RenderSystem::GetRenderScene()
 	{
 		return m_RenderScene[0].get();
+	}
+
+	photon::ShaderFactory* RenderSystem::GetShaderFactory()
+	{
+		return m_ShaderFactory.get();
 	}
 
 }

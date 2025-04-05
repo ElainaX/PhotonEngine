@@ -8,10 +8,13 @@
 #include "../DX12RHI/DXPipeline/DXGraphicsPipeline.h"
 #include "Function/Render/WindowSystem.h"
 #include "SubPass/TestSubPass.h"
+#include "SubPass/DebugDrawSubPass.h"
 #include "SubPass/UISubPass.h"
 #include "../DX12RHI/FrameResource/StaticModelFrameResource.h"
 
 #include <map>
+#include <unordered_map>
+#include <unordered_set>
 #include <memory>
 
 namespace photon 
@@ -26,7 +29,11 @@ namespace photon
 		void Draw() override;
 		
 	private:
+		CommonRenderItem* CreateLightRenderItem(LightData* light);
+
+
 		std::shared_ptr<TestSubPass> m_TestSubpass;
+		std::shared_ptr<DebugDrawSubPass> m_DebugDrawSubpass;
 		std::shared_ptr<UISubPass> m_UISubpass;
 		RenderTargetView* m_TestRenderTargetView = nullptr;
 		DepthStencilView* m_TestDepthStencilView = nullptr;
@@ -34,6 +41,13 @@ namespace photon
 
 		StaticModelPassConstants m_PassConstants;
 		UINT m_PassConstantsIdx;
+
+		std::unordered_map<LightData*, std::shared_ptr<CommonRenderItem>> m_LightRenderItems;
+		std::unordered_set<CommonRenderItem*> lightRenderItemsSet;
+
+		RenderMeshCollection m_MeshCollection;
+		std::shared_ptr<Mesh> m_LightMesh;
+		Shader* m_DebugDrawLightShader;
 
 	private:
 

@@ -15,15 +15,19 @@ namespace photon
 	struct Material : public Resource
 	{
 		Material() = default;
-		Material(StaticModelMaterialDataConstants data, Texture2D* tex)
-			: matCBufferData(data), diffuseMap(tex){
+		Material(StaticModelMaterialDataConstants data, Texture2D* diffuse, Texture2D* normal = nullptr, Texture2D* roughness = nullptr)
+			: matCBufferData(data), diffuseMap(diffuse), normalMap(normal), roughnessMap(roughness){
 			matCBufferIdx = StaticModelMaterialDataConstants::s_CurrMatDataIndex++;
+			matCBufferData.bhasDiffuse = (diffuse != nullptr);
+			matCBufferData.bhasNormal = (normal != nullptr);
+			matCBufferData.bhasRoughness = (roughness != nullptr);
 		}
 
 		UINT64 matCBufferIdx = -1;
 		StaticModelMaterialDataConstants matCBufferData;
-		Texture2D* diffuseMap;
-
+		Texture2D* diffuseMap = nullptr;
+		Texture2D* normalMap = nullptr;
+		Texture2D* roughnessMap = nullptr;
 
 	};
 }

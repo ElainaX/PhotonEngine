@@ -82,12 +82,11 @@ namespace photon
 		return ret;
 	}
 
-	inline PointLight CreatePointLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd)
+	inline PointLight CreatePointLight(Vector3 strength, Vector3 position, float falloffStart, float falloffEnd)
 	{
 		LightData ret;
 		ret.strength = strength;
 		ret.position = position;
-		ret.direction = dir;
 		ret.falloffStart = falloffStart;
 		ret.falloffEnd = falloffEnd;
 		return ret;

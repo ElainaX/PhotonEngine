@@ -290,15 +290,25 @@ namespace photon
 
 		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
 		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
-		D3D12_CLEAR_VALUE optClearValue;
-		optClearValue.Color[0] = desc.clearValue.x;
-		optClearValue.Color[1] = desc.clearValue.y;
-		optClearValue.Color[2] = desc.clearValue.z;
-		optClearValue.Color[3] = desc.clearValue.w;
-		optClearValue.Format = desc.format;
 		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
-		DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
-			state, &optClearValue, IID_PPV_ARGS(&resource)));
+
+		if (desc.flag & (D3D12_RESOURCE_DIMENSION_BUFFER | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
+		{
+			D3D12_CLEAR_VALUE optClearValue;
+			optClearValue.Color[0] = desc.clearValue.x;
+			optClearValue.Color[1] = desc.clearValue.y;
+			optClearValue.Color[2] = desc.clearValue.z;
+			optClearValue.Color[3] = desc.clearValue.w;
+			optClearValue.Format = desc.format;
+			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+				state, &optClearValue, IID_PPV_ARGS(&resource)));
+		}
+		else
+		{
+			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+				state, nullptr, IID_PPV_ARGS(&resource)));
+		}
+
 
 		std::shared_ptr<Texture2D> tex = std::make_shared<Texture2D>(desc, resource);
 
@@ -557,17 +567,44 @@ namespace photon
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_CurrCmdList);
 	}
 
-	std::shared_ptr<photon::Texture2D> DX12RHI::LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize /*= 0*/)
+	std::shared_ptr<photon::Texture2D> DX12RHI::LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize /*= 0*/, bool bForceLoadSRGB)
 	{
 		Texture2DDesc desc;
 		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
 		DX_LogIfFailed(DirectX::LoadWICTextureFromFile(m_Device.Get(), filepath.c_str(), &resource, decodedData, subresource)); 
-		
+
+
 		D3D12_HEAP_PROPERTIES heapProp;
 		D3D12_HEAP_FLAGS heapFlags;
 		resource->GetHeapProperties(&heapProp, &heapFlags);
 		desc = Texture2D::ToPhotonDesc(resource->GetDesc(), (ResourceHeapProperties)(heapProp.Type));
 		std::shared_ptr<Texture2D> retTex = std::make_shared<Texture2D>(desc, resource);
+
+		if(bForceLoadSRGB)
+		{
+			bool reCreate = true;
+			auto newDesc = desc;
+			switch(newDesc.format)
+			{
+			case DXGI_FORMAT_R8G8B8A8_UNORM:
+				newDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+				break;
+			case DXGI_FORMAT_B8G8R8A8_UNORM:
+				newDesc.format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+				break;
+			default:
+				reCreate = false;
+				break;
+			}
+			if(reCreate)
+			{
+				auto newTex = CreateTexture2D(newDesc);
+				CopyDataGpuToGpu(newTex.get(), retTex.get());
+				newTex->SetOldTexture(retTex);
+				retTex = newTex;
+			}
+		}
+
 		return retTex;
 	}
 

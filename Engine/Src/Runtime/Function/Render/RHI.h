@@ -1,4 +1,4 @@
-﻿#pragma once
+﻿ #pragma once
 #include "Resource/ResourceType.h"
 #include "Resource/Texture/Texture2D.h"
 #include "Resource/Texture/Buffer.h"
@@ -125,7 +125,7 @@ namespace photon
 
 		// 资源相关函数
 		virtual std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) = 0;
-		virtual std::shared_ptr<Texture2D> LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize = 0) = 0;
+		virtual std::shared_ptr<Texture2D> LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize = 0, bool bForceLoadSRGB = false) = 0;
 		virtual std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc) = 0;
 		virtual std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes) = 0;
 		virtual void CopyDataCpuToGpu(Resource* dstResource, const void* data, UINT64 sizeInBytes) = 0;

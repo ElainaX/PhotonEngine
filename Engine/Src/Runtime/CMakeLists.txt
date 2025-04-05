@@ -24,6 +24,8 @@ target_link_libraries(PhotonRuntime PUBLIC ImGui)
 target_link_libraries(PhotonRuntime PUBLIC d3d12.lib)
 target_link_libraries(PhotonRuntime PUBLIC d3dcompiler.lib)
 target_link_libraries(PhotonRuntime PUBLIC dxgi.lib)
+target_link_libraries(PhotonRuntime PUBLIC $<$<CONFIG:Debug>:${PHOTON_ROOT_DIR}/Engine/3rdparty/assimp/assimp-vc143-mtd.lib>)
+target_link_libraries(PhotonRuntime PUBLIC $<$<CONFIG:Release>:${PHOTON_ROOT_DIR}/Engine/3rdparty/assimp/assimp-vc143-mt.lib>)
 
 target_include_directories(PhotonRuntime PRIVATE ${CMAKE_SOURCE_DIR}/3rdParty/include)
 target_include_directories(PhotonRuntime PUBLIC "./")

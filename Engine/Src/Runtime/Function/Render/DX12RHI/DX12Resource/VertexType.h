@@ -13,6 +13,7 @@ namespace photon
 		VertexSimple, // VertexBase: 3 Position 
 	};
 
+
 	struct VertexSimple
 	{
 		VertexSimple() = default;

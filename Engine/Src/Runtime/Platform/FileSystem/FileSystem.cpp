@@ -4,7 +4,7 @@
 namespace photon 
 {
 	// FileSystem
-	
+	namespace fs = std::filesystem;
 	std::vector<std::filesystem::path> FileSystem::GetFiles(const std::filesystem::path& directory, const std::wstring& extension /*= ""*/)
 	{
 		// extension
@@ -81,6 +81,14 @@ namespace photon
 			filePureName = fileFullName.substr(0, lastPos);
 		}
 		return filePureName;
+	}
+
+	const std::filesystem::path Path::GetFileFolder(const std::filesystem::path& path)
+	{
+		if (fs::is_directory(path))
+			return path;
+		
+		return path.parent_path();
 	}
 
 }

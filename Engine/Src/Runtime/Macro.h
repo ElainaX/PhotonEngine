@@ -34,9 +34,13 @@
 
 inline std::string WString2String(const std::wstring & wstr)
 {
-	std::string str;
-	str.resize(wstr.size());
-	WideCharToMultiByte(CP_ACP, 0, wstr.data(), wstr.size(), str.data(), wstr.size(), NULL, NULL);
+	int length = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), -1, NULL, 0, NULL, NULL);
+	if (length == 0) {
+		return "";
+	}
+
+	std::string str(length, 0);
+	WideCharToMultiByte(CP_ACP, 0, wstr.data(), -1, str.data(), length, NULL, NULL);
 	return str;
 }
 

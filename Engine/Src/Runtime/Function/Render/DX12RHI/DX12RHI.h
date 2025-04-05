@@ -98,7 +98,7 @@ namespace photon
 		std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) override final;
 		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc) override final;
 		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes) override final;
-		std::shared_ptr<Texture2D> LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize = 0) override;
+		std::shared_ptr<Texture2D> LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize = 0, bool bForceLoadSRGB = false) override;
 
 
 		void CopyDataCpuToGpu(Resource* dstResource, const void* data, UINT64 sizeInBytes) override;

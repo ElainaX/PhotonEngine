@@ -30,7 +30,9 @@ namespace photon
 		ConstantBufferParameter objectConstantInTable = ConstantBufferParameter(0);
 		ConstantBufferParameter passConstantInTable = ConstantBufferParameter(1);
 		ConstantBufferParameter matDataConstantInTable = ConstantBufferParameter(2);
-		TextureParameter textureInTable = TextureParameter(0);
+		TextureParameter texture0InTable = TextureParameter(0);
+		TextureParameter texture1InTable = TextureParameter(1);
+		TextureParameter texture2InTable = TextureParameter(2);
 		FrameResourceType frameResourceType = FrameResourceType::StaticModelFrameResource;
 
 	private:

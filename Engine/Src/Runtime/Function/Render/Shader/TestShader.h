@@ -40,7 +40,7 @@ namespace photon
 		}
 
 
-		virtual ShaderBlob* Compile(const std::vector<MacroInfo>& macros) override
+		virtual ShaderBlob* Compile(const std::vector<MacroInfo>& macros = {}) override
 		{
 			if(m_Macros.IsVariantLoaded(macros))
 			{
@@ -99,6 +99,8 @@ namespace photon
 			m_Signature.PushAsDescriptorTable(ConstantBufferParameter(1), 1);
 			m_Signature.PushAsDescriptorTable(ConstantBufferParameter(2), 1);
 			m_Signature.PushAsDescriptorTable(TextureParameter(0), 1);
+			m_Signature.PushAsDescriptorTable(TextureParameter(1), 1);
+			m_Signature.PushAsDescriptorTable(TextureParameter(2), 1);
 			//m_Signature.PushAsRootDescriptor(ConstantBufferParameter(1));
 		}
 

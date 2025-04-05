@@ -47,6 +47,7 @@ namespace photon
 		void SetScale(Vector3 _scale) {  scale = _scale; bDirty = true; }
 		void SetRotation(Vector3 rot) { rotationXYZ = rot; bDirty = true; }
 
+
 		Vector3 translation = { 0.0f, 0.0f, 0.0f };
 		Vector3 scale = {1.0f, 1.0f, 1.0f};
 		Vector3 rotationXYZ = { 0.0f, 0.0f, 0.0f };

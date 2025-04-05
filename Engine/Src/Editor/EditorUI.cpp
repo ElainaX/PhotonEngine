@@ -46,7 +46,6 @@ namespace photon
 						|| ImGui::DragFloat("y##1", &frameResourceEditor->translation.y, 0.1f)
 						|| ImGui::DragFloat("z##1", &frameResourceEditor->translation.z, 0.1f))
 					{
-						ri->SetDirty();
 						frameResourceEditor->bDirty = true;
 					}
 					ImGui::Separator();
@@ -56,7 +55,6 @@ namespace photon
 						|| ImGui::DragFloat("y##2", &frameResourceEditor->rotationXYZ.y, 0.1f)
 						|| ImGui::DragFloat("z##2", &frameResourceEditor->rotationXYZ.z, 0.1f))
 					{
-						ri->SetDirty();
 						frameResourceEditor->bDirty = true;
 					}
 					ImGui::Separator();
@@ -66,7 +64,6 @@ namespace photon
 						|| ImGui::DragFloat("y##3", &frameResourceEditor->scale.x, 0.1f)
 						|| ImGui::DragFloat("z##3", &frameResourceEditor->scale.z, 0.1f))
 					{
-						ri->SetDirty();
 						frameResourceEditor->scale.y = frameResourceEditor->scale.z = frameResourceEditor->scale.x;
 						frameResourceEditor->bDirty = true;
 					}
@@ -113,11 +110,74 @@ namespace photon
 					
 				}
 			};
+			m_GameObjectEditors["Model"] = [this](GameObject* go)
+				{
+					auto model = dynamic_cast<Model*>(go);
+					auto frameResourceEditor = m_RenderSystem->GetRenderScene()->GetCommonRItemFrameResourceEditor(go->GameObjectId);
+					if (ImGui::CollapsingHeader("Transform"))
+					{
+						ImGui::Text("Translation");
+						if (ImGui::DragFloat("x##1", &frameResourceEditor->translation.x, 0.1f)
+							|| ImGui::DragFloat("y##1", &frameResourceEditor->translation.y, 0.1f)
+							|| ImGui::DragFloat("z##1", &frameResourceEditor->translation.z, 0.1f))
+						{
+							frameResourceEditor->bDirty = true;
+						}
+						ImGui::Separator();
+
+						ImGui::Text("Rotation");
+						if (ImGui::DragFloat("x##2", &frameResourceEditor->rotationXYZ.x, 0.1f)
+							|| ImGui::DragFloat("y##2", &frameResourceEditor->rotationXYZ.y, 0.1f)
+							|| ImGui::DragFloat("z##2", &frameResourceEditor->rotationXYZ.z, 0.1f))
+						{
+							frameResourceEditor->bDirty = true;
+						}
+						ImGui::Separator();
+
+						ImGui::Text("Scale");
+						if (ImGui::DragFloat("x##3", &frameResourceEditor->scale.x, 0.1f)
+							|| ImGui::DragFloat("y##3", &frameResourceEditor->scale.x, 0.1f)
+							|| ImGui::DragFloat("z##3", &frameResourceEditor->scale.z, 0.1f))
+						{
+							frameResourceEditor->scale.y = frameResourceEditor->scale.z = frameResourceEditor->scale.x;
+							frameResourceEditor->bDirty = true;
+						}
+					}
+				};
 		m_GameObjectEditors["DirLight"] = [this](GameObject* go)
 			{
 				auto dirlight = dynamic_cast<DirLight*>(go);
 				ImGui::ColorEdit4("Light Color", (float*)&dirlight->data.strength);
-				ImGui::SliderFloat3("Light Direction", (float*)&dirlight->data.direction, -1.0f, 1.0f);
+				ImGui::SliderFloat3("Light Direction", (float*)&dirlight->data.position, -1.0f, 1.0f);
+				dirlight->data.direction = -dirlight->data.position;
+			};
+
+		m_GameObjectEditors["PointLight"] = [this](GameObject* go)
+			{
+				auto pointlight = dynamic_cast<PointLight*>(go);
+				ImGui::ColorEdit4("Light Color", (float*)&pointlight->data.strength);
+				ImGui::DragFloat("falloffStart", &pointlight->data.falloffStart);
+				ImGui::DragFloat("falloffEnd", &pointlight->data.falloffEnd);
+				if (pointlight->data.falloffEnd < pointlight->data.falloffStart)
+				{
+					pointlight->data.falloffEnd = pointlight->data.falloffStart;
+				}
+				ImGui::DragFloat3("Light Position", (float*)&pointlight->data.position);
+			};
+
+		m_GameObjectEditors["SpotLight"] = [this](GameObject* go)
+			{
+				auto spotlight = dynamic_cast<SpotLight*>(go);
+				ImGui::ColorEdit4("Light Color", (float*)&spotlight->data.strength);
+				ImGui::DragFloat("falloffStart", &spotlight->data.falloffStart, 1.0f, 0.0f);
+				ImGui::DragFloat("falloffEnd", &spotlight->data.falloffEnd, 1.0f, spotlight->data.falloffStart);
+				if (spotlight->data.falloffEnd < spotlight->data.falloffStart)
+				{
+					spotlight->data.falloffEnd = spotlight->data.falloffStart;
+				}
+				ImGui::DragFloat3("Light Position", (float*)&spotlight->data.position);
+				ImGui::SliderFloat3("Spot Direction", (float*)&spotlight->data.direction, -1.0f, 1.0f);
+				ImGui::DragFloat("Spot Power", (float*)&spotlight->data.spotPower, 1.0f, 1.0f, 128.0f);
 			};
 	}
 
@@ -322,14 +382,9 @@ namespace photon
 
 		if(m_SelectedGameObject)
 		{
-
-			if(m_SelectedGameObject->GetGameObjectType() == "CommonRenderItem")
+			if(m_GameObjectEditors.find(m_SelectedGameObject->GetGameObjectType()) != m_GameObjectEditors.end())
 			{
-				m_GameObjectEditors["CommonRenderItem"](m_SelectedGameObject);
-			}
-			else if(m_SelectedGameObject->GetGameObjectType() == "DirLight")
-			{
-				m_GameObjectEditors["DirLight"](m_SelectedGameObject);
+				m_GameObjectEditors[m_SelectedGameObject->GetGameObjectType()](m_SelectedGameObject);
 			}
 			else 
 			{
@@ -360,17 +415,54 @@ namespace photon
 			auto renderScene = m_RenderSystem->GetRenderScene();
 			auto ritems = renderScene->GetCommonRenderItems(nullptr);
 			auto& dirlights = renderScene->directionalLights;
+			auto& pointLights = renderScene->pointLights;
+			auto& spotLights = renderScene->spotLights;
+			auto& models = renderScene->GetModelRenderItems();
 
 			for(auto& ri : ritems)
 			{
 				ImGui::PushID(ri->GameObjectId);
-				if(ImGui::Selectable(ri->GetGameObjectType().c_str(), m_SelectedGameObject == ri))
+				if (ImGui::Selectable(ri->GetGameObjectType().c_str(), m_SelectedGameObject == ri))
 				{
-					if (m_SelectedGameObject != ri)
-					{
-						m_SelectedGameObject = ri;
-					}
+					m_SelectedGameObject = ri;
 				}
+				ImGui::PopID();
+			}
+
+			for(auto& keyval : models)
+			{
+				auto model = keyval.first;
+				auto ritems = keyval.second;
+				ImGui::PushID(model->GameObjectId);
+
+				ImGuiTreeNodeFlags nodeFlag = ImGuiTreeNodeFlags_OpenOnArrow;
+
+				if(m_SelectedGameObject == model.get())
+				{
+					nodeFlag |= ImGuiTreeNodeFlags_Selected;
+				}
+
+
+				if(ImGui::TreeNodeEx(model->GetGameObjectType().c_str(), nodeFlag))
+				{
+					if (ImGui::IsItemClicked())
+					{
+						m_SelectedGameObject = model.get();
+					}
+					for(auto& ri : ritems)
+					{
+						ImGui::PushID(ri->GameObjectId);
+						if (ImGui::Selectable(ri->GetGameObjectType().c_str(), m_SelectedGameObject == ri.get()))
+						{
+							m_SelectedGameObject = ri.get();
+						}
+						ImGui::PopID();
+					}
+
+					ImGui::TreePop();
+				}
+
+
 				ImGui::PopID();
 			}
 
@@ -386,6 +478,32 @@ namespace photon
 				}
 				ImGui::PopID();
 			}
+			for (auto& light : pointLights)
+			{
+				ImGui::PushID(light.GameObjectId);
+				if (ImGui::Selectable(light.GetGameObjectType().c_str(), m_SelectedGameObject == &light))
+				{
+					if (m_SelectedGameObject != &light)
+					{
+						m_SelectedGameObject = &light;
+					}
+				}
+				ImGui::PopID();
+			}
+
+			for (auto& light : spotLights)
+			{
+				ImGui::PushID(light.GameObjectId);
+				if (ImGui::Selectable(light.GetGameObjectType().c_str(), m_SelectedGameObject == &light))
+				{
+					if (m_SelectedGameObject != &light)
+					{
+						m_SelectedGameObject = &light;
+					}
+				}
+				ImGui::PopID();
+			}
+
 
 
 		}

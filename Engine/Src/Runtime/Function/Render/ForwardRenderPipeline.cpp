@@ -33,6 +33,8 @@ namespace photon
 		mainCameraPassData.mainCamera = resourceData->mainCamera;
 		mainCameraPassData.gameTimer = resourceData->gameTimer;
 		mainCameraPassData.directionalLights = std::move(resourceData->directionalLights);
+		mainCameraPassData.pointLights = std::move(resourceData->pointLights);
+		mainCameraPassData.spotLights = std::move(resourceData->spotLights);
 		m_MainCameraRenderPass->PrepareContext(&mainCameraPassData);
 
 

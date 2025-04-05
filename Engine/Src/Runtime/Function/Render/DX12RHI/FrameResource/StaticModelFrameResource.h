@@ -34,6 +34,10 @@ namespace photon
 		Vector3 fresnelR0;
 		float roughness;
 		DirectX::XMFLOAT4X4 matTransform;
+		int bhasDiffuse = 1;
+		int bhasNormal = 0;
+		int bhasRoughness = 0;
+		int bInverseRoughness = 0;
 	};
 
 	struct StaticModelPassConstants
