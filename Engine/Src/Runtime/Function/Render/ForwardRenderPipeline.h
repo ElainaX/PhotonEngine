@@ -30,7 +30,8 @@ namespace photon
 		void PrepareContext(RenderResourceData* data) override;
 		void Initialize(RenderPipelineCreateInfo* createInfo) override final;
 		void Render() override final;
-		
+		void Stop() override;
+		void ReStart() override;
 
 
 
@@ -47,5 +48,7 @@ namespace photon
 		RHI* m_Rhi = nullptr;
 		WindowSystem* m_WindowSystem = nullptr;
 		WindowUI* m_UI = nullptr;
+
+		bool m_bStop = false;
 	};
 }

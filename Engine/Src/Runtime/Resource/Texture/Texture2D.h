@@ -36,7 +36,7 @@ namespace photon
 		static Texture2DDesc ToPhotonDesc(D3D12_RESOURCE_DESC dxDesc, ResourceHeapProperties heapProp,
 			Vector4 _clearValue = { 1.0f, 1.0f, 1.0f, 1.0f });
 		
-		void SetOldTexture(std::shared_ptr<Texture2D> tex2D)
+		void SetSRGBOldTexture(std::shared_ptr<Texture2D> tex2D)
 		{
 			m_Oldtex = tex2D;
 		}

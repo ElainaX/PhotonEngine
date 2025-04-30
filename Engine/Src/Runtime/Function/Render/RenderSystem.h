@@ -39,6 +39,8 @@ namespace photon
 		void Initialize(RenderSystemInitInfo initInfo);
 		void InitializeEditorUI(WindowUI* windowUI);
 		void Tick(GameTimer& gt);
+		void Stop();
+		void ReStart();
 
 		void ReCreateRenderTargetTexAndDepthStencilTex(Vector2i size);
 		std::shared_ptr<RHI> GetRHI();
@@ -73,6 +75,8 @@ namespace photon
 
 		ShaderResourceView* m_RenderTargetSRV = nullptr;
 
+		std::vector<std::shared_ptr<Cubemap>> allCubemaps;
+		bool m_bStopRenderContent = false;
 	};
 
 }

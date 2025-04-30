@@ -38,8 +38,7 @@ namespace photon
 			keyValue.second.push_back(ritem);
 			m_StaticFrameResourceEditors.insert({ ritem->GameObjectId, frameResourceEditor });
 		}
-		StaticFrameResourceEditor modelEditor;
-		modelEditor.scale = { 0.1f, 0.1f, 0.1f };
+		StaticFrameResourceEditor modelEditor = frameResourceEditor;
 		modelEditor.bDirty = true;
 		m_StaticFrameResourceEditors.insert({ model->GameObjectId, modelEditor });
 		m_ModelRenderItems.insert(keyValue);
@@ -68,6 +67,12 @@ namespace photon
 			return nullptr;
 		spotLights.push_back(CreateSpotLight(strength, position, dir, falloffStart, falloffEnd, spotPower));
 		return &spotLights.back();
+	}
+
+	photon::Cubemap* RenderScene::SetCubemap(std::shared_ptr<Cubemap> _cubemap)
+	{
+		cubemap = _cubemap;
+		return cubemap.get();
 	}
 
 	void RenderScene::SetMainRenderCamera(RenderCamera* mainCam)

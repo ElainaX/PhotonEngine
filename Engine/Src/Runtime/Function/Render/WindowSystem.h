@@ -41,6 +41,8 @@ namespace photon
 		void SetTitle(const std::wstring& title);
 		void SetFocusMode(bool bShouldFocus = true);
 		void SetViewportSize(Vector2i sz);
+		bool IsFocusOnRenderWindow();
+		void SetFocusOnRenderWindow(bool focus);
 
 		HWND GetHwnd() { return m_WndHandle; }
 		bool GetFocusMode() const { return m_bFocusMode; }
@@ -70,6 +72,8 @@ namespace photon
 		using OnKeyCharFunc = std::function<void(KeyCharEvent&)>;
 
 		using BeforeAllEventFunc = std::function<void(Win32WndProcInfo&, bool& bShouldContinue)>;
+		using ViewportReSizeEvent = std::function<void(const Vector2i& viewportSize)>;
+
 
 		// Priority从 -5 ~ 5 逐级重要程度递增，默认0级
 		void RegisterOnMouseButtonDownCallback(OnMouseButtonDownFunc func, int priorty = 0);
@@ -88,6 +92,7 @@ namespace photon
 		void RegisterOnKeyCharCallback(OnKeyCharFunc func, int priorty = 0);
 
 		void RegisterBeforeAllEventCallBack(BeforeAllEventFunc func);
+		void RegisterOnViewportReSizeEvent(ViewportReSizeEvent func);
 
 	private:
 		void OnMouseButtonDown(const MouseButtonDownEvent& mouseButtonDown);
@@ -118,6 +123,7 @@ namespace photon
 
 		bool m_bShouldClose = false;
 		bool m_bFocusMode = false;
+		bool m_bFocusOnRenderWindow = false;
 		Vector2i m_BeforeFocusMousePos;
 
 		Vector2i m_ViewportSize;
@@ -138,5 +144,6 @@ namespace photon
 		std::vector<std::pair<int, OnKeyCharFunc>> m_OnKeyCharCallbacks;
 
 		std::vector<BeforeAllEventFunc> m_BeforeAllEventCallbacks;
+		std::vector<ViewportReSizeEvent> m_ViewportResizeCallbacks;
 	};
 }

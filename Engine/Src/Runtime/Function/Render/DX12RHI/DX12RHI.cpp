@@ -284,6 +284,68 @@ namespace photon
 		return m_CurrBackBufferIndex;
 	}
 
+
+
+	std::shared_ptr<photon::Texture2DArray> DX12RHI::CreateTexture2DArray(Texture2DArrayDesc desc)
+	{
+		D3D12_RESOURCE_DESC dxDesc = Texture2DArray::ToDxDesc(desc);
+		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
+		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
+		if (desc.flag & (D3D12_RESOURCE_DIMENSION_BUFFER | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
+		{
+			D3D12_CLEAR_VALUE optClearValue;
+			optClearValue.Color[0] = desc.clearValue.x;
+			optClearValue.Color[1] = desc.clearValue.y;
+			optClearValue.Color[2] = desc.clearValue.z;
+			optClearValue.Color[3] = desc.clearValue.w;
+			optClearValue.Format = desc.format;
+			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+				state, &optClearValue, IID_PPV_ARGS(&resource)));
+		}
+		else
+		{
+			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+				state, nullptr, IID_PPV_ARGS(&resource)));
+		}
+		auto texArray = std::make_shared<Texture2DArray>(desc, resource);
+		if(!desc.textures.empty())
+		{
+			for(int i = 0; i < desc.textures.size(); ++i)
+			{
+				CopyTextureSubRegionGpuToGpu(texArray.get(), desc.textures[i].get(), i);
+			}
+		}
+		return texArray;
+	}
+
+	std::shared_ptr<photon::Cubemap> DX12RHI::CreateCubemap(CubemapDesc desc)
+	{
+		D3D12_RESOURCE_DESC dxDesc = Cubemap::ToDxDesc(desc);
+		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
+		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
+		if (desc.flag & (D3D12_RESOURCE_DIMENSION_BUFFER | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
+		{
+			D3D12_CLEAR_VALUE optClearValue;
+			optClearValue.Color[0] = desc.clearValue.x;
+			optClearValue.Color[1] = desc.clearValue.y;
+			optClearValue.Color[2] = desc.clearValue.z;
+			optClearValue.Color[3] = desc.clearValue.w;
+			optClearValue.Format = desc.format;
+			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+				state, &optClearValue, IID_PPV_ARGS(&resource)));
+		}
+		else
+		{
+			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+				state, nullptr, IID_PPV_ARGS(&resource)));
+		}
+		auto cubemap = std::make_shared<Cubemap>(desc, resource);
+		CopyTexturesToCubemap(cubemap.get(), desc.cubemapTextures);
+		return cubemap;
+	}
+
 	std::shared_ptr<Texture2D> DX12RHI::CreateTexture2D(Texture2DDesc desc)
 	{
 		D3D12_RESOURCE_DESC dxDesc = Texture2D::ToDxDesc(desc);
@@ -545,6 +607,9 @@ namespace photon
 		return currBackBufferCtx.srview;
 	}
 
+
+
+
 	void DX12RHI::InitializeImGui()
 	{
 		DXGI_SWAP_CHAIN_DESC1 desc;
@@ -600,7 +665,7 @@ namespace photon
 			{
 				auto newTex = CreateTexture2D(newDesc);
 				CopyDataGpuToGpu(newTex.get(), retTex.get());
-				newTex->SetOldTexture(retTex);
+				newTex->SetSRGBOldTexture(retTex);
 				retTex = newTex;
 			}
 		}
@@ -777,6 +842,42 @@ namespace photon
 		dst->Unmap(0, nullptr);
 	}
 
+
+	void DX12RHI::CopyTextureSubRegionGpuToGpu(Resource* dest, Resource* src, UINT32 destArrayIndex, Vector3i destResourceCoords, UINT32 srcArrayIndex /*= 0*/, Vector3i srcResourceCoordsStart /*=*/, Vector3i srcResourceCoordsEnd /*= */)
+	{
+		ResourceStateTransform(dest, D3D12_RESOURCE_STATE_COPY_DEST);
+		ResourceStateTransform(src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		D3D12_TEXTURE_COPY_LOCATION destLoc;
+		destLoc.pResource = dest->gpuResource.Get();
+		destLoc.SubresourceIndex = destArrayIndex;
+		destLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		D3D12_TEXTURE_COPY_LOCATION srcLoc;
+		srcLoc.pResource = src->gpuResource.Get();
+		srcLoc.SubresourceIndex = srcArrayIndex;
+		srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		D3D12_BOX srcBox;
+		srcBox.left = srcResourceCoordsStart.x;
+		srcBox.top = srcResourceCoordsStart.y;
+		srcBox.front = srcResourceCoordsStart.z;
+
+		srcBox.right = srcResourceCoordsEnd.x == -1 ? src->dxDesc.Width : srcResourceCoordsEnd.x;
+		srcBox.bottom = srcResourceCoordsEnd.y == -1 ? src->dxDesc.Height : srcResourceCoordsEnd.y;
+		srcBox.back = srcResourceCoordsEnd.z == -1 ? src->dxDesc.DepthOrArraySize : srcResourceCoordsEnd.z;
+
+
+		m_CurrCmdList->CopyTextureRegion(&destLoc, destResourceCoords.x, destResourceCoords.y, destResourceCoords.z, &srcLoc, &srcBox);
+	}
+
+	void DX12RHI::CopyTexturesToCubemap(Resource* cubemap, const std::array<std::shared_ptr<Texture2D>, 6>& textures)
+	{
+		for(int i = 0; i < textures.size(); ++i)
+		{
+			assert(cubemap->dxDesc.Width == textures[i]->dxDesc.Width);
+			assert(cubemap->dxDesc.Height == textures[i]->dxDesc.Height);
+			CopyTextureSubRegionGpuToGpu(cubemap, textures[i].get(), i);
+		}
+	}
+
 	void DX12RHI::Clear()
 	{
 		FlushCommandQueue();
@@ -786,6 +887,7 @@ namespace photon
 			m_SwapChain->SetFullscreenState(false, nullptr); 
 		}
 	}
+
 
 	void DX12RHI::OnWindowResize(const WindowResizeEvent& e)
 	{

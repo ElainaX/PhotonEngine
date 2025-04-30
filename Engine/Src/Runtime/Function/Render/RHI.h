@@ -1,9 +1,12 @@
 ﻿ #pragma once
 #include "Resource/ResourceType.h"
+#include "Resource/Texture/Cubemap.h"
+#include "Resource/Texture/Texture2DArray.h"
 #include "Resource/Texture/Texture2D.h"
 #include "Resource/Texture/Buffer.h"
 #include "Shader/Shader.h"
 #include "DX12RHI/d3dx12.h"
+#include "Core/Math/Vector3i.h"
 
 #include <memory>
 #include <cstdint>
@@ -124,6 +127,8 @@ namespace photon
 		
 
 		// 资源相关函数
+		virtual std::shared_ptr<Texture2DArray> CreateTexture2DArray(Texture2DArrayDesc desc) = 0;
+		virtual std::shared_ptr<Cubemap> CreateCubemap(CubemapDesc desc) = 0;
 		virtual std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) = 0;
 		virtual std::shared_ptr<Texture2D> LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize = 0, bool bForceLoadSRGB = false) = 0;
 		virtual std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc) = 0;
@@ -133,7 +138,9 @@ namespace photon
 		virtual void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource) = 0;
 		virtual void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource, UINT64 dstStartPosInBytes, UINT64 srcStartPosInBytes, UINT64 sizeInBytes) = 0;
 		virtual void CopySubResourceDataCpuToGpu(Resource* dest, Resource* upload, UINT64 uploadOffsetInBytes, D3D12_SUBRESOURCE_DATA* resources, UINT resourcesStartIdx = 0, UINT resourcesNum = 1) = 0;
-
+		virtual void CopyTextureSubRegionGpuToGpu(Resource* dest, Resource* src, UINT32 destArrayIndex, Vector3i destResourceCoords = {0, 0, 0},
+			UINT32 srcArrayIndex = 0, Vector3i srcResourceCoordsStart = { 0, 0, 0 }, Vector3i srcResourceCoordsEnd = {-1, -1, -1}) = 0;
+		//virtual void CopyTexturesToCubemap(ID3D12Resource* cubemap, Resource* upload, const std::array<std::shared_ptr<Texture2D>, 6>& textures) = 0;
 		virtual void ResourceStateTransform(Resource* resource, D3D12_RESOURCE_STATES stateAfter) = 0;
 
 

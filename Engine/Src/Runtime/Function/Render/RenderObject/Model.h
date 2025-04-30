@@ -34,6 +34,7 @@ namespace photon
 		std::vector<std::shared_ptr<Texture2D>> roughnessTextures;
 		std::vector<std::shared_ptr<Texture2D>> normalTextures;
 		bool bInverseRoughness = false;
+		bool bOldInverseRoughness = false;
 	};
 
 	class Model : public Resource, public GameObject
@@ -56,6 +57,14 @@ namespace photon
 			m_bLoadOver = loadOver;
 		}
 		bool IsLoadedOver();
+
+		void GlobalSwitchDiffuseMap(std::shared_ptr<Texture2D> tex);
+		void GlobalSwitchSpecularMap(std::shared_ptr<Texture2D> tex);
+		void GlobalSwitchNormalMap(std::shared_ptr<Texture2D> tex);
+
+		void GlobalRebackRawDiffuseMap();
+		void GlobalRebackRawNormalMap();
+		void GlobalRebackRawSpecularMap();
 
 		VertexType vertexType = VertexType::VertexSimple; 
 		std::vector<std::shared_ptr<ModelMeshRelateInfo>> meshes;

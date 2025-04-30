@@ -23,6 +23,8 @@ namespace photon
 		virtual void Initialize(RenderPipelineCreateInfo* createInfo) = 0;
 		virtual void PrepareContext(RenderResourceData* data) = 0;
 		virtual void SetCurrEditorUI(WindowUI* ui) = 0;
+		virtual void Stop() = 0;
+		virtual void ReStart() = 0;
 
 	protected:
 		RenderPipelineType m_Type = RenderPipelineType::ForwardPipeline;

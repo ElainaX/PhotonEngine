@@ -14,10 +14,12 @@ namespace photon
 
 		m_PassConstantsIdx = StaticModelPassConstants::s_CurrPassIndex++;
 
+		auto skyboxShader = g_RuntimeGlobalContext.renderSystem->GetShaderFactory()->Create(L"Skybox");
+
 		auto geometryGen = g_RuntimeGlobalContext.renderSystem->GetGeometryGenerator();
 
 
-		auto boxes = geometryGen->CreateBox(0.3f, 0.3f, 0.3f, 1);
+		auto boxes = geometryGen->CreateBox(0.3f, 0.3f, 0.3f, 0);
 		std::vector<VertexSimple> boxVert(boxes.Vertices.size());
 		for(int i = 0; i < boxVert.size(); ++i)
 		{
@@ -29,10 +31,31 @@ namespace photon
 		lightDesc.type = VertexType::VertexSimple;
 		lightDesc.vertexRawData = RenderUtil::CreateD3DBlob(boxVert.data(), sizeof(VertexSimple) * boxVert.size());
 		lightDesc.indexRawData = RenderUtil::CreateD3DBlob(boxes.Indices32.data(), sizeof(UINT32) * boxes.Indices32.size());
-
-
 		m_LightMesh = g_RuntimeGlobalContext.renderSystem->GetResourceManager()->CreateMesh(lightDesc);
+
+
+		auto skybox = geometryGen->CreateBox(1.0f, 1.0f, 1.0f, 0);
+		std::vector<VertexSimple> skyboxVert(skybox.Vertices.size());
+		for (int i = 0; i < skyboxVert.size(); ++i)
+		{
+			skyboxVert[i].position = skybox.Vertices[i].Position;
+		}
+		MeshDesc skyboxDesc;
+		skyboxDesc.name = L"Skybox";
+		skyboxDesc.type = VertexType::VertexSimple;
+		skyboxDesc.vertexRawData = RenderUtil::CreateD3DBlob(skyboxVert.data(), sizeof(VertexSimple) * skyboxVert.size());
+		skyboxDesc.indexRawData = RenderUtil::CreateD3DBlob(skybox.Indices32.data(), sizeof(UINT32) * skybox.Indices32.size());
+		auto skyboxMesh = g_RuntimeGlobalContext.renderSystem->GetResourceManager()->CreateMesh(skyboxDesc);
+
+		auto skyboxRenderItem = std::make_shared<CommonRenderItem>();
+		skyboxRenderItem->shader = skyboxShader;
+		skyboxRenderItem->meshCollection = &m_MeshCollection;
+		skyboxRenderItem->meshGuid = skyboxMesh->guid;
+		skyboxRenderItem->primitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		m_InnerCommonRenderItems["Skybox"] = skyboxRenderItem;
+
 		m_MeshCollection.PushMesh(m_LightMesh);
+		m_MeshCollection.PushMesh(skyboxMesh);
 		m_MeshCollection.EndPush(rhi);
 
 		m_DebugDrawLightShader = g_RuntimeGlobalContext.renderSystem->GetShaderFactory()->Create(L"DebugDrawLight");
@@ -47,6 +70,9 @@ namespace photon
 
 		m_UISubpass = std::make_shared<UISubPass>();
 		m_UISubpass->Initialize(rhi);
+
+		m_SkyboxSubpass = std::make_shared<DrawSkyboxSubPass>();
+		m_SkyboxSubpass->Initialize(rhi);
 	}
 
 	void MainCameraPass::PrepareContext(RenderResourceData* data)
@@ -65,7 +91,8 @@ namespace photon
 		auto viewProj = XMMatrixMultiply(viewMat, projMat);
 		auto invViewProj = XMMatrixMultiply(invProjMat, invViewMat);
 		Vector3 eyePos = renderCamera->pos;
-		Vector2 renderTargetSize = m_WindowSystem->GetClientWidthAndHeight();
+		Vector2 renderTargetSize = Vector2((float)m_WindowSystem->GetViewportSize().x, 
+			(float)m_WindowSystem->GetViewportSize().y);
 		Vector2 invRenderTargetSize = 1.0f / renderTargetSize;
 		float znear = renderCamera->znear;
 		float zfar = renderCamera->zfar;
@@ -150,6 +177,15 @@ namespace photon
 		m_DebugDrawSubpass->PrepareForData(&debugSubpassData);
 
 
+		DrawSkyboxSubPassData drawSkyboxData;
+		drawSkyboxData.cubemap = renderResource->cubemap;
+		drawSkyboxData.renderTargetView = m_TestRenderTargetView;
+		drawSkyboxData.depthStencilView = m_TestDepthStencilView;
+		drawSkyboxData.skyboxRenderItem = m_InnerCommonRenderItems["Skybox"].get();
+		drawSkyboxData.passConstantIdx = m_PassConstantsIdx;
+		m_SkyboxSubpass->PrepareForData(&drawSkyboxData);
+
+
 		UISubPassData UISubpassData;
 		UISubpassData.depthStencilView = m_TestDepthStencilView;
 		UISubpassData.renderTargetView = m_Rhi->GetCurrBackBufferAsRenderTarget();
@@ -162,15 +198,23 @@ namespace photon
 		D3D12_RECT scissorRect = { 0, 0, width, height };
 		D3D12_VIEWPORT viewport = { 0.0f, 0.0f, (float)width, (float)height, 0.0f, 1.0f};
 		
-		
-		m_TestSubpass->Draw(scissorRect, viewport);
-		m_DebugDrawSubpass->Draw(scissorRect, viewport);
+		if(!m_bOnlyUI)
+		{
+			m_TestSubpass->Draw(scissorRect, viewport);
+			m_DebugDrawSubpass->Draw(scissorRect, viewport);
+			m_SkyboxSubpass->Draw(scissorRect, viewport);
+		}
 		m_UISubpass->Draw(scissorRect, viewport);
 
 
 		//m_Rhi->CopyTextureToSwapChain(dynamic_cast<Texture2D*>(m_TestRenderTargetView->resource));
 		m_Rhi->PrepareForPresent();
 		m_Rhi->Present();
+	}
+
+	void MainCameraPass::OnlyUI(bool bOnlyUI)
+	{
+		m_bOnlyUI = bOnlyUI;
 	}
 
 	photon::CommonRenderItem* MainCameraPass::CreateLightRenderItem(LightData* light)

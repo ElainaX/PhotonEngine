@@ -1,10 +1,13 @@
 ﻿#include "EditorUI.h"
+#include "Macro.h"
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_internal.h"
 #include "ImGui/imgui_impl_dx12.h"
 #include "ImGui/imgui_impl_win32.h"
 
 #include <format>
+#include <thread>
+#include <chrono>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -14,6 +17,11 @@ namespace photon
 
 	EditorUI::EditorUI()
 	{
+		m_EditorTimer.Reset();
+
+		m_PaintIt = std::make_shared<PaintItCaller>((g_EditorFolder / L"paint_it").generic_wstring());
+
+
 		// Create Editor For GameObject Inspector
 		m_GameObjectEditors["CommonRenderItem"] = [this](GameObject* go)
 			{
@@ -114,6 +122,7 @@ namespace photon
 				{
 					auto model = dynamic_cast<Model*>(go);
 					auto frameResourceEditor = m_RenderSystem->GetRenderScene()->GetCommonRItemFrameResourceEditor(go->GameObjectId);
+					auto resourceManager = m_RenderSystem->GetResourceManager();
 					if (ImGui::CollapsingHeader("Transform"))
 					{
 						ImGui::Text("Translation");
@@ -135,14 +144,36 @@ namespace photon
 						ImGui::Separator();
 
 						ImGui::Text("Scale");
-						if (ImGui::DragFloat("x##3", &frameResourceEditor->scale.x, 0.1f)
-							|| ImGui::DragFloat("y##3", &frameResourceEditor->scale.x, 0.1f)
-							|| ImGui::DragFloat("z##3", &frameResourceEditor->scale.z, 0.1f))
+						if (ImGui::DragFloat("x##3", &frameResourceEditor->scale.x, 0.01f)
+							|| ImGui::DragFloat("y##3", &frameResourceEditor->scale.x, 0.01f)
+							|| ImGui::DragFloat("z##3", &frameResourceEditor->scale.z, 0.01f))
 						{
 							frameResourceEditor->scale.y = frameResourceEditor->scale.z = frameResourceEditor->scale.x;
 							frameResourceEditor->bDirty = true;
 						}
 					}
+
+					static bool bShouldOpenModal = false;
+					if(ImGui::CollapsingHeader("Paint It"))
+					{
+						if(ImGui::Button("Prompt Generate"))
+						{
+							ImGui::OpenPopup("PaintIt");
+							bShouldOpenModal = true;
+							m_RenderSystem->Stop();
+						}
+						ImGui::SameLine();
+						if(ImGui::Button("Back to Raw"))
+						{
+							model->GlobalRebackRawDiffuseMap();
+							model->GlobalRebackRawNormalMap();
+							model->GlobalRebackRawSpecularMap();
+						}
+					}
+
+					DrawPaintItModal(model, &bShouldOpenModal);
+
+
 				};
 		m_GameObjectEditors["DirLight"] = [this](GameObject* go)
 			{
@@ -227,6 +258,8 @@ namespace photon
 
 	void EditorUI::PreRender()
 	{
+		m_EditorTimer.Tick();
+
 		ImGui_ImplDX12_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
@@ -357,6 +390,16 @@ namespace photon
 
 		ImGui::Begin("GameEngine", &m_bGameEngineWindowOpen, windowFlags);
 
+		if (ImGui::IsWindowFocused())
+		{
+			m_WindowSystem->SetFocusOnRenderWindow(true);
+		}
+		else 
+		{
+			m_WindowSystem->SetFocusOnRenderWindow(false);
+		}
+
+
 		ImGui::PopStyleVar(3);
 
 		ImVec2 currSize = ImGui::GetContentRegionAvail();
@@ -365,7 +408,7 @@ namespace photon
 			clientSize.x = currSize.x;
 			clientSize.y = currSize.y;
 			m_WindowSystem->SetViewportSize(clientSize);
-			m_RenderSystem->ReCreateRenderTargetTexAndDepthStencilTex(clientSize);
+			//m_RenderSystem->ReCreateRenderTargetTexAndDepthStencilTex(clientSize);
 		}
 
 		{
@@ -394,14 +437,101 @@ namespace photon
 
 		ImGui::End();
 	}
+	bool BufferingBar(const char* label, float value, const ImVec2& size_arg, const ImU32& bg_col, const ImU32& fg_col) {
+		ImGuiWindow* window = ImGui::GetCurrentWindow();
+		if (window->SkipItems)
+			return false;
+
+		ImGuiContext& g = *GImGui;
+		const ImGuiStyle& style = g.Style;
+		const ImGuiID id = window->GetID(label);
+
+		ImVec2 pos = window->DC.CursorPos;
+		ImVec2 size = size_arg;
+		size.x -= style.FramePadding.x * 2;
+
+		const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
+		ImGui::ItemSize(bb, style.FramePadding.y);
+		if (!ImGui::ItemAdd(bb, id))
+			return false;
+
+		// Render
+		const float circleStart = size.x * 0.7f;
+		const float circleEnd = size.x;
+		const float circleWidth = circleEnd - circleStart;
+
+		window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart, bb.Max.y), bg_col);
+		window->DrawList->AddRectFilled(bb.Min, ImVec2(pos.x + circleStart * value, bb.Max.y), fg_col);
+
+		const float t = g.Time;
+		const float r = size.y / 2;
+		const float speed = 1.5f;
+
+		const float a = speed * 0;
+		const float b = speed * 0.333f;
+		const float c = speed * 0.666f;
+
+		const float o1 = (circleWidth + r) * (t + a - speed * (int)((t + a) / speed)) / speed;
+		const float o2 = (circleWidth + r) * (t + b - speed * (int)((t + b) / speed)) / speed;
+		const float o3 = (circleWidth + r) * (t + c - speed * (int)((t + c) / speed)) / speed;
+
+		window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o1, bb.Min.y + r), r, bg_col);
+		window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o2, bb.Min.y + r), r, bg_col);
+		window->DrawList->AddCircleFilled(ImVec2(pos.x + circleEnd - o3, bb.Min.y + r), r, bg_col);
+
+		return true;
+	}
+
+	bool Spinner(const char* label, float radius, int thickness, const ImU32& color) {
+		ImGuiWindow* window = ImGui::GetCurrentWindow();
+		if (window->SkipItems)
+			return false;
+
+		ImGuiContext& g = *GImGui;
+		const ImGuiStyle& style = g.Style;
+		const ImGuiID id = window->GetID(label);
+
+		ImVec2 pos = window->DC.CursorPos;
+		ImVec2 size((radius) * 2, (radius + style.FramePadding.y) * 2);
+
+		const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
+		ImGui::ItemSize(bb, style.FramePadding.y);
+		if (!ImGui::ItemAdd(bb, id))
+			return false;
+
+		// Render
+		window->DrawList->PathClear();
+
+		int num_segments = 30;
+		int start = abs(ImSin(g.Time * 1.8f) * (num_segments - 5));
+
+		const float a_min = IM_PI * 2.0f * ((float)start) / (float)num_segments;
+		const float a_max = IM_PI * 2.0f * ((float)num_segments - 3) / (float)num_segments;
+
+		const ImVec2 centre = ImVec2(pos.x + radius, pos.y + radius + style.FramePadding.y);
+
+		for (int i = 0; i < num_segments; i++) {
+			const float a = a_min + ((float)i / (float)num_segments) * (a_max - a_min);
+			window->DrawList->PathLineTo(ImVec2(centre.x + ImCos(a + g.Time * 8) * radius,
+				centre.y + ImSin(a + g.Time * 8) * radius));
+		}
+
+		window->DrawList->PathStroke(color, false, thickness);
+
+		return true;
+	}
 
 	void EditorUI::DrawProjectWindowUI()
 	{
 		ImGui::Begin("Project", &m_bGameEngineWindowOpen);
 
 		{
+			
+			const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
+			const ImU32 bg = ImGui::GetColorU32(ImGuiCol_Button);
 
-
+			Spinner("##spinner", 15, 6, col);
+			BufferingBar("##buffer_bar", 0.7f, ImVec2(400, 6), bg, col);
 		}
 
 		ImGui::End();
@@ -509,6 +639,165 @@ namespace photon
 		}
 
 		ImGui::End();
+	}
+
+	void EditorUI::DrawPaintItModal(Model* model, bool* bOpen)
+	{
+		if (!(*bOpen))
+			return;
+		static bool bInGeneratingMode = false;
+		static bool bSubstiDiffuseMap = true;
+		static bool bSubstiSpecularMap = false;
+		static bool bSubstiNormalMap = false;
+		static char posPromptString[256] = "";
+		static char negPromptString[256] = "";
+		static float timeElapsed = 0.0f;
+		static int progress = 0.0f;
+		static float timeSwitched = 0.0f;
+
+
+		RenderSystem* renderSystem = g_RuntimeGlobalContext.renderSystem.get();
+		ResourceManager* resourceManager = renderSystem->GetResourceManager();
+		
+
+		ImGui::SetNextWindowSize(ImVec2(700, 300));
+		
+		ImGui::BeginPopupModal("PaintIt");
+
+		if(!bInGeneratingMode)
+		{
+			ImGui::InputText("Positive Prompt", posPromptString, sizeof(posPromptString));
+			ImGui::InputText("Negative Prompt (can omit)", negPromptString, sizeof(negPromptString));
+
+			ImGui::Checkbox("diffuse", &bSubstiDiffuseMap);
+			ImGui::SameLine();
+			ImGui::Checkbox("normal", &bSubstiNormalMap);
+			ImGui::SameLine();
+			ImGui::Checkbox("specular", &bSubstiSpecularMap);
+			if(ImGui::Button("Begin Generate"))
+			{
+				auto modelFolder = Path::GetFileFolder(model->name);
+				auto folderName = Path::GetPathSegments(modelFolder).back();
+				std::wstring posPromptWstr = String2WString(posPromptString);
+				std::wstring negPromptWstr = String2WString(negPromptString);
+
+				auto finalPosPrompt = std::format(L"a mesh of {}, {}", folderName, posPromptWstr);
+				std::wstring modelPath = model->name;
+				std::wstring outputPath = std::format(L"{}/{}_{}", modelFolder.generic_wstring(), posPromptWstr, negPromptWstr);
+				m_PaintIt->FillKeyArgs(modelPath, finalPosPrompt, outputPath, negPromptWstr);
+				m_PaintIt->ExecuteCommand();
+				bInGeneratingMode = true;
+			}
+			ImGui::SameLine();
+			if(ImGui::Button("Cancel"))
+			{
+				bSubstiDiffuseMap = true;
+				bSubstiNormalMap = false;
+				bSubstiSpecularMap = false;
+				bInGeneratingMode = false;
+				*bOpen = false;
+
+				ImGui::CloseCurrentPopup();
+				renderSystem->ReStart();
+			}
+		}
+		else 
+		{
+			timeElapsed += m_EditorTimer.DeltaTime();
+			timeSwitched += m_EditorTimer.DeltaTime();
+			if(!m_PaintIt->isOver())
+			{
+				if(timeElapsed >= 1.0f)
+				{
+					progress = m_PaintIt->GetProgress();
+					timeElapsed -= 1.0f;
+				}
+
+				if(timeSwitched > 0.1f)
+				{
+					timeSwitched -= 0.1f;
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				}
+				
+				const ImU32 col = ImGui::GetColorU32(ImGuiCol_ButtonHovered);
+				const ImU32 bg = ImGui::GetColorU32(ImGuiCol_Button);
+
+				Spinner("##spinner", 10, 6, col);
+				BufferingBar("##buffer_bar", progress / 100.0f, ImVec2(400, 15), bg, col);
+				ImGui::SameLine();
+				ImGui::Text(std::format("{}%%", progress).c_str());
+			}
+			else
+			{
+				ChangeModelToPaintIt(model, bSubstiDiffuseMap, bSubstiNormalMap, bSubstiSpecularMap);
+				
+				timeElapsed = 0.0f;
+				bSubstiDiffuseMap = true;
+				bSubstiNormalMap = false;
+				bSubstiSpecularMap = false;
+				bInGeneratingMode = false;
+				*bOpen = false;
+
+				ImGui::CloseCurrentPopup();
+				renderSystem->ReStart();
+			}
+		}
+
+		ImGui::EndPopup();
+
+
+
+		/*static std::string path = "";
+		if (ImGui::Button("OK"))
+		{
+			path = buffer;
+			auto tex = resourceManager->LoadTexture2D(String2WString(path));
+			if (tex)
+			{
+				model->GlobalSwitchDiffuseMap(tex);
+			}
+			else
+			{
+				ImGui::OpenPopup("Info");
+
+			}
+		}
+		if (ImGui::BeginPopupModal("Info"))
+		{
+			ImGui::Text(("Can't Open File: " + path).c_str());
+			if (ImGui::Button("Close"))
+			{
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
+		}*/
+	}
+
+	void EditorUI::ChangeModelToPaintIt(Model* model, bool bDiffuse, bool bNormal, bool bSpecular)
+	{
+		ResourceManager* manager = g_RuntimeGlobalContext.renderSystem->GetResourceManager();
+
+		auto diffuseMap = m_PaintIt->GetOutputDiffuseMapPath();
+		auto normalMap = m_PaintIt->GetOutputNormalMapPath();
+		auto specularMap = m_PaintIt->GetOutputSpecularMapPath();
+		
+		if (bDiffuse)
+		{
+			auto texDiffuse = manager->LoadTexture2D(diffuseMap);
+			model->GlobalSwitchDiffuseMap(texDiffuse);
+		}
+		if(bNormal)
+		{
+			auto texNormal = manager->LoadTexture2D(normalMap);
+			model->GlobalSwitchNormalMap(texNormal);
+		}
+		if (bSpecular)
+		{
+			auto texSpecular = manager->LoadTexture2D(specularMap);
+			model->GlobalSwitchSpecularMap(texSpecular);
+		}
+
 	}
 
 }

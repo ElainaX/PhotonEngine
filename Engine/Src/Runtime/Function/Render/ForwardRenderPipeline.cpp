@@ -32,6 +32,7 @@ namespace photon
 		mainCameraPassData.depthStencil = resourceData->depthStencil;
 		mainCameraPassData.mainCamera = resourceData->mainCamera;
 		mainCameraPassData.gameTimer = resourceData->gameTimer;
+		mainCameraPassData.cubemap = resourceData->cubemap;
 		mainCameraPassData.directionalLights = std::move(resourceData->directionalLights);
 		mainCameraPassData.pointLights = std::move(resourceData->pointLights);
 		mainCameraPassData.spotLights = std::move(resourceData->spotLights);
@@ -47,6 +48,18 @@ namespace photon
 	}
 
 
+
+	void ForwardRenderPipeline::Stop()
+	{
+		m_bStop = true;
+		m_MainCameraRenderPass->OnlyUI(true);
+	}
+
+	void ForwardRenderPipeline::ReStart()
+	{
+		m_bStop = false;
+		m_MainCameraRenderPass->OnlyUI(false);
+	}
 
 	void ForwardRenderPipeline::SetCurrEditorUI(WindowUI* ui)
 	{

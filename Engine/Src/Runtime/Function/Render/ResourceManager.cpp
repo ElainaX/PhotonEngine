@@ -10,8 +10,44 @@ namespace photon
 		m_ShaderFactory = std::make_unique<ShaderFactory>();
 	}
 
+	std::shared_ptr<photon::Texture2DArray> ResourceManager::CreateTexture2DArray(Texture2DArrayDesc desc)
+	{
+		auto texArray = m_Rhi->CreateTexture2DArray(desc);
+		texArray->name = L"Texture Array";
+		m_TextureArrays.insert({ texArray->guid, texArray });
+		return texArray;
+	}
+
+	std::shared_ptr<photon::Cubemap> ResourceManager::LoadCubemap(const std::filesystem::path& folder, bool forceLoadSRGB /*= false*/)
+	{
+		std::array<std::shared_ptr<Texture2D>, 6> loadedTextures;
+		// First Load Textures
+		for(int i = 0; i < 6; ++i)
+		{
+			std::filesystem::path purePath = folder / m_CubemapPureNames[i];
+			auto loadedJpgTexture = LoadTexture2D(purePath.generic_wstring() + L".jpg", forceLoadSRGB);
+			auto loadedPngTexture = LoadTexture2D(purePath.generic_wstring() + L".png", forceLoadSRGB);
+			assert(loadedJpgTexture || loadedPngTexture);
+			if (loadedJpgTexture)
+				loadedTextures[i] = loadedJpgTexture;
+			else
+				loadedTextures[i] = loadedPngTexture;
+		}
+		CubemapDesc desc;
+		desc.width = loadedTextures[0]->dxDesc.Width;
+		desc.height = loadedTextures[0]->dxDesc.Height;
+		desc.format = loadedTextures[0]->dxDesc.Format;
+		desc.cubemapTextures = loadedTextures;
+		auto newCubemap = m_Rhi->CreateCubemap(desc);
+		newCubemap->name = folder.generic_wstring();
+		m_Cubemaps.insert({ newCubemap->guid, newCubemap });
+		return newCubemap;
+	}
+
 	std::shared_ptr<photon::Texture2D> ResourceManager::LoadTexture2D(const std::filesystem::path& filepath, bool forceLoadSRGB)
 	{
+		if (!std::filesystem::exists(filepath))
+			return nullptr;
 		auto find_it = m_LoadedTextures.find(std::filesystem::canonical(filepath).generic_wstring());
 		if(find_it != m_LoadedTextures.end())
 		{
@@ -111,6 +147,15 @@ namespace photon
 		return model;
 	}
 
+	std::shared_ptr<photon::Cubemap> ResourceManager::GetCubemap(UINT64 guid)
+	{
+		if (m_Cubemaps.find(guid) != m_Cubemaps.end())
+		{
+			return m_Cubemaps[guid];
+		}
+		return nullptr;
+	}
+
 	std::shared_ptr<photon::Texture2D> ResourceManager::GetTexture2D(UINT64 guid)
 	{
 		if(m_Textures.find(guid) != m_Textures.end())
@@ -189,11 +234,11 @@ namespace photon
 
 	void ResourceManager::DestoryTexture2D(UINT64 guid)
 	{
-		if(m_Meshs.find(guid) != m_Meshs.end())
+		if(m_Textures.find(guid) != m_Textures.end())
 		{
-			m_Meshs[guid]->gpuResource->Release();
-			m_Meshs[guid]->gpuResource = nullptr;
-			m_Meshs.erase(guid);
+			m_Textures[guid]->gpuResource->Release();
+			m_Textures[guid]->gpuResource = nullptr;
+			m_Textures.erase(guid);
 		}
 	}
 
@@ -201,6 +246,22 @@ namespace photon
 	{
 		UINT64 guid = resource->guid;
 		DestoryTexture2D(guid);
+	}
+
+	void ResourceManager::DestoryTexture2DArray(UINT64 guid)
+	{
+		if (m_TextureArrays.find(guid) != m_TextureArrays.end())
+		{
+			m_TextureArrays[guid]->gpuResource->Release();
+			m_TextureArrays[guid]->gpuResource = nullptr;
+			m_TextureArrays.erase(guid);
+		}
+	}
+
+	void ResourceManager::DestoryTexture2DArray(Resource* resource)
+	{
+		UINT64 guid = resource->guid;
+		DestoryTexture2DArray(guid);
 	}
 
 	void ResourceManager::LoadModelToGpu(Model* model)

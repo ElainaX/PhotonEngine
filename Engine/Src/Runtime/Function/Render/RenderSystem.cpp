@@ -58,7 +58,7 @@ namespace photon
 
 		auto camera = std::make_shared<RenderCamera>(swapchainWidthAndHeight.x / (float)swapchainWidthAndHeight.y);
 		m_RenderScene.push_back(std::make_shared<RenderScene>(camera));
-		m_RenderScene[0]->AddDirectionalLight(Vector3{ 0.7f, 0.2f, 0.2f }, Vector3{ 1.0f, -1.0f, 0.4f });
+		m_RenderScene[0]->AddDirectionalLight(Vector3{ 1.0f, 1.0f, 1.0f }, Vector3{ 1.0f, -1.0f, 0.4f });
 		m_RenderScene[0]->AddPointLight(Vector3{ 1.0f, 1.0f, 1.0f }, Vector3{ 1.0f, 2.0f, 3.0f }, 3.0f, 8.0f);
 		m_RenderScene[0]->AddSpotLight(Vector3{ 1.0f, 1.0f, 0.8f }, Vector3{ 0.0f, 3.0f, 0.0f }, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, 8.0f, 32.0f);
 		//VertexSimple vertices[] =
@@ -69,45 +69,45 @@ namespace photon
 		//};
 		//uint32_t indices[] = { 0, 1, 2 };
 
-		auto sphereMeshData = m_GeometryGenerator->CreateSphere(0.5f, 40, 40);
-		auto sphereIndices = sphereMeshData.Indices32;
-		std::vector<VertexSimple> sphereVertices(sphereMeshData.Vertices.size());
-		for (int i = 0; i < sphereMeshData.Vertices.size(); ++i)
-		{
-			auto vert = sphereMeshData.Vertices[i];
-			sphereVertices[i].position = vert.Position;
-			sphereVertices[i].normal = vert.Normal;
-			sphereVertices[i].tangent = vert.TangentU;
-			sphereVertices[i].texCoord = vert.TexC;
-		}
+		//auto sphereMeshData = m_GeometryGenerator->CreateSphere(0.5f, 40, 40);
+		//auto sphereIndices = sphereMeshData.Indices32;
+		//std::vector<VertexSimple> sphereVertices(sphereMeshData.Vertices.size());
+		//for (int i = 0; i < sphereMeshData.Vertices.size(); ++i)
+		//{
+		//	auto vert = sphereMeshData.Vertices[i];
+		//	sphereVertices[i].position = vert.Position;
+		//	sphereVertices[i].normal = vert.Normal;
+		//	sphereVertices[i].tangent = vert.TangentU;
+		//	sphereVertices[i].texCoord = vert.TexC;
+		//}
 
-		auto gridMeshData = m_GeometryGenerator->CreateGrid(5.0f, 5.0f, 10, 10);
-		auto gridIndices = gridMeshData.Indices32;
-		std::vector<VertexSimple> gridVertices(gridMeshData.Vertices.size());
-		for (int i = 0; i < gridMeshData.Vertices.size(); ++i)
-		{
-			auto vert = gridMeshData.Vertices[i];
-			gridVertices[i].position = vert.Position;
-			gridVertices[i].normal = vert.Normal;
-			gridVertices[i].tangent = vert.TangentU;
-			gridVertices[i].texCoord = vert.TexC;
-		}
+		//auto gridMeshData = m_GeometryGenerator->CreateGrid(5.0f, 5.0f, 10, 10);
+		//auto gridIndices = gridMeshData.Indices32;
+		//std::vector<VertexSimple> gridVertices(gridMeshData.Vertices.size());
+		//for (int i = 0; i < gridMeshData.Vertices.size(); ++i)
+		//{
+		//	auto vert = gridMeshData.Vertices[i];
+		//	gridVertices[i].position = vert.Position;
+		//	gridVertices[i].normal = vert.Normal;
+		//	gridVertices[i].tangent = vert.TangentU;
+		//	gridVertices[i].texCoord = vert.TexC;
+		//}
 
-		MeshDesc sphereDesc;
-		sphereDesc.name = L"Standard Sphere";
-		sphereDesc.type = VertexType::VertexSimple;
-		sphereDesc.topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		sphereDesc.vertexRawData = RenderUtil::CreateD3DBlob((void*)sphereVertices.data(), sphereVertices.size() * sizeof(VertexSimple));
-		sphereDesc.indexRawData = RenderUtil::CreateD3DBlob((void*)sphereIndices.data(), sphereIndices.size() * sizeof(uint32_t));
-		auto sphereMesh = m_ResourceManager->CreateMesh(sphereDesc);
+		//MeshDesc sphereDesc;
+		//sphereDesc.name = L"Standard Sphere";
+		//sphereDesc.type = VertexType::VertexSimple;
+		//sphereDesc.topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		//sphereDesc.vertexRawData = RenderUtil::CreateD3DBlob((void*)sphereVertices.data(), sphereVertices.size() * sizeof(VertexSimple));
+		//sphereDesc.indexRawData = RenderUtil::CreateD3DBlob((void*)sphereIndices.data(), sphereIndices.size() * sizeof(uint32_t));
+		//auto sphereMesh = m_ResourceManager->CreateMesh(sphereDesc);
 
-		MeshDesc gridDesc;
-		gridDesc.name = L"Standard Grid";
-		gridDesc.type = VertexType::VertexSimple;
-		gridDesc.topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		gridDesc.vertexRawData = RenderUtil::CreateD3DBlob((void*)gridVertices.data(), gridVertices.size() * sizeof(VertexSimple));
-		gridDesc.indexRawData = RenderUtil::CreateD3DBlob((void*)gridIndices.data(), gridIndices.size() * sizeof(uint32_t));
-		auto gridMesh = m_ResourceManager->CreateMesh(gridDesc);
+		//MeshDesc gridDesc;
+		//gridDesc.name = L"Standard Grid";
+		//gridDesc.type = VertexType::VertexSimple;
+		//gridDesc.topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		//gridDesc.vertexRawData = RenderUtil::CreateD3DBlob((void*)gridVertices.data(), gridVertices.size() * sizeof(VertexSimple));
+		//gridDesc.indexRawData = RenderUtil::CreateD3DBlob((void*)gridIndices.data(), gridIndices.size() * sizeof(uint32_t));
+		//auto gridMesh = m_ResourceManager->CreateMesh(gridDesc);
 
 
 		auto diffuseMap = m_ResourceManager->LoadTexture2D(g_AssetTextureFolder / L"rustediron2_basecolor.png", true);
@@ -129,13 +129,23 @@ namespace photon
 
 		auto testShader = m_ShaderFactory->Create(L"TestShader");
 
-		m_RenderScene[0]->AddCommonRenderItem(sphereMesh, sphereMat.get(), testShader, RenderLayer::Opaque, standardEditor);
+		//m_RenderScene[0]->AddCommonRenderItem(sphereMesh, sphereMat.get(), testShader, RenderLayer::Opaque, standardEditor);
 
-		standardEditor.translation = { 0.0f, -1.0f, 0.0f };
-		m_RenderScene[0]->AddCommonRenderItem(gridMesh, sphereMat.get(), testShader, RenderLayer::Opaque, standardEditor);
+		//standardEditor.translation = { 0.0f, -1.0f, 0.0f };
+		//m_RenderScene[0]->AddCommonRenderItem(gridMesh, sphereMat.get(), testShader, RenderLayer::Opaque, standardEditor);
 
-		auto model = m_ResourceManager->LoadModel(g_AssetModelFolder / L"FarmerHouse/FarmerHouse.fbx");
-		m_RenderScene[0]->AddModel(model, testShader, RenderLayer::Opaque, StaticFrameResourceEditor{});
+		StaticFrameResourceEditor modelEditor = {};
+		modelEditor.scale = { 0.001, 0.001, 0.001 };
+		auto houseModel = m_ResourceManager->LoadModel(g_AssetModelFolder / L"SingleHouse/HouseSuburban.obj");
+		m_RenderScene[0]->AddModel(houseModel, testShader, RenderLayer::Opaque, modelEditor);
+
+		auto floorModel = m_ResourceManager->LoadModel(g_AssetModelFolder / L"Floor/floor.obj");
+		m_RenderScene[0]->AddModel(floorModel, testShader, RenderLayer::Opaque, modelEditor);
+
+
+		auto cubemap = m_ResourceManager->LoadCubemap(g_AssetTextureCubemapFolder / L"Maskonaive3", false);
+		m_RenderScene[0]->SetCubemap(cubemap);
+		allCubemaps.push_back(cubemap);
 
 		StaticModelFrameResourceDesc resourceDesc;
 		resourceDesc.allObjectNum = StaticModelObjectConstants::s_CurrObjectIndex + 100;
@@ -208,7 +218,7 @@ namespace photon
 		forwardPipelineData.renderTarget = m_RenderTarget;
 		forwardPipelineData.gameTimer = &gt;
 		forwardPipelineData.mainCamera = currRenderScene->GetMainCamera();
-		
+		forwardPipelineData.cubemap = currRenderScene->cubemap.get();
 		
 		
 		m_CurrRenderPipeline->PrepareContext(&forwardPipelineData);
@@ -217,6 +227,18 @@ namespace photon
 
 
 		m_CurrRenderPipeline->Render();
+	}
+
+	void RenderSystem::Stop()
+	{
+		m_bStopRenderContent = true;
+		m_CurrRenderPipeline->Stop();
+	}
+
+	void RenderSystem::ReStart()
+	{
+		m_bStopRenderContent = false;
+		m_CurrRenderPipeline->ReStart();
 	}
 
 	void RenderSystem::ReCreateRenderTargetTexAndDepthStencilTex(Vector2i size)

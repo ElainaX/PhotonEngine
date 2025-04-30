@@ -3,6 +3,7 @@
 #include "Resource/ResourceType.h"
 #include "Resource/Texture/Texture2D.h"
 #include "Resource/Texture/Buffer.h"
+#include "Resource/Texture/Texture2DArray.h"
 #include "RenderObject/Mesh.h"
 #include "RenderObject/Model.h"
 #include "RenderObject/Material.h"
@@ -25,6 +26,8 @@ namespace photon
 		~ResourceManager() = default;
 		void Initialize(RHI* rhi);
 
+		std::shared_ptr<Texture2DArray> CreateTexture2DArray(Texture2DArrayDesc desc);
+		std::shared_ptr<Cubemap> LoadCubemap(const std::filesystem::path& folder, bool forceLoadSRGB = false);
 		std::shared_ptr<Texture2D> LoadTexture2D(const std::filesystem::path& filepath, bool forceLoadSRGB = false);
 		std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc);
 		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc);
@@ -36,6 +39,7 @@ namespace photon
 		Shader* LoadShader(const std::wstring& shaderName);
 		std::shared_ptr<Model> LoadModel(const std::filesystem::path& path);
 
+		std::shared_ptr<Cubemap> GetCubemap(UINT64 guid);
 		std::shared_ptr<Texture2D> GetTexture2D(UINT64 guid);
 		std::shared_ptr<Texture2D> GetLoadedTexture2D(const std::filesystem::path& filepathRelateToAssetFolder);
 		std::shared_ptr<Buffer> GetBuffer(UINT64 guid);
@@ -53,6 +57,9 @@ namespace photon
 		void DestoryTexture2D(UINT64 guid);
 		void DestoryTexture2D(Resource* resource);
 
+		void DestoryTexture2DArray(UINT64 guid);
+		void DestoryTexture2DArray(Resource* resource);
+
 	private:
 		void LoadModelToGpu(Model* model);
 
@@ -60,12 +67,18 @@ namespace photon
 		std::unique_ptr<ResourceLoader> m_ResourceLoader;
 		std::unordered_map<Buffer*, std::shared_ptr<Buffer>> m_BufferToUploadBuffer;
 		std::unordered_map<Texture2D*, std::shared_ptr<Buffer>> m_Texture2DToUploadBuffer;
+		
+		std::map<UINT64, std::shared_ptr<Cubemap>> m_Cubemaps;
 		std::map<UINT64, std::shared_ptr<Texture2D>> m_Textures;
+		std::map<UINT64, std::shared_ptr<Texture2DArray>> m_TextureArrays;
 		std::map<UINT64, std::shared_ptr<Buffer>> m_Buffers;
 		std::map<UINT64, std::shared_ptr<Mesh>> m_Meshs;
 		std::map<UINT64, std::shared_ptr<Material>> m_Materials;
 		std::map<UINT64, std::shared_ptr<Model>> m_Models;
 		std::map<std::wstring, UINT64> m_LoadedTextures;
+		std::array<std::wstring, 6> m_CubemapPureNames = {
+			L"posx", L"negx", L"posy", L"negy", L"posz", L"negz"
+		};
 
 
 		RHI* m_Rhi = nullptr;

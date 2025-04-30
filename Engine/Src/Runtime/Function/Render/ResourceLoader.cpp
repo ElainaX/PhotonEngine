@@ -72,7 +72,7 @@ namespace photon
 		meshInfo->meshDesc.topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		meshInfo->name = meshInfo->meshDesc.name;
 
-		assert(mesh->mPrimitiveTypes == aiPrimitiveType_TRIANGLE);
+		assert(mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE);
 		std::vector<VertexSimple> vertices;
 		vertices.reserve(mesh->mNumVertices);
 		std::vector<uint32_t> indices;

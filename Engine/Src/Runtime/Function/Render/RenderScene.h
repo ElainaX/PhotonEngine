@@ -5,6 +5,7 @@
 #include "RenderObject/RenderItem.h"
 #include "RenderObject/Model.h"
 #include "RenderObject/RenderMeshCollection.h"
+#include "Resource/Texture/Cubemap.h"
 
 #include <memory>
 #include <unordered_map>
@@ -28,6 +29,9 @@ namespace photon
 		PointLight* AddPointLight(Vector3 strength, Vector3 position, float falloffStart, float falloffEnd);
 		SpotLight* AddSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower);
 
+		Cubemap* SetCubemap(std::shared_ptr<Cubemap> cubemap);
+
+
 		void SetMainRenderCamera(RenderCamera* mainCam);
 		RenderCamera* AddRenderCamera(std::shared_ptr<RenderCamera> camera, bool bSetMainCamera = false);
 		void RemoveRenderCamera(RenderCamera* camera);
@@ -43,6 +47,7 @@ namespace photon
 		std::vector<PointLight> pointLights;
 		std::vector<SpotLight> spotLights;
 
+		std::shared_ptr<Cubemap> cubemap;
 
 	private:
 		std::shared_ptr<CommonRenderItem> CreateCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor);

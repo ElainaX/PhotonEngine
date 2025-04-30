@@ -45,17 +45,20 @@ namespace photon
 	void InputSystem::Initialize()
 	{
 		auto windowSystem = g_RuntimeGlobalContext.windowSystem;
-		windowSystem->RegisterOnKeyDownCallback([this](KeyDownEvent& e) 
+		windowSystem->RegisterOnKeyDownCallback([windowSystem, this](KeyDownEvent& e) 
 			{
-				this->OnKeyDown(e);
+				if(windowSystem->IsFocusOnRenderWindow())
+					this->OnKeyDown(e);
 			});
-		windowSystem->RegisterOnKeyUpCallback([this](KeyUpEvent& e)
+		windowSystem->RegisterOnKeyUpCallback([windowSystem, this](KeyUpEvent& e)
 			{
-				this->OnKeyUp(e);
+				if (windowSystem->IsFocusOnRenderWindow())
+					this->OnKeyUp(e);
 			});
-		windowSystem->RegisterOnMouseMoveCallback([this](MouseMoveEvent& e)
+		windowSystem->RegisterOnMouseMoveCallback([windowSystem, this](MouseMoveEvent& e)
 			{
-				this->OnCursorPos(e);
+				if (windowSystem->IsFocusOnRenderWindow())
+					this->OnCursorPos(e);
 			});
 	}
 

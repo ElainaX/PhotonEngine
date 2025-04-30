@@ -13,7 +13,9 @@
 #include "DX12Define.h"
 #include "Function/Render/WindowSystem.h"
 #include "Resource/Texture/Texture2D.h"
+#include "Resource/Texture/Texture2DArray.h"
 #include "Core/Math/Vector4.h"
+#include "Core/Math/Vector3i.h"
 #include "DX12Resource/VertexType.h"
 #include "DX12Resource/VertexBuffer.h"
 #include "DX12Resource/IndexBuffer.h"
@@ -94,7 +96,7 @@ namespace photon
 		unsigned int GetCurrBackBufferIndex() override final;
 		std::shared_ptr<ResourceManager> GetResourceManager() override;
 
-
+		std::shared_ptr<Cubemap> CreateCubemap(CubemapDesc desc) override;
 		std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) override final;
 		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc) override final;
 		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes) override final;
@@ -106,6 +108,9 @@ namespace photon
 		void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource) override;
 		void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource, UINT64 dstStartPosInBytes, UINT64 srcStartPosInBytes, UINT64 sizeInBytes) override;
 		void CopySubResourceDataCpuToGpu(Resource* dest, Resource* upload, UINT64 uploadOffsetInBytes, D3D12_SUBRESOURCE_DATA* resources, UINT resourcesStartIdx = 0, UINT resourcesNum = 1) override;
+		void CopyTextureSubRegionGpuToGpu(Resource* dest, Resource* src, UINT32 destArrayIndex, Vector3i destResourceCoords = {0, 0, 0},
+			UINT32 srcArrayIndex = 0, Vector3i srcResourceCoordsStart = { 0, 0, 0 }, Vector3i srcResourceCoordsEnd = {-1, -1, -1}) override;
+		void CopyTexturesToCubemap(Resource* cubemap, const std::array<std::shared_ptr<Texture2D>, 6>& textures);
 
 		void CopyTextureToSwapChain(Texture2D* tex) override;
 		void Present() override;
@@ -147,6 +152,13 @@ namespace photon
 		std::shared_ptr<Texture2D> GetCurrBackBufferResource() override { return m_SwapChainContents[m_CurrBackBufferIndex].backBuffer; }
 		RenderTargetView* GetCurrBackBufferAsRenderTarget() override;
 		ShaderResourceView* GetCurrBackBufferAsShaderResource(const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc) override;
+
+
+
+
+
+
+		std::shared_ptr<Texture2DArray> CreateTexture2DArray(Texture2DArrayDesc desc) override;
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> GetCurrFrameContextCmdAllocator() { return m_FrameContexts[m_CurrFrameContextIndex]->cmdAllocator; }

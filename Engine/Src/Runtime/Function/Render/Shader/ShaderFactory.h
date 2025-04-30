@@ -2,6 +2,7 @@
 
 #include "TestShader.h"
 #include "DebugDrawLight.h"
+#include "SkyboxShader.h"
 #include "Platform/FileSystem/FileSystem.h"
 
 #include <string>
@@ -32,6 +33,11 @@ namespace photon
 			else if(shaderName == L"DebugDrawLight")
 			{
 				m_LoadedShaders[shaderName] = std::make_shared<DebugDrawLightShader>(shaderfilepath);
+				return m_LoadedShaders[shaderName].get();
+			}
+			else if(shaderName == L"Skybox")
+			{
+				m_LoadedShaders[shaderName] = std::make_shared<SkyboxShader>(shaderfilepath);
 				return m_LoadedShaders[shaderName].get();
 			}
 			return nullptr;

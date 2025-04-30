@@ -14,6 +14,8 @@ namespace photon
 
 	void WindowSystem::Initialize(WindowCreateInfo createInfo)
 	{
+		m_ViewportSize.x = createInfo.width;
+		m_ViewportSize.y = createInfo.height;
 		// 创建Window
 		m_Width = createInfo.width;
 		m_Height = createInfo.height;
@@ -131,7 +133,24 @@ namespace photon
 
 	void WindowSystem::SetViewportSize(Vector2i sz)
 	{
-		m_ViewportSize = sz;
+		if(m_ViewportSize != sz)
+		{
+			m_ViewportSize = sz;
+			for (auto& callback : m_ViewportResizeCallbacks)
+			{
+				callback(m_ViewportSize);
+			}
+		}
+	}
+
+	bool WindowSystem::IsFocusOnRenderWindow()
+	{
+		return m_bFocusOnRenderWindow;
+	}
+
+	void WindowSystem::SetFocusOnRenderWindow(bool focus)
+	{
+		m_bFocusOnRenderWindow = focus;
 	}
 
 	void WindowSystem::CloseAllWindows()
@@ -374,6 +393,11 @@ namespace photon
 	void WindowSystem::RegisterBeforeAllEventCallBack(BeforeAllEventFunc func)
 	{
 		m_BeforeAllEventCallbacks.push_back(func);
+	}
+
+	void WindowSystem::RegisterOnViewportReSizeEvent(ViewportReSizeEvent func)
+	{
+		m_ViewportResizeCallbacks.push_back(func);
 	}
 
 	void WindowSystem::OnMouseButtonDown(const MouseButtonDownEvent& mouseButtonDown)

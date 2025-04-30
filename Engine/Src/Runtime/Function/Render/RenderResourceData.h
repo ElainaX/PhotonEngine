@@ -6,6 +6,7 @@
 #include "Function/Util/GameTimer.h"
 #include "Resource/Texture/Buffer.h"
 #include "Resource/Texture/Texture2D.h"
+#include "Resource/Texture/Cubemap.h"
 
 
 #include <memory>
@@ -34,6 +35,7 @@ namespace photon
 		std::shared_ptr<Texture2D> depthStencil;
 		std::vector<CommonRenderItem*> allRenderItems;
 		RenderCamera* mainCamera;
+		Cubemap* cubemap;
 	};
 
 	struct ForwardPipelineRenderResourceData : public RenderResourceData
@@ -49,6 +51,7 @@ namespace photon
 		//std::shared_ptr<Texture2D> resourceTex;
 		std::vector<CommonRenderItem*> allRenderItems;
 		RenderCamera* mainCamera;
+		Cubemap* cubemap;
 	};
 
 	struct TestSubPassData : public RenderResourceData
@@ -73,6 +76,15 @@ namespace photon
 		DepthStencilView* depthStencilView = nullptr;
 
 		std::vector<CommonRenderItem*> lightRenderItems;
+		UINT passConstantIdx = 0;
+	};
+
+	struct DrawSkyboxSubPassData : public RenderResourceData
+	{
+		RenderTargetView* renderTargetView = nullptr;
+		DepthStencilView* depthStencilView = nullptr;
+		CommonRenderItem* skyboxRenderItem = nullptr;
+		Cubemap* cubemap = nullptr;
 		UINT passConstantIdx = 0;
 	};
 

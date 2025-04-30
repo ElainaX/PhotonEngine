@@ -15,18 +15,23 @@ namespace photon
 		float spotPower = 64.0f;
 	};
 
-	class DirLight : public GameObject
+	class LightBase
+	{
+	public:
+		LightData data;
+	};
+
+	class DirLight : public GameObject, public LightBase
 	{
 	public:
 		DirLight(){
 			GameObjectName = GetGameObjectType();
 		}
 		DirLight(LightData _data)
-			: data(_data) {
+			{
+			data = _data;
 			GameObjectName = GetGameObjectType();
 		}
-
-		LightData data;
 
 		std::string GetGameObjectType() override
 		{
@@ -34,16 +39,15 @@ namespace photon
 		}
 	};
 
-	class PointLight : public GameObject
+	class PointLight : public GameObject, public LightBase
 	{
 	public:
 		PointLight() { GameObjectName = GetGameObjectType(); }
 		PointLight(LightData _data)
-			: data(_data) {
+			{
+			data = _data;
 			GameObjectName = GetGameObjectType();
 		}
-
-		LightData data;
 
 		std::string GetGameObjectType() override
 		{
@@ -51,16 +55,15 @@ namespace photon
 		}
 	};
 
-	class SpotLight : public GameObject
+	class SpotLight : public GameObject, public LightBase
 	{
 	public:
 		SpotLight() { GameObjectName = GetGameObjectType(); }
 		SpotLight(LightData _data)
-			: data(_data) {
+		 {
+			data = _data;
 			GameObjectName = GetGameObjectType();
 		}
-
-		LightData data;
 
 		std::string GetGameObjectType() override
 		{

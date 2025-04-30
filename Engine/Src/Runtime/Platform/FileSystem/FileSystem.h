@@ -7,9 +7,11 @@
 namespace photon 
 {
 	const std::filesystem::path g_AssetTextureFolder = L"E:/Code/PhotonEngine/Engine/Assets/Texture";
+	const std::filesystem::path g_AssetTextureCubemapFolder = L"E:/Code/PhotonEngine/Engine/Assets/Texture/Cubemap";
 	const std::filesystem::path g_AssetModelFolder = L"E:/Code/PhotonEngine/Engine/Assets/Model";
 	const std::wstring g_ShaderFileFolder = L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders/";
 	const std::filesystem::path g_AssetFolder = L"E:/Code/PhotonEngine/Engine/Assets";
+	const std::filesystem::path g_EditorFolder = L"E:/Code/PhotonEngine/Engine/Src/Editor";
 
 	class FileSystem
 	{

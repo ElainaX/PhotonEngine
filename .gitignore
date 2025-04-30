@@ -36,3 +36,5 @@ build/*
 .VSCodeCounter/*
 
 Engine/Assets/*
+
+Engine/Src/Editor/paint_it/*

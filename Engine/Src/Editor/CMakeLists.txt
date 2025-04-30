@@ -2,6 +2,9 @@
 file(GLOB_RECURSE SOURCE_FILES "*.cpp")
 file(GLOB_RECURSE HEAD_FILES "*.h")
 
+list(FILTER SOURCE_FILES EXCLUDE REGEX "./paint_it/*")
+list(FILTER HEAD_FILES EXCLUDE REGEX "./paint_it/*")
+
 
 # Project Configuration
 project(PhotonEditor)

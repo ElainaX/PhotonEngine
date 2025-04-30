@@ -10,6 +10,7 @@
 #include "SubPass/TestSubPass.h"
 #include "SubPass/DebugDrawSubPass.h"
 #include "SubPass/UISubPass.h"
+#include "SubPass/DrawSkyboxSubPass.h"
 #include "../DX12RHI/FrameResource/StaticModelFrameResource.h"
 
 #include <map>
@@ -27,6 +28,8 @@ namespace photon
 		void PrepareContext(RenderResourceData*) override;
 
 		void Draw() override;
+
+		void OnlyUI(bool bOnlyUI = true);
 		
 	private:
 		CommonRenderItem* CreateLightRenderItem(LightData* light);
@@ -35,6 +38,7 @@ namespace photon
 		std::shared_ptr<TestSubPass> m_TestSubpass;
 		std::shared_ptr<DebugDrawSubPass> m_DebugDrawSubpass;
 		std::shared_ptr<UISubPass> m_UISubpass;
+		std::shared_ptr<DrawSkyboxSubPass> m_SkyboxSubpass;
 		RenderTargetView* m_TestRenderTargetView = nullptr;
 		DepthStencilView* m_TestDepthStencilView = nullptr;
 		ShaderResourceView* m_TestShaderResourceView = nullptr;
@@ -43,14 +47,17 @@ namespace photon
 		UINT m_PassConstantsIdx;
 
 		std::unordered_map<LightData*, std::shared_ptr<CommonRenderItem>> m_LightRenderItems;
-		std::unordered_set<CommonRenderItem*> lightRenderItemsSet;
+
+		std::unordered_map<std::string, std::shared_ptr<CommonRenderItem>> m_InnerCommonRenderItems;
+
+
 
 		RenderMeshCollection m_MeshCollection;
 		std::shared_ptr<Mesh> m_LightMesh;
 		Shader* m_DebugDrawLightShader;
 
 	private:
-
+		bool m_bOnlyUI = false;
 		WindowSystem* m_WindowSystem;
 	};
 }
