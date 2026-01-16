@@ -1,15 +1,17 @@
 #include "Includes/VertexSimple.hlsl"
 #include "Includes/SimpleLight.hlsl"
 
-struct VertexOutput
+struct VertexOutput 
 {
-	float4 posClip : SV_POSITION;
+    float4 posClip : SV_POSITION;
 };
+
 
 cbuffer cbObject : register(b0)
 {
-	float4x4 gWorld;
+    float4x4 gWorld;
 }
+
 
 cbuffer cbPass : register(b1)
 {
@@ -28,22 +30,22 @@ cbuffer cbPass : register(b1)
 	float gTotalTime;
 	float gDeltaTime;
 	float4 gAmbientLight;
-
+	
 #ifdef MaxLights
 	Light gLights[MaxLights];
 #endif
 }
 
+
 VertexOutput VS(VertexInput vin)
 {
-	VertexOutput vout;
-	float4 posw = mul(gWorld, float4(vin.pos, 1.0));
-	vout.posClip = mul(gProjView, posw);
-	return vout;
+    VertexOutput vout;
+    float4 posw = mul(gWorld, float4(vin.pos, 1.0));
+    vout.posClip = mul(gProjView, posw);
+    return vout;
 }
 
-float4 PS(VertexOutput pin) : SV_Target
+void PS(VertexOutput pin)
 {
-	return float4(1.0f, 1.0f, 1.0f, 1.0f);
-}
 
+}

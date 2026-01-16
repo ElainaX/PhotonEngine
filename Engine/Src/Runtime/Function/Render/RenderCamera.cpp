@@ -77,6 +77,11 @@ namespace photon
 		return XMMatrixPerspectiveFovLH(fov, aspectRatio, znear, zfar);
 	}
 
+	DirectX::BoundingFrustum RenderCamera::GetFrustum()
+	{
+		return BoundingFrustum(GetProjMatrix());
+	}
+
 	void RenderCamera::UpdateCameraFromFront(Vector3 newFront)
 	{
 		front = newFront.normalisedCopy();

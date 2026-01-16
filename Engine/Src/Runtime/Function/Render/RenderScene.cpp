@@ -125,7 +125,7 @@ namespace photon
 			auto frameResourceEditor = GetCommonRItemFrameResourceEditor(m_RenderItems[i]->GameObjectId);
 			if(frameResourceEditor->bDirty)
 			{
-				m_RenderItems[i]->frameResourceInfo.objectConstants = frameResourceEditor->ToObjectConstants();
+				m_RenderItems[i]->objectConstants = frameResourceEditor->ToObjectConstants();
 				m_RenderItems[i]->SetDirty();
 				frameResourceEditor->bDirty = false;
 			}
@@ -144,7 +144,7 @@ namespace photon
 				{
 					for (auto& ri : ritems)
 					{
-						ri->frameResourceInfo.objectConstants = frameEditor->ToObjectConstants();
+						ri->objectConstants = frameEditor->ToObjectConstants();
 						ri->SetDirty();
 						frameEditor->bDirty = false;
 					}
@@ -179,8 +179,8 @@ namespace photon
 	std::shared_ptr<photon::CommonRenderItem> RenderScene::CreateCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor)
 	{
 		auto commonRenderItem = std::make_shared<CommonRenderItem>();
-		commonRenderItem->frameResourceInfo.objConstantIdx = StaticModelObjectConstants::s_CurrObjectIndex++;
-		commonRenderItem->frameResourceInfo.objectConstants = frameResourceEditor.ToObjectConstants();
+		commonRenderItem->objConstantIdx = StaticModelObjectConstants::s_CurrObjectIndex++;
+		commonRenderItem->objectConstants = frameResourceEditor.ToObjectConstants();
 		commonRenderItem->material = mat;
 		commonRenderItem->meshCollection = m_MeshCollection.get();
 		commonRenderItem->primitiveType = mesh->topology;

@@ -2,6 +2,7 @@
 #include "RenderPipeline.h"
 #include "RenderResourceData.h"
 #include "RenderPass/MainCameraPass.h"
+#include "RenderPass/PreprocessPass.h"
 #include "Function/UI/WindowUI.h"
 
 namespace photon 
@@ -42,6 +43,8 @@ namespace photon
 		//std::shared_ptr<RenderPass> m_DirectionalLightShadowPass;
 		//std::shared_ptr<RenderPass> m_PointLightShadowPass;
 		std::shared_ptr<MainCameraPass> m_MainCameraRenderPass;
+		std::shared_ptr<PreprocessPass> m_PreprocessRenderPass;
+
 		//std::shared_ptr<RenderPass> m_ColorGradingPass;
 
 		std::shared_ptr<Texture2D> m_RenderTarget;

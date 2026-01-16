@@ -28,6 +28,7 @@ namespace photon
 
 		DirectX::XMMATRIX GetViewMatrix();
 		DirectX::XMMATRIX GetProjMatrix();
+		DirectX::BoundingFrustum GetFrustum();
 
 
 
@@ -41,7 +42,7 @@ namespace photon
 
 
 		float znear = 0.1f;
-		float zfar = 1000.0f;
+		float zfar = 100.0f;
 
 
 		// 大部分时间只需要用yaw和pitch
@@ -62,8 +63,6 @@ namespace photon
 	private:
 
 		void UpdateCameraFromFront(Vector3 newFront);
-		
-		DirectX::BoundingFrustum m_CameraFrustum;
 
 		static constexpr float s_MaxPitchAngle = DirectX::XMConvertToRadians(89.0f);
 		static constexpr float s_MinPitchAngle = -DirectX::XMConvertToRadians(89.0f);

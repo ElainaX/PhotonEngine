@@ -92,7 +92,7 @@ namespace photon
 		for(int i = 0; i < commonRenderItems.size(); ++i)
 		{
 			auto ritem = commonRenderItems[i];
-			auto objectView = currFrameResource->GetObjectConstantBufferView(ritem->frameResourceInfo.objConstantIdx);
+			auto objectView = currFrameResource->GetObjectConstantBufferView(ritem->objConstantIdx);
 			auto matView = currFrameResource->GetMatDataConstantBufferView(ritem->material->matCBufferIdx);
 			m_Rhi->CmdSetGraphicsRootDescriptorTable(objectConstantTableIndex, objectView->gpuHandleInHeap);
 			m_Rhi->CmdSetGraphicsRootDescriptorTable(matDataConstantTableIndex, matView->gpuHandleInHeap);

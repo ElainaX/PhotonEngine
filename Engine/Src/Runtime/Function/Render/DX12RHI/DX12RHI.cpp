@@ -299,7 +299,7 @@ namespace photon
 			optClearValue.Color[1] = desc.clearValue.y;
 			optClearValue.Color[2] = desc.clearValue.z;
 			optClearValue.Color[3] = desc.clearValue.w;
-			optClearValue.Format = desc.format;
+			optClearValue.Format = desc.clearValueFormat == DXGI_FORMAT_R32_TYPELESS ? desc.format : desc.clearValueFormat;
 			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
 				state, &optClearValue, IID_PPV_ARGS(&resource)));
 		}

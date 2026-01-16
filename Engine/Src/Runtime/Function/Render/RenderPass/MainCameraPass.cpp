@@ -14,10 +14,10 @@ namespace photon
 
 		m_PassConstantsIdx = StaticModelPassConstants::s_CurrPassIndex++;
 
+
+		// SkyBox For MainCamera
 		auto skyboxShader = g_RuntimeGlobalContext.renderSystem->GetShaderFactory()->Create(L"Skybox");
-
 		auto geometryGen = g_RuntimeGlobalContext.renderSystem->GetGeometryGenerator();
-
 
 		auto boxes = geometryGen->CreateBox(0.3f, 0.3f, 0.3f, 0);
 		std::vector<VertexSimple> boxVert(boxes.Vertices.size());
@@ -32,7 +32,6 @@ namespace photon
 		lightDesc.vertexRawData = RenderUtil::CreateD3DBlob(boxVert.data(), sizeof(VertexSimple) * boxVert.size());
 		lightDesc.indexRawData = RenderUtil::CreateD3DBlob(boxes.Indices32.data(), sizeof(UINT32) * boxes.Indices32.size());
 		m_LightMesh = g_RuntimeGlobalContext.renderSystem->GetResourceManager()->CreateMesh(lightDesc);
-
 
 		auto skybox = geometryGen->CreateBox(1.0f, 1.0f, 1.0f, 0);
 		std::vector<VertexSimple> skyboxVert(skybox.Vertices.size());
@@ -113,19 +112,20 @@ namespace photon
 		m_PassConstants.totalTime = totalTime;
 		m_PassConstants.deltaTime = deltaTime;
 		m_PassConstants.ambientLight = { 0.001, 0.001, 0.001, 1.0 };
-		int index = 0;
 
+
+		int index = 0;
 		std::vector<CommonRenderItem*> lightRenderItems;
 
 		StaticModelFrameResource* frameResource = (StaticModelFrameResource*)m_Rhi->GetCurrFrameResource(FrameResourceType::StaticModelFrameResource);
 		
-
+		// 这里是为了渲染Debug用的灯光模型
 		for (int i = 0; i < renderResource->directionalLights.size(); ++i)
 		{
 			renderResource->directionalLights[i]->direction.normalise();
 			m_PassConstants.lights[index] = *renderResource->directionalLights[i];
 			lightRenderItems.push_back(CreateLightRenderItem(renderResource->directionalLights[i]));
-			frameResource->UpdateObjectConstantBuffer(lightRenderItems.back()->frameResourceInfo.objConstantIdx, &lightRenderItems.back()->frameResourceInfo.objectConstants);
+			frameResource->UpdateObjectConstantBuffer(lightRenderItems.back()->objConstantIdx, &lightRenderItems.back()->objectConstants);
 			index++;
 		}
 		for (int i = 0; i < renderResource->pointLights.size(); ++i)
@@ -133,7 +133,7 @@ namespace photon
 			renderResource->directionalLights[i]->direction.normalise();
 			m_PassConstants.lights[index] = *renderResource->pointLights[i];
 			lightRenderItems.push_back(CreateLightRenderItem(renderResource->pointLights[i]));
-			frameResource->UpdateObjectConstantBuffer(lightRenderItems.back()->frameResourceInfo.objConstantIdx, &lightRenderItems.back()->frameResourceInfo.objectConstants);
+			frameResource->UpdateObjectConstantBuffer(lightRenderItems.back()->objConstantIdx, &lightRenderItems.back()->objectConstants);
 			index++;
 		}
 		for (int i = 0; i < renderResource->spotLights.size(); ++i)
@@ -141,11 +141,11 @@ namespace photon
 			renderResource->directionalLights[i]->direction.normalise();
 			m_PassConstants.lights[index] = *renderResource->spotLights[i];
 			lightRenderItems.push_back(CreateLightRenderItem(renderResource->spotLights[i]));
-			frameResource->UpdateObjectConstantBuffer(lightRenderItems.back()->frameResourceInfo.objConstantIdx, &lightRenderItems.back()->frameResourceInfo.objectConstants);
+			frameResource->UpdateObjectConstantBuffer(lightRenderItems.back()->objConstantIdx, &lightRenderItems.back()->objectConstants);
 			index++;
 		}
-		// Update FramePassConstants
 
+		// Update FramePassConstants
 		frameResource->UpdatePassConstantBuffer(m_PassConstantsIdx, &m_PassConstants);
 
 
@@ -227,7 +227,7 @@ namespace photon
 			ritem->meshCollection = &m_MeshCollection;
 			ritem->meshGuid = m_LightMesh->guid;
 			ritem->shader = m_DebugDrawLightShader;
-			ritem->frameResourceInfo.objConstantIdx = StaticModelObjectConstants::s_CurrObjectIndex++;
+			ritem->objConstantIdx = StaticModelObjectConstants::s_CurrObjectIndex++;
 			m_LightRenderItems[light] = ritem;
 		}
 		else 
@@ -236,7 +236,7 @@ namespace photon
 		}
 
 		XMMATRIX worldMat = XMMatrixTranslation(light->position.x, light->position.y, light->position.z);
-		XMStoreFloat4x4(&ritem->frameResourceInfo.objectConstants.world, worldMat);
+		XMStoreFloat4x4(&ritem->objectConstants.world, worldMat);
 
 		return ritem.get();
 	}

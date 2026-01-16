@@ -1,5 +1,6 @@
 ﻿#include "ForwardRenderPipeline.h"
 #include "RenderPass/MainCameraPass.h"
+#include "RenderPass/PreprocessPass.h"
 #include "RenderResourceData.h"
 #include "DX12RHI/DX12RHI.h"
 
@@ -11,6 +12,9 @@ namespace photon
 		ForwardPipelineCreateInfo* info = dynamic_cast<ForwardPipelineCreateInfo*>(createInfo);
 		m_Rhi = info->rhi;
 		m_WindowSystem = info->windowSystem;
+
+		m_PreprocessRenderPass = std::make_shared<PreprocessPass>();
+		m_PreprocessRenderPass->Initialize(m_Rhi);
 
 		m_MainCameraRenderPass = std::make_shared<MainCameraPass>();
 		m_MainCameraRenderPass->Initialize(m_Rhi, m_WindowSystem);
@@ -24,6 +28,14 @@ namespace photon
 		ForwardPipelineRenderResourceData* resourceData = dynamic_cast<ForwardPipelineRenderResourceData*>(data);
 		// Update RenderItem Constants
 
+		// PreprocessPass
+		PreprocessPassRenderResourceData preprocessPassData;
+		preprocessPassData.spliters = { 0.003f, 0.01f };
+		preprocessPassData.mainCamera = resourceData->mainCamera;
+		preprocessPassData.mainLight = resourceData->mainLight;
+		preprocessPassData.allRenderItems = resourceData->allRenderItems;
+		m_PreprocessRenderPass->PrepareContext(&preprocessPassData);
+
 		// MainCameraPass 
 		MainPassRenderResourceData mainCameraPassData;
 		mainCameraPassData.allRenderItems = resourceData->allRenderItems;
@@ -36,6 +48,7 @@ namespace photon
 		mainCameraPassData.directionalLights = std::move(resourceData->directionalLights);
 		mainCameraPassData.pointLights = std::move(resourceData->pointLights);
 		mainCameraPassData.spotLights = std::move(resourceData->spotLights);
+		mainCameraPassData.cascadedShadowManager = preprocessPassData.cascadedShadowManager;
 		m_MainCameraRenderPass->PrepareContext(&mainCameraPassData);
 
 
@@ -44,6 +57,7 @@ namespace photon
 
 	void ForwardRenderPipeline::Render()
 	{
+		m_PreprocessRenderPass->Draw();
 		m_MainCameraRenderPass->Draw();
 	}
 

@@ -40,10 +40,10 @@ namespace photon
 		}
 
 		void SetShaderMust(Shader* shader, const std::vector<MacroInfo>& macros, ID3D12RootSignature* rootSignature);
+		void SetRenderTargetMust(const std::vector<DXGI_FORMAT>& renderTargets);
 		void SetBlendState(const BlendState& state);
 		void SetDepthStencilState(const DepthStencilState& state, DXGI_FORMAT format = DXGI_FORMAT_D24_UNORM_S8_UINT);
 		void SetPrimitiveType(D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType);
-		void SetRenderTargetMust(const std::vector<DXGI_FORMAT>& renderTargets);
 		void SetMultiSampleState(DXGI_SAMPLE_DESC sampleDesc, bool enableMultiSample = true);
 		void SetPipelineStateFlag(D3D12_PIPELINE_STATE_FLAGS flag);
 

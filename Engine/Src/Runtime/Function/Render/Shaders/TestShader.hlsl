@@ -41,6 +41,10 @@ cbuffer cbPass : register(b1)
 #ifdef MaxLights
 	Light gLights[MaxLights];
 #endif
+
+#ifdef MaxCascadedNum
+	float4x4 gLightProjViewMatrices[MaxCascadedNum];
+#endif
 }
 
 cbuffer cbMaterial : register(b2)
@@ -59,6 +63,10 @@ Texture2D gDiffuseMap : register(t0);
 Texture2D gNormalMap : register(t1);
 Texture2D gRoughnessMap : register(t2);
 
+Texture2DArray<float2> gDepthStencilTextures : register(t3);
+
+
+float GetShadowFactor();
 
 
 VertexOutput VS(VertexInput vin)
@@ -157,9 +165,20 @@ float4 PS(VertexOutput pin) : SV_Target
 		index++;
 	}
 #endif
+
+
+#ifdef Shadow
+	float shadowFactor = GetShadowFactor();
+	result *= shadowFactor;
+#endif
 	
 	result = pow(result, 1.0/2.2);
 	
 	//return float4(1.0, 0.0, 0.0, 1.0);
 	return float4(result, 1.0f);
+}
+
+float GetShadowFactor()
+{
+
 }

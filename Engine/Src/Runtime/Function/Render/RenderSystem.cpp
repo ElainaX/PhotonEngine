@@ -188,7 +188,7 @@ namespace photon
 			if(ritem->numFrameDirty > 0)
 			{
 				auto frameResource = (CommonRenderItem::TFrameResource*)m_Rhi->GetCurrFrameResource(CommonRenderItem::s_FrameResourceType);
-				frameResource->UpdateObjectConstantBuffer(ritem->frameResourceInfo.objConstantIdx, &ritem->frameResourceInfo.objectConstants);
+				frameResource->UpdateObjectConstantBuffer(ritem->objConstantIdx, &ritem->objectConstants);
 				frameResource->UpdateMatDataConstantBuffer(ritem->material->matCBufferIdx, &ritem->material->matCBufferData);
 				ritem->numFrameDirty--;
 			}
@@ -219,7 +219,10 @@ namespace photon
 		forwardPipelineData.gameTimer = &gt;
 		forwardPipelineData.mainCamera = currRenderScene->GetMainCamera();
 		forwardPipelineData.cubemap = currRenderScene->cubemap.get();
-		
+		if (!dirLights.empty())
+			forwardPipelineData.mainLight = &dirLights[0];
+		else if (!spotLights.empty())
+			forwardPipelineData.mainLight = &spotLights[0];
 		
 		m_CurrRenderPipeline->PrepareContext(&forwardPipelineData);
 

@@ -4,25 +4,42 @@
 #include "Light.h"
 #include "Core/Math/Vector3.h"
 
-#include <array>
+#include <vector>
 #include <tuple>
+#include <array>
 
 namespace photon 
 {
+	/**
+	 * 特殊Camera，Track一个灯光位置和一个Render Camera
+	 */ 
 	class CascadedShadowCamera
 	{
-		using QuadCorners = std::array<Vector3, 4>;
 	public:
-		CascadedShadowCamera(int cascadedNum, LightBase* lightTracked = nullptr);
+		CascadedShadowCamera(RenderCamera* renderCamera = nullptr, LightBase* light = nullptr);
 
 		void TrackLight(LightBase* light);
-		void SetCascadedNum(int num);
-		std::tuple<QuadCorners, QuadCorners> GetLightCameraFrustumCorners();
+		void TrackCamera(RenderCamera* renderCamera);
+		std::vector<std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX>> GenerateShadowCameraMatrices(const std::vector<float>& splitRatio);
+		
+		LightBase* GetLight();
+		RenderCamera* GetCamera();
+
+		Vector3 Lerp(const Vector3& pa, const Vector3& pb, float ratio);
+
+		float frustumScaleFactor = 1.0f;
 
 	private:
+		std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX> GenerateSingleShadowCameraMatrix(const std::array<Vector3, 4>& nearCorners, const std::array<Vector3, 4>& farCorners);
+
 
 	private:
-		std::vector<QuadCorners> m_FrustumCorners;
 		LightBase* m_TrackedLight = nullptr;
+		RenderCamera* m_TrackedCamera = nullptr;
+
+		std::vector<float> m_SplitRatio;
+
+		// 送去渲染的Camera属性
+		std::vector<std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX>> m_ShadowCameraMatrices;
 	};
 }

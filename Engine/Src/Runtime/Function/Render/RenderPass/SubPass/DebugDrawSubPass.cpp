@@ -61,7 +61,7 @@ namespace photon
 
 		for(auto& ritem : lightRenderItems)
 		{
-			auto objectView = currFrameResource->GetObjectConstantBufferView(ritem->frameResourceInfo.objConstantIdx);
+			auto objectView = currFrameResource->GetObjectConstantBufferView(ritem->objConstantIdx);
 
 			m_Rhi->CmdSetGraphicsRootDescriptorTable(objectConstantsSlot, objectView->gpuHandleInHeap);
 			m_Rhi->CmdSetGraphicsRootDescriptorTable(passConstantsSlot, passView->gpuHandleInHeap);

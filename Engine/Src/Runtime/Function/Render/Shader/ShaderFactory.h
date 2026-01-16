@@ -3,6 +3,7 @@
 #include "TestShader.h"
 #include "DebugDrawLight.h"
 #include "SkyboxShader.h"
+#include "CascadedShadowShader.h"
 #include "Platform/FileSystem/FileSystem.h"
 
 #include <string>
@@ -15,7 +16,7 @@ namespace photon
 	{
 	public:
 
-
+		// ShaderName 是 hlsl文件名
 		Shader* Create(const std::wstring& shaderName)
 		{
 			auto find_it = m_LoadedShaders.find(shaderName);
@@ -38,6 +39,11 @@ namespace photon
 			else if(shaderName == L"Skybox")
 			{
 				m_LoadedShaders[shaderName] = std::make_shared<SkyboxShader>(shaderfilepath);
+				return m_LoadedShaders[shaderName].get();
+			}
+			else if(shaderName == L"DrawShadowMap")
+			{
+				m_LoadedShaders[shaderName] = std::make_shared<CascadedShadowShader>(shaderfilepath);
 				return m_LoadedShaders[shaderName].get();
 			}
 			return nullptr;

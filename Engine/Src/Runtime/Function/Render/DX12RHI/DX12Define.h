@@ -9,5 +9,5 @@ namespace photon
 	constexpr int g_CbvSrvUavHeapSize = 20000;
 	constexpr int g_SamplerHeapSize = 32;
 	constexpr int g_RenderTargetHeapSize = 64;
-	constexpr int g_DepthStencilHeapSize = 64;
+	constexpr int g_DepthStencilHeapSize = 128;
 }

@@ -23,6 +23,7 @@ namespace photon
 
 		ResourceHeapProperties heapProp = ResourceHeapProperties::Default;
 		Vector4 clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
+		DXGI_FORMAT clearValueFormat = DXGI_FORMAT_R32_TYPELESS;
 
 		std::vector<std::shared_ptr<Texture2D>> textures;
 	};

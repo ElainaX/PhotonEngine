@@ -5,6 +5,7 @@
 #include "Function/Render/RHI.h"
 #include "Core/Math/Vector4.h"
 #include "Function/Render/Light.h"
+#include "Define.h"
 
 #include <memory>
 #include <unordered_map>
@@ -12,6 +13,7 @@
 
 namespace photon 
 {
+
 	struct StaticModelFrameResourceDesc : public FrameResourceDesc
 	{
 		UINT allObjectNum = 0;
@@ -61,8 +63,17 @@ namespace photon
 		Vector4 ambientLight;
 
 		LightData lights[MaxLights];
+		DirectX::XMFLOAT4X4 lightViewProjs[MaxCascadedNum];
 	};
 
+
+	/**
+	 * 这个FrameResource主要管理静态渲染对象所需要的帧资源
+	 * 具体包含：1个ObjectConstantBuffer
+	 * 1个PassConstantBuffer
+	 * 1个MaterialConstantBuffer
+	 * 可任意选用其中若干种
+	 */
 	class StaticModelFrameResource : public FrameResource
 	{
 	public:
@@ -147,14 +158,6 @@ namespace photon
 		std::unordered_map<UINT64, ConstantBufferView*> allObjectConstantsViews;
 		std::unordered_map<UINT, ConstantBufferView*> allPassConstantsViews;
 		std::unordered_map<UINT64, ConstantBufferView*> allMaterialDatasConstantsViews;
-	};
-
-	struct StaticModelFrameResourceRenderItemInfo
-	{
-		// FrameResourceData
-		INT64 objConstantIdx = -1;
-
-		StaticModelObjectConstants objectConstants;
 	};
 
 }

@@ -87,17 +87,16 @@ namespace photon
 		D3D12_PRIMITIVE_TOPOLOGY primitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		UINT64 meshGuid = 0;
 
+		// MaterialData
 		Material* material = nullptr;
 
 		Shader* shader = nullptr;
 
 		RenderLayer renderLayer = RenderLayer::Opaque;
 
-		StaticModelFrameResourceRenderItemInfo frameResourceInfo;
-
-		// MaterialData
-
-
+		// FrameResourceData
+		INT64 objConstantIdx = -1;
+		StaticModelObjectConstants objectConstants;
 
 		std::string GetGameObjectType() override;
 		void SetDirty(bool bDirty = true)
