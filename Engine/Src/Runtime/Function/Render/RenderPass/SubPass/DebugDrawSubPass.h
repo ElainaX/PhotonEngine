@@ -18,14 +18,16 @@ namespace photon
 	public:
 		void Initialize(RHI* _rhi);
 		void PrepareForData(RenderResourceData* data);
-		void Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport);
+		void Draw(EG_FrameContext* frame, PassBlackboard* bb);
 
 
 		std::vector<CommonRenderItem*> lightRenderItems;
+		std::vector<CommonRenderItem*> wireframeRenderItems;
 		std::map<UINT64, ShaderResourceView*> texGuidToShaderResourceViews;
 		RenderTargetView* renderTargetView;
 		DepthStencilView* depthStencilView;
 		std::shared_ptr<DXGraphicsPipeline> pipeline;
+		std::shared_ptr<DXGraphicsPipeline> wireframePipeline;
 
 		ConstantBufferParameter objectConstantInTable = ConstantBufferParameter(0);
 		ConstantBufferParameter passConstantInTable = ConstantBufferParameter(1);

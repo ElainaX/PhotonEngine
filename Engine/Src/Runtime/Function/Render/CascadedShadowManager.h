@@ -20,6 +20,7 @@ namespace photon
 		Vector2i GetResolution();
 
 		std::vector<std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX>> GetViewAndProjMatrices(const std::vector<float>& spliters);
+		std::vector<std::array<Vector3, 8>> GenerateCameraCSMCorners(const std::vector<float>& splitRatio);
 		std::vector<DepthStencilView*> GetAllDepthStencilViews();
 		DepthStencilView* GetDepthStencilView(int index);
 		ShaderResourceView* GetShaderResourceView();

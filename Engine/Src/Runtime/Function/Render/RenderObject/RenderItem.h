@@ -75,9 +75,19 @@ namespace photon
 		{
 			GameObjectName = GetGameObjectType();
 		}
+		virtual ~CommonRenderItem()
+		{
+			if (objConstantIdx != -1)
+			{
+				g_objIdxHolder.RecordObjIndex(objConstantIdx);
+			}
+		}
 
 		static FrameResourceType s_FrameResourceType;
 		using TFrameResource = StaticModelFrameResource;
+
+
+		bool wireframeOn = false;
 
 		UINT numFrameDirty = g_FrameContextCount;
 
@@ -97,6 +107,8 @@ namespace photon
 		// FrameResourceData
 		INT64 objConstantIdx = -1;
 		StaticModelObjectConstants objectConstants;
+
+		bool bCastShadow = true;
 
 		std::string GetGameObjectType() override;
 		void SetDirty(bool bDirty = true)

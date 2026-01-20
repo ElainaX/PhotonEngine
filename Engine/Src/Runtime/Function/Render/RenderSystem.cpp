@@ -58,9 +58,9 @@ namespace photon
 
 		auto camera = std::make_shared<RenderCamera>(swapchainWidthAndHeight.x / (float)swapchainWidthAndHeight.y);
 		m_RenderScene.push_back(std::make_shared<RenderScene>(camera));
-		m_RenderScene[0]->AddDirectionalLight(Vector3{ 1.0f, 1.0f, 1.0f }, Vector3{ 1.0f, -1.0f, 0.4f });
-		m_RenderScene[0]->AddPointLight(Vector3{ 1.0f, 1.0f, 1.0f }, Vector3{ 1.0f, 2.0f, 3.0f }, 3.0f, 8.0f);
-		m_RenderScene[0]->AddSpotLight(Vector3{ 1.0f, 1.0f, 0.8f }, Vector3{ 0.0f, 3.0f, 0.0f }, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, 8.0f, 32.0f);
+		m_RenderScene[0]->AddDirectionalLight(Vector3{ 1.0f, 1.0f, 1.0f }, Vector3{ 20.0f, -50.0f, 30.0f });
+		//m_RenderScene[0]->AddPointLight(Vector3{ 1.0f, 1.0f, 1.0f }, Vector3{ 1.0f, 2.0f, 3.0f }, 3.0f, 8.0f);
+		//m_RenderScene[0]->AddSpotLight(Vector3{ 1.0f, 1.0f, 0.8f }, Vector3{ 0.0f, 3.0f, 0.0f }, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, 8.0f, 32.0f);
 		//VertexSimple vertices[] =
 		//{
 		//	VertexSimple{Vector3{-0.5f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 1.0f}},
@@ -140,6 +140,8 @@ namespace photon
 		m_RenderScene[0]->AddModel(houseModel, testShader, RenderLayer::Opaque, modelEditor);
 
 		auto floorModel = m_ResourceManager->LoadModel(g_AssetModelFolder / L"Floor/floor.obj");
+		modelEditor.SetScale({ 1.4f, 1.4f, 1.4f });
+		modelEditor.SetTranslation({ 0.0f, -1.9f, 0.0f });
 		m_RenderScene[0]->AddModel(floorModel, testShader, RenderLayer::Opaque, modelEditor);
 
 
@@ -148,17 +150,88 @@ namespace photon
 		allCubemaps.push_back(cubemap);
 
 		StaticModelFrameResourceDesc resourceDesc;
-		resourceDesc.allObjectNum = StaticModelObjectConstants::s_CurrObjectIndex + 100;
+		/*resourceDesc.allObjectNum = StaticModelObjectConstants::s_CurrObjectIndex + 100;*/
+		resourceDesc.allObjectNum = g_objIdxHolder.maxObjIndex;
 		resourceDesc.allPassNum = StaticModelPassConstants::s_CurrPassIndex + 100;
 		resourceDesc.allMatDatasNum = StaticModelMaterialDataConstants::s_CurrMatDataIndex;
 		m_Rhi->CreateFrameResource(FrameResourceType::StaticModelFrameResource, &resourceDesc);
 
+
+		m_InnerMeshCollection = std::make_shared<RenderMeshCollection>();
 	}
 
 	void RenderSystem::InitializeEditorUI(WindowUI* windowUI)
 	{
 		m_Rhi->InitializeImGui();
 		m_CurrRenderPipeline->SetCurrEditorUI(windowUI);
+	}
+
+	void RenderSystem::BuildEGFrameContext(EG_FrameContext& frameCtx, GameTimer* timer)
+	{
+		using namespace DirectX;
+		RenderScene* currRenderScene = m_RenderScene[0].get();
+		auto mainCamera = currRenderScene->GetMainCamera();
+		auto viewMat = mainCamera->GetViewMatrix();
+		auto projMat = mainCamera->GetProjMatrix();
+		auto viewProj = XMMatrixMultiply(viewMat, projMat);
+		auto viewDet = XMMatrixDeterminant(viewMat);
+		auto projDet = XMMatrixDeterminant(projMat);
+		auto viewProjDet = XMMatrixDeterminant(viewProj);
+		auto invViewMat = XMMatrixInverse(&viewDet, viewMat);
+		auto invProjMat = XMMatrixInverse(&projDet, projMat);
+		auto invViewProjMat = XMMatrixInverse(&viewProjDet, viewProj);
+
+		frameCtx.uniforms.timer = timer;
+		frameCtx.uniforms.mainCamera = currRenderScene->GetMainCamera();
+		frameCtx.uniforms.prevViewProj = frameCtx.uniforms.viewProj;
+		XMStoreFloat4x4(&frameCtx.uniforms.view, viewMat);
+		XMStoreFloat4x4(&frameCtx.uniforms.proj, projMat);
+		XMStoreFloat4x4(&frameCtx.uniforms.viewProj, viewProj);
+		XMStoreFloat4x4(&frameCtx.uniforms.invView, invViewMat);
+		XMStoreFloat4x4(&frameCtx.uniforms.invProj, invProjMat);
+		XMStoreFloat4x4(&frameCtx.uniforms.invViewProj, invViewProjMat);
+
+		frameCtx.uniforms.camPosWS = mainCamera->pos;
+		frameCtx.uniforms.znear = mainCamera->znear;
+		frameCtx.uniforms.zfar = mainCamera->zfar;
+		frameCtx.uniforms.viewportSize = Vector2i(m_RenderTarget->dxDesc.Width, m_RenderTarget->dxDesc.Height);
+		frameCtx.uniforms.invViewportSize = Vector2(1.0f / m_RenderTarget->dxDesc.Width, 1.0f / m_RenderTarget->dxDesc.Height);
+
+		frameCtx.uniforms.dirLights = currRenderScene->directionalLights;
+		frameCtx.uniforms.pointLights = currRenderScene->pointLights;
+		frameCtx.uniforms.spotLights = currRenderScene->spotLights;
+		
+		if (!frameCtx.uniforms.dirLights.empty())
+			frameCtx.uniforms.mainDirLight = &frameCtx.uniforms.dirLights[0];
+		if (!frameCtx.uniforms.pointLights.empty())
+			frameCtx.uniforms.mainPointLight= &frameCtx.uniforms.pointLights[0];
+
+		frameCtx.uniforms.staticFrameResource = (StaticModelFrameResource*)m_Rhi->GetCurrFrameResource(FrameResourceType::StaticModelFrameResource);
+
+
+		m_InnerMeshCollection->Clear();
+		frameCtx.services.shaderFactory = m_ShaderFactory.get();
+		frameCtx.services.geoGen = m_GeometryGenerator.get();
+		frameCtx.services.resMgr = m_ResourceManager.get();
+		frameCtx.services.rhi = m_Rhi.get();
+		frameCtx.services.innerMeshCollection = m_InnerMeshCollection.get();
+
+		frameCtx.renderlists.allRitems = currRenderScene->GetCommonRenderItems(m_Rhi.get(), true);
+		frameCtx.renderlists.opaque = frameCtx.renderlists.allRitems;
+		frameCtx.renderlists.innerRitems[frameCtx.uniforms.staticFrameResource].clear();
+		frameCtx.renderlists.shadowCasters.clear();
+		for (auto& ritem : frameCtx.renderlists.opaque)
+		{
+			if (ritem->bCastShadow)
+			{
+				frameCtx.renderlists.shadowCasters.push_back(ritem);
+			}
+		}
+
+		frameCtx.backBuffer = m_RenderTarget;
+		frameCtx.depthStencilBuffer = m_DepthStencil;
+		frameCtx.skybox = currRenderScene->cubemap;
+
 	}
 
 	void RenderSystem::Tick(GameTimer& gt)
@@ -176,15 +249,15 @@ namespace photon
 
 		// Bind Global Info
 		m_Rhi->CmdSetDescriptorHeaps();
-		RenderScene* currRenderScene = m_RenderScene[0].get();
-		ForwardPipelineRenderResourceData forwardPipelineData;
-
-		auto ritems = currRenderScene->GetCommonRenderItems(m_Rhi.get(), true);
-		forwardPipelineData.allRenderItems.resize(ritems.size());
-		for(int i = 0; i< ritems.size(); ++i)
+		
+		EG_FrameContext forwardPipelineContext;
+		BuildEGFrameContext(forwardPipelineContext, &gt);
+		//auto ritems = currRenderScene->GetCommonRenderItems(m_Rhi.get(), true);
+		//forwardPipelineData.allRenderItems.resize(ritems.size());
+		for(int i = 0; i< forwardPipelineContext.renderlists.allRitems.size(); ++i)
 		{
 			//UpdateFrameResource()
-			auto ritem = dynamic_cast<CommonRenderItem*>(ritems[i]);
+			auto ritem = dynamic_cast<CommonRenderItem*>(forwardPipelineContext.renderlists.allRitems[i]);
 			if(ritem->numFrameDirty > 0)
 			{
 				auto frameResource = (CommonRenderItem::TFrameResource*)m_Rhi->GetCurrFrameResource(CommonRenderItem::s_FrameResourceType);
@@ -192,44 +265,42 @@ namespace photon
 				frameResource->UpdateMatDataConstantBuffer(ritem->material->matCBufferIdx, &ritem->material->matCBufferData);
 				ritem->numFrameDirty--;
 			}
-			forwardPipelineData.allRenderItems[i] = ritem;
 		}
 
-		auto& dirLights = m_RenderScene[0]->directionalLights;
-		auto& pointLights = m_RenderScene[0]->pointLights;
-		auto& spotLights = m_RenderScene[0]->spotLights;
-		forwardPipelineData.directionalLights.resize(dirLights.size());
-		forwardPipelineData.pointLights.resize(pointLights.size());
-		forwardPipelineData.spotLights.resize(spotLights.size());
-		for(int i = 0; i < dirLights.size(); ++i)
-		{
-			forwardPipelineData.directionalLights[i] = &dirLights[i].data;
-		}
-		for (int i = 0; i < pointLights.size(); ++i)
-		{
-			forwardPipelineData.pointLights[i] = &pointLights[i].data;
-		}
-		for (int i = 0; i < spotLights.size(); ++i)
-		{
-			forwardPipelineData.spotLights[i] = &spotLights[i].data;
-		}
+		//auto& dirLights = m_RenderScene[0]->directionalLights;
+		//auto& pointLights = m_RenderScene[0]->pointLights;
+		//auto& spotLights = m_RenderScene[0]->spotLights;
+		//forwardPipelineData.directionalLights.resize(dirLights.size());
+		//forwardPipelineData.pointLights.resize(pointLights.size());
+		//forwardPipelineData.spotLights.resize(spotLights.size());
+		//for(int i = 0; i < dirLights.size(); ++i)
+		//{
+		//	forwardPipelineData.directionalLights[i] = &dirLights[i].data;
+		//}
+		//for (int i = 0; i < pointLights.size(); ++i)
+		//{
+		//	forwardPipelineData.pointLights[i] = &pointLights[i].data;
+		//}
+		//for (int i = 0; i < spotLights.size(); ++i)
+		//{
+		//	forwardPipelineData.spotLights[i] = &spotLights[i].data;
+		//}
+		//
+		//forwardPipelineData.depthStencil = m_DepthStencil;
+		//forwardPipelineData.renderTarget = m_RenderTarget;
+		//forwardPipelineData.gameTimer = &gt;
+		//forwardPipelineData.mainCamera = currRenderScene->GetMainCamera();
+		//forwardPipelineData.cubemap = currRenderScene->cubemap.get();
+		//if (!dirLights.empty())
+		//	forwardPipelineData.mainLight = &dirLights[0];
+		//else if (!spotLights.empty())
+		//	forwardPipelineData.mainLight = &spotLights[0];
 		
-		forwardPipelineData.depthStencil = m_DepthStencil;
-		forwardPipelineData.renderTarget = m_RenderTarget;
-		forwardPipelineData.gameTimer = &gt;
-		forwardPipelineData.mainCamera = currRenderScene->GetMainCamera();
-		forwardPipelineData.cubemap = currRenderScene->cubemap.get();
-		if (!dirLights.empty())
-			forwardPipelineData.mainLight = &dirLights[0];
-		else if (!spotLights.empty())
-			forwardPipelineData.mainLight = &spotLights[0];
-		
-		m_CurrRenderPipeline->PrepareContext(&forwardPipelineData);
+		m_CurrRenderPipeline->PrepareContext(&forwardPipelineContext);
 
+		m_InnerMeshCollection->EndPush(m_Rhi.get());
 
-
-
-		m_CurrRenderPipeline->Render();
+		m_CurrRenderPipeline->Render(&forwardPipelineContext);
 	}
 
 	void RenderSystem::Stop()
@@ -277,6 +348,12 @@ namespace photon
 	{
 		m_RenderTargetSRV = m_Rhi->CreateShaderResourceView(m_RenderTarget.get(), nullptr, m_RenderTargetSRV);
 		return m_RenderTargetSRV;
+	}
+
+	ShaderResourceView* RenderSystem::GetPipelineCsmMgrSRV()
+	{
+		auto csmMgr = dynamic_cast<ForwardRenderPipeline*>(m_CurrRenderPipeline)->GetCSMMgr();
+		return csmMgr->GetShaderResourceView();
 	}
 
 	void RenderSystem::SetRenderPipelineType(RenderPipelineType renderType)

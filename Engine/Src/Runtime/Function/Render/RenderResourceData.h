@@ -8,6 +8,8 @@
 #include "Resource/Texture/Texture2D.h"
 #include "Resource/Texture/Cubemap.h"
 #include "CascadedShadowManager.h"
+#include "PassBlackboard.h"
+#include "EGFrameContext.h"
 
 
 #include <memory>
@@ -24,100 +26,115 @@ namespace photon
 	};
 
 
-	struct ForwardPipelineRenderResourceData : public RenderResourceData
+
+	//struct ForwardPipelineRenderResourceData : public RenderResourceData
+	//{
+	//	EG_FrameContext* frameContext;
+
+	//	//GameTimer* gameTimer;
+
+	//	//std::vector<LightData*> directionalLights;
+	//	//std::vector<LightData*> pointLights;
+	//	//std::vector<LightData*> spotLights;
+	//	// std::shared_ptr<Texture2D> diffuseMap;
+	//	//std::shared_ptr<Texture2D> renderTarget;
+	//	//std::shared_ptr<Texture2D> depthStencil;
+	//	//std::shared_ptr<Texture2D> resourceTex;
+	//	//std::vector<CommonRenderItem*> allRenderItems;
+	//	//RenderCamera* mainCamera;
+	//	//Cubemap* cubemap;
+
+	//	// Main Light For Cascaded Shadow
+	//	//LightBase* mainLight;
+	//};
+
+	class PassCommonData : public RenderResourceData
 	{
-		GameTimer* gameTimer;
+	public:
+		union
+		{
+			EG_FrameContext* frame = nullptr;
+			// PipelineResourceData* ....
+		};
 
-		std::vector<LightData*> directionalLights;
-		std::vector<LightData*> pointLights;
-		std::vector<LightData*> spotLights;
-		// std::shared_ptr<Texture2D> diffuseMap;
-		std::shared_ptr<Texture2D> renderTarget;
-		std::shared_ptr<Texture2D> depthStencil;
-		//std::shared_ptr<Texture2D> resourceTex;
-		std::vector<CommonRenderItem*> allRenderItems;
-		RenderCamera* mainCamera;
-		Cubemap* cubemap;
-
-		// Main Light For Cascaded Shadow
-		LightBase* mainLight;
+		PassBlackboard* bb = nullptr;
 	};
 
 
-	struct MainPassRenderResourceData : public RenderResourceData
+	struct MainPassRenderResourceData : public PassCommonData
 	{
 		// 需要填充的Data
 
-		GameTimer* gameTimer;
+		//GameTimer* gameTimer;
 
-		std::vector<LightData*> directionalLights;
-		std::vector<LightData*> pointLights;
-		std::vector<LightData*> spotLights;
+		//std::vector<LightData*> directionalLights;
+		//std::vector<LightData*> pointLights;
+		//std::vector<LightData*> spotLights;
 		//std::shared_ptr<Texture2D> diffuseMap;
-		std::shared_ptr<Texture2D> renderTarget;
-		std::shared_ptr<Texture2D> depthStencil;
-		std::vector<CommonRenderItem*> allRenderItems;
-		RenderCamera* mainCamera;
-		Cubemap* cubemap;
+		//std::shared_ptr<Texture2D> renderTarget;
+		//std::shared_ptr<Texture2D> depthStencil;
+		//std::vector<CommonRenderItem*> allRenderItems;
+		//RenderCamera* mainCamera;
+		//Cubemap* cubemap;
 
 		// 需要PreprocessPass传入的ShadowMap
-		std::shared_ptr<CascadedShadowManager> cascadedShadowManager;
+		//std::shared_ptr<CascadedShadowManager> cascadedShadowManager;
 
 
 		// 需要传递给下一个Pass的Data
 	};
 
-	struct PreprocessPassRenderResourceData : public RenderResourceData
+	struct PreprocessPassRenderResourceData : public PassCommonData
 	{
 		// 需要填充的Data
-		LightBase* mainLight;
-		RenderCamera* mainCamera;
+		//LightBase* mainLight;
+		//RenderCamera* mainCamera;
 		std::vector<float> spliters;
-		std::vector<CommonRenderItem*> allRenderItems;
-		// 需要传递给下一个Pass的Data
-		std::shared_ptr<CascadedShadowManager> cascadedShadowManager;
+		//std::vector<CommonRenderItem*> allRenderItems;
+		//// 需要传递给下一个Pass的Data
+		//std::shared_ptr<CascadedShadowManager> cascadedShadowManager;
 	};
 
-	struct DrawShadowSubPassData : public RenderResourceData
+	struct DrawShadowSubPassData : public PassCommonData
 	{
-		std::shared_ptr<CascadedShadowManager> cascadedShadowManager;
-		std::vector<CommonRenderItem*> renderItems;
+		//std::shared_ptr<CascadedShadowManager> cascadedShadowManager;
+		//std::vector<CommonRenderItem*> renderItems;
 		std::vector<int> passConstantses;
 		Shader* shadowShader;
 	};
 
-	struct TestSubPassData : public RenderResourceData
+	struct TestSubPassData : public PassCommonData
 	{
 		Shader* shader;
 		std::vector<MacroInfo> macros;
-		RenderTargetView* renderTargetView = nullptr;
-		DepthStencilView* depthStencilView = nullptr;
-		std::vector<CommonRenderItem*> renderItems;
+		//RenderTargetView* renderTargetView = nullptr;
+		//DepthStencilView* depthStencilView = nullptr;
+		//std::vector<CommonRenderItem*> renderItems;
 		UINT passConstantIdx = 0;
 	};
 
 
-	struct UISubPassData : public RenderResourceData
+	struct UISubPassData : public PassCommonData
 	{
-		RenderTargetView* renderTargetView = nullptr;
-		DepthStencilView* depthStencilView = nullptr;
+		//RenderTargetView* renderTargetView = nullptr;
+		//DepthStencilView* depthStencilView = nullptr;
 	};
 
-	struct DebugDrawLightPassData : public RenderResourceData
+	struct DebugDrawLightPassData : public PassCommonData
 	{
-		RenderTargetView* renderTargetView = nullptr;
-		DepthStencilView* depthStencilView = nullptr;
+		//RenderTargetView* renderTargetView = nullptr;
+		//DepthStencilView* depthStencilView = nullptr;
 
 		std::vector<CommonRenderItem*> lightRenderItems;
 		UINT passConstantIdx = 0;
 	};
 
-	struct DrawSkyboxSubPassData : public RenderResourceData
+	struct DrawSkyboxSubPassData : public PassCommonData
 	{
-		RenderTargetView* renderTargetView = nullptr;
-		DepthStencilView* depthStencilView = nullptr;
+		//RenderTargetView* renderTargetView = nullptr;
+		//DepthStencilView* depthStencilView = nullptr;
 		CommonRenderItem* skyboxRenderItem = nullptr;
-		Cubemap* cubemap = nullptr;
+		//Cubemap* cubemap = nullptr;
 		UINT passConstantIdx = 0;
 	};
 

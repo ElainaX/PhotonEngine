@@ -44,6 +44,7 @@ cbuffer cbPass : register(b1)
 
 #ifdef MaxCascadedNum
 	float4x4 gLightProjViewMatrices[MaxCascadedNum];
+	float4 gSpliters[MaxCascadedNum]; 
 #endif
 }
 
@@ -66,15 +67,17 @@ Texture2D gRoughnessMap : register(t2);
 Texture2DArray<float2> gDepthStencilTextures : register(t3);
 
 
-float GetShadowFactor();
-
+float CalcShadowFactor(float3 posWorld);
+float ShadowFactorFromShadowMap(Texture2DArray<float2> shadowMap, int slice, float4x4 lightViewProj, float3 posWorld);
 
 VertexOutput VS(VertexInput vin)
 {
 	VertexOutput vout;
 	vout.posWorld = mul(gWorld, float4(vin.pos, 1.0));
 	vout.posClip = mul(gProjView, vout.posWorld);
-	
+	// vout.posWorld = mul(gWorld, float4(vin.pos, 1.0));
+	// vout.posClip = mul(gLightProjViewMatrices[0], vout.posWorld);
+
 	float3x3 invWorld = transpose((float3x3) gWorld);
 	
 	vout.normalWorld = mul(invWorld, vin.normal);
@@ -168,7 +171,7 @@ float4 PS(VertexOutput pin) : SV_Target
 
 
 #ifdef Shadow
-	float shadowFactor = GetShadowFactor();
+	float shadowFactor = CalcShadowFactor(pin.posWorld.xyz);
 	result *= shadowFactor;
 #endif
 	
@@ -178,7 +181,38 @@ float4 PS(VertexOutput pin) : SV_Target
 	return float4(result, 1.0f);
 }
 
-float GetShadowFactor()
+float CalcShadowFactor(float3 posWorld)
 {
+	float factor = 1.0;
+	// 首先判断当前片元处于哪个cascaded volume
+	float3 posView = mul(gView, float4(posWorld, 1.0)).xyz;
+	//factor = ShadowFactorFromShadowMap(gDepthStencilTextures, 0, gLightProjViewMatrices[0], posWorld);
+	for(int i = 0; i < MaxCascadedNum; ++i)
+	{
+		if(posView.z <= gSpliters[i].x)
+		{
+			factor = ShadowFactorFromShadowMap(gDepthStencilTextures, i, gLightProjViewMatrices[i], posWorld);
+			break;
+		}
+	}
+	return factor;
+}
 
+
+float ShadowFactorFromShadowMap(Texture2DArray<float2> shadowMap, int slice, float4x4 lightViewProj, float3 posWorld)
+{
+	float4 posLightClip = mul(lightViewProj, float4(posWorld, 1.0));
+	float3 posLightNDC = posLightClip.xyz / posLightClip.w;
+	float2 uv = posLightNDC.xy * 0.5 + 0.5;
+	uv.y = 1.0 - uv.y;
+	
+	float depthInShadowMap = shadowMap.Sample(g_LinearClampSampler, float3(uv, slice)).r;
+	
+	//return depthInShadowMap;
+	if(posLightNDC.z > depthInShadowMap)
+		return 0.0;
+	else
+		return 1.0;
+
+	//return depthInShadowMap;
 }

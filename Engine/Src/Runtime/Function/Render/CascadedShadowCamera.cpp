@@ -1,4 +1,5 @@
 ﻿#include "CascadedShadowCamera.h"
+#include <algorithm>
 
 namespace photon 
 {
@@ -18,15 +19,15 @@ namespace photon
 		m_TrackedCamera = renderCamera;
 	}
 
-	std::vector<std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX>> CascadedShadowCamera::GenerateShadowCameraMatrices(const std::vector<float>& splitRatio)
+	std::vector<std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX>> CascadedShadowCamera::GenerateShadowCameraMatrices(const std::vector<float>& splitRatio, Vector2 shadowMapSize)
 	{
 		if (!m_TrackedCamera || !m_TrackedLight)
 			PHOTON_ASSERT(false, "No TrackCamera or TrackedLight!");
 
 		m_SplitRatio = splitRatio;
-		std::vector<std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX>> retMatrices(splitRatio.size()+1);
+		std::vector<std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX>> retMatrices(splitRatio.size());
 		
-		auto renderCameraFrustum = m_TrackedCamera->GetFrustum();
+		auto renderCameraFrustum = m_TrackedCamera->GetWorldFrustum();
 		Vector3 corners[8];
 		renderCameraFrustum.GetCorners((DirectX::XMFLOAT3*)corners);
 		std::array<Vector3, 4> lastCorners = {corners[0], corners[1], corners[2], corners[3]};
@@ -39,23 +40,54 @@ namespace photon
 				Lerp(corners[2], corners[6], ratio),
 				Lerp(corners[3], corners[7], ratio)
 			};
-			retMatrices[i] = GenerateSingleShadowCameraMatrix(lastCorners, farCorners);
+			retMatrices[i] = GenerateSingleShadowCameraMatrix(lastCorners, farCorners, shadowMapSize);
 			lastCorners = farCorners;
 		}
-		std::array<Vector3, 4> farCorners = {
-				corners[4],
-				corners[5],
-				corners[6],
-				corners[7]
-		};
-		retMatrices.back() = GenerateSingleShadowCameraMatrix(lastCorners, farCorners);
+		//std::array<Vector3, 4> farCorners = {
+		//		corners[4],
+		//		corners[5],
+		//		corners[6],
+		//		corners[7]
+		//};
+		//retMatrices.back() = GenerateSingleShadowCameraMatrix(lastCorners, farCorners);
 
 		return retMatrices;
 	}
 
+	std::vector<std::array<Vector3, 8>> CascadedShadowCamera::GenerateCameraCSMCorners(
+		const std::vector<float>& splitRatio)
+	{
+		if (!m_TrackedCamera || !m_TrackedLight)
+			PHOTON_ASSERT(false, "No TrackCamera or TrackedLight!");
+
+		m_SplitRatio = splitRatio;
+		std::vector<std::array<Vector3, 8>> retFrustumCorners(splitRatio.size());
+
+		auto renderCameraFrustum = m_TrackedCamera->GetWorldFrustum();
+		Vector3 corners[8];
+		renderCameraFrustum.GetCorners((DirectX::XMFLOAT3*)corners);
+		std::array<Vector3, 4> lastCorners = { corners[0], corners[1], corners[2], corners[3] };
+		for (int i = 0; i < m_SplitRatio.size(); ++i)
+		{
+			float ratio = m_SplitRatio[i];
+			std::array<Vector3, 4> farCorners = {
+				Lerp(corners[0], corners[4], ratio),
+				Lerp(corners[1], corners[5], ratio),
+				Lerp(corners[2], corners[6], ratio),
+				Lerp(corners[3], corners[7], ratio)
+			};
+
+			std::ranges::copy(lastCorners, retFrustumCorners[i].begin());
+			std::ranges::copy(farCorners, retFrustumCorners[i].begin() + 4);
+
+			lastCorners = farCorners;
+		}
+		return retFrustumCorners;
+	}
+
 	std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX> 
 		CascadedShadowCamera::GenerateSingleShadowCameraMatrix(const std::array<Vector3, 4>& nearCorners, 
-			const std::array<Vector3, 4>& farCorners)
+			const std::array<Vector3, 4>& farCorners, Vector2 shadowMapSz)
 	{
 		using namespace DirectX;
 
@@ -66,10 +98,12 @@ namespace photon
 		}
 		frustumCenter /= 8.0f;
 
+		Vector3 dir = m_TrackedLight->data.direction.normalisedCopy();
+		Vector3 up = (abs(dir.dotProduct(Vector3::UNIT_Y)) > 0.99f) ? Vector3::UNIT_X : Vector3::UNIT_Y;
 		XMMATRIX lightView = XMMatrixLookAtLH(
 			XMLoadFloat3((XMFLOAT3*)&m_TrackedLight->data.position),
 			XMLoadFloat3((XMFLOAT3*)&frustumCenter),
-			XMLoadFloat3((XMFLOAT3*)&Vector3::UNIT_Y));
+			XMLoadFloat3((XMFLOAT3*)&up));
 
 		std::array<Vector3, 8> cornersInViewSpace;
 		for(int i = 0; i < 4; ++i)
@@ -90,6 +124,12 @@ namespace photon
 
 		float width = maxPos.x - minPos.x;
 		float height = maxPos.y - minPos.y;
+		float texelSizeX = width / shadowMapSz.x;
+		float texelSizeY = height / shadowMapSz.y;
+
+		// 把投影中心/最小点吸附到 texel 网格
+		aabbCenter.x = floor(aabbCenter.x / texelSizeX) * texelSizeX;
+		aabbCenter.y = floor(aabbCenter.y / texelSizeY) * texelSizeY;
 		float farPlane = maxPos.z;
 		float nearPlane = minPos.z;
 		float epsilon = 0.0001f;

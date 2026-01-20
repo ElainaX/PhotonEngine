@@ -36,8 +36,14 @@ namespace photon
 		if (spliters.empty() && !m_LastRetMatrices.empty())
 			return m_LastRetMatrices;
 
-		m_LastRetMatrices = m_ShadowMapCamera.GenerateShadowCameraMatrices(spliters);
+		m_LastRetMatrices = m_ShadowMapCamera.GenerateShadowCameraMatrices(spliters, m_ShadowMapResource.shadowMapResolution);
 		return m_LastRetMatrices;
+	}
+
+	std::vector<std::array<Vector3, 8>> CascadedShadowManager::GenerateCameraCSMCorners(const std::vector<float>& splitRatio)
+	{
+		assert(!splitRatio.empty());
+		return m_ShadowMapCamera.GenerateCameraCSMCorners(splitRatio);
 	}
 
 	std::vector<photon::DepthStencilView*> CascadedShadowManager::GetAllDepthStencilViews()

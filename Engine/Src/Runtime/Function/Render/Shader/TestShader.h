@@ -101,6 +101,7 @@ namespace photon
 			m_Signature.PushAsDescriptorTable(TextureParameter(0), 1);
 			m_Signature.PushAsDescriptorTable(TextureParameter(1), 1);
 			m_Signature.PushAsDescriptorTable(TextureParameter(2), 1);
+			m_Signature.PushAsDescriptorTable(TextureParameter(3), 1);
 			//m_Signature.PushAsRootDescriptor(ConstantBufferParameter(1));
 		}
 

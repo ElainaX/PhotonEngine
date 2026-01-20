@@ -179,8 +179,9 @@ namespace photon
 			{
 				auto dirlight = dynamic_cast<DirLight*>(go);
 				ImGui::ColorEdit4("Light Color", (float*)&dirlight->data.strength);
-				ImGui::SliderFloat3("Light Direction", (float*)&dirlight->data.position, -1.0f, 1.0f);
-				dirlight->data.direction = -dirlight->data.position;
+				ImGui::SliderFloat3("Light Position", (float*)&dirlight->data.position, -5.0f, 5.0f);
+				dirlight->data.direction = -dirlight->data.position.normalisedCopy();
+				ImGui::SliderFloat3("Light Direction", (float*)&dirlight->data.direction, -1.0f, 1.0f);
 			};
 
 		m_GameObjectEditors["PointLight"] = [this](GameObject* go)
@@ -433,6 +434,12 @@ namespace photon
 			{
 				assert(0);
 			}
+		}
+
+		ImVec2 currSize = ImGui::GetContentRegionAvail();
+		{
+			ShaderResourceView* srv = m_RenderSystem->GetPipelineCsmMgrSRV();
+			ImGui::Image((ImTextureID)(srv->gpuHandleInHeap.ptr), currSize);
 		}
 
 		ImGui::End();

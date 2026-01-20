@@ -23,6 +23,8 @@ namespace photon
 
 		bool IsMeshLoaded(UINT64 guid);
 
+		void Clear();
+
 		D3D12_VERTEX_BUFFER_VIEW& VertexBufferView()const
 		{
 			return vertexBufferGpu->view;

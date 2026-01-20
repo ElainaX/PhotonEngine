@@ -1,3 +1,3 @@
 ﻿#pragma once
 
-#define MaxCascadedNum 5
+#define MaxCascadedNum 2

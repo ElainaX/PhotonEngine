@@ -232,6 +232,22 @@ namespace photon
 		m_BufferToUploadBuffer[buffer] = uploadBuffer;
 	}
 
+	void ResourceManager::DestoryMesh(UINT64 guid)
+	{
+		if (m_Meshs.find(guid) != m_Meshs.end())
+		{
+			m_Meshs[guid]->gpuResource->Release();
+			m_Meshs[guid]->gpuResource = nullptr;
+			m_Meshs.erase(guid);
+		}
+	}
+
+	void ResourceManager::DestoryMesh(Mesh* mesh)
+	{
+		UINT64 guid = mesh->guid;
+		DestoryTexture2D(guid);
+	}
+
 	void ResourceManager::DestoryTexture2D(UINT64 guid)
 	{
 		if(m_Textures.find(guid) != m_Textures.end())

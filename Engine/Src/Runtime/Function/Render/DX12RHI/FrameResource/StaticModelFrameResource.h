@@ -8,6 +8,7 @@
 #include "Define.h"
 
 #include <memory>
+#include <list>
 #include <unordered_map>
 #include <d3d12.h>
 
@@ -20,6 +21,46 @@ namespace photon
 		UINT allPassNum = 0;
 		UINT allMatDatasNum = 0;
 	};
+
+	class ObjIndexHolder
+	{
+	public:
+		ObjIndexHolder(UINT64 maxIndex = 1000)
+		{
+			maxObjIndex = maxIndex;
+			bAlive = true;
+		}
+
+		~ObjIndexHolder()
+		{
+			bAlive = false;
+		}
+
+		UINT64 GetObjIndex()
+		{
+			assert(bAlive);
+			if (!availableObjectIndices.empty())
+			{
+				auto index = availableObjectIndices.front();
+				availableObjectIndices.pop_front();
+				return index;
+			}
+			return currObjIndex++;
+		}
+
+		void RecordObjIndex(UINT64 idx)
+		{
+			if (bAlive)
+				availableObjectIndices.push_back(idx);
+		}
+
+		std::list<UINT64> availableObjectIndices;
+		UINT64 currObjIndex = 0;
+		UINT64 maxObjIndex = 1000;
+		bool bAlive = true;
+	};
+
+	extern ObjIndexHolder g_objIdxHolder;
 
 	struct StaticModelObjectConstants
 	{
@@ -64,6 +105,7 @@ namespace photon
 
 		LightData lights[MaxLights];
 		DirectX::XMFLOAT4X4 lightViewProjs[MaxCascadedNum];
+		Vector4 gSpliters[MaxCascadedNum];
 	};
 
 

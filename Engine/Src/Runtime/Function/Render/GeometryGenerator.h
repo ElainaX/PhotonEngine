@@ -1,4 +1,4 @@
-//***************************************************************************************
+﻿//***************************************************************************************
 // GeometryGenerator.h by Frank Luna (C) 2011 All Rights Reserved.
 //   
 // Defines a static class for procedurally generating the geometry of 
@@ -17,6 +17,9 @@
 #include <cstdint>
 #include <DirectXMath.h>
 #include <vector>
+#include "Core/Math/Vector4.h"
+
+#include <DirectXCollision.h>
 
 namespace photon 
 {
@@ -113,6 +116,14 @@ namespace photon
 		/// Creates a quad aligned with the screen.  This is useful for postprocessing and screen effects.
 		///</summary>
 		MeshData CreateQuad(float x, float y, float w, float h, float depth);
+
+		///<summary>
+		/// Creates a frustum.  This is useful for debug camera and csm light camera.
+		///</summary>
+		MeshData CreateFrustum(const std::vector<Vector3>& corner);
+
+		MeshData CreateFrustum(const DirectX::BoundingFrustum& bounds);
+
 
 	private:
 		void Subdivide(MeshData& meshData);

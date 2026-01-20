@@ -20,7 +20,8 @@ namespace photon
 
 		void TrackLight(LightBase* light);
 		void TrackCamera(RenderCamera* renderCamera);
-		std::vector<std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX>> GenerateShadowCameraMatrices(const std::vector<float>& splitRatio);
+		std::vector<std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX>> GenerateShadowCameraMatrices(const std::vector<float>& splitRatio, Vector2 shadowMapSize);
+		std::vector<std::array<Vector3, 8>> GenerateCameraCSMCorners(const std::vector<float>& splitRatio);
 		
 		LightBase* GetLight();
 		RenderCamera* GetCamera();
@@ -30,7 +31,7 @@ namespace photon
 		float frustumScaleFactor = 1.0f;
 
 	private:
-		std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX> GenerateSingleShadowCameraMatrix(const std::array<Vector3, 4>& nearCorners, const std::array<Vector3, 4>& farCorners);
+		std::tuple<DirectX::XMMATRIX, DirectX::XMMATRIX> GenerateSingleShadowCameraMatrix(const std::array<Vector3, 4>& nearCorners, const std::array<Vector3, 4>& farCorners, Vector2 shadowMapSz);
 
 
 	private:

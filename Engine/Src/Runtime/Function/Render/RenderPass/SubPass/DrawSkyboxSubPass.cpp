@@ -10,13 +10,13 @@ namespace photon
 		m_Rhi = _rhi;
 	}
 
-	void DrawSkyboxSubPass::PrepareForData(RenderResourceData* data)
+	void DrawSkyboxSubPass::PrepareForData(RenderResourceData* _data)
 	{
-		auto resourceData = dynamic_cast<DrawSkyboxSubPassData*>(data);
-		skyboxCube = resourceData->skyboxRenderItem;
-		renderTargetView = resourceData->renderTargetView;
-		depthStencilView = resourceData->depthStencilView;
-		cubemap = resourceData->cubemap;
+		auto data = dynamic_cast<DrawSkyboxSubPassData*>(_data);
+		skyboxCube = data->skyboxRenderItem;
+		renderTargetView = data->frame->services.rhi->CreateRenderTargetView(data->bb->Get<Texture2D>("back_buffer").get(), nullptr, renderTargetView);
+		depthStencilView = data->frame->services.rhi->CreateDepthStencilView(data->bb->Get<Texture2D>("depth_stencil_buffer").get(), nullptr, depthStencilView);
+		cubemap = data->frame->skybox.get();
 
 		m_Shader = skyboxCube->shader;
 
@@ -45,12 +45,15 @@ namespace photon
 			texGuidToShaderResourceViews[cubemap->guid] = m_Rhi->CreateShaderResourceView(cubemap, &desc, texGuidToShaderResourceViews[cubemap->guid]);
 		}
 
-		m_PassConstantIdx = resourceData->passConstantIdx;
+		m_PassConstantIdx = data->passConstantIdx;
 	}
 
-	void DrawSkyboxSubPass::Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport)
+	void DrawSkyboxSubPass::Draw(EG_FrameContext* frame, PassBlackboard* bb)
 	{
 		assert(skyboxCube);
+
+		D3D12_RECT scissorRect = { 0, 0, frame->uniforms.viewportSize.x, frame->uniforms.viewportSize.y };
+		D3D12_VIEWPORT viewport = { 0.0f, 0.0f, (float)frame->uniforms.viewportSize.x, (float)frame->uniforms.viewportSize.y, 0.0f, 1.0f };
 
 		auto RenderTex = (Texture2D*)renderTargetView->resource;
 		auto DepthTex = (Texture2D*)depthStencilView->resource;

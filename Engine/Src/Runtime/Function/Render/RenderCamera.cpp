@@ -77,9 +77,26 @@ namespace photon
 		return XMMatrixPerspectiveFovLH(fov, aspectRatio, znear, zfar);
 	}
 
-	DirectX::BoundingFrustum RenderCamera::GetFrustum()
+	DirectX::BoundingFrustum photon::RenderCamera::GetProjFrustum()
 	{
-		return BoundingFrustum(GetProjMatrix());
+		//auto viewProj = XMMatrixMultiply(GetViewMatrix(), GetProjMatrix());
+		BoundingFrustum ret;
+		BoundingFrustum::CreateFromMatrix(ret, GetProjMatrix());
+
+		return ret;
+	}
+
+	DirectX::BoundingFrustum RenderCamera::GetWorldFrustum()
+	{
+		auto bf_view = GetProjFrustum();
+		auto view = GetViewMatrix();
+		auto viewDet = XMMatrixDeterminant(view);
+		auto invView = XMMatrixInverse(&viewDet, view);
+		BoundingFrustum ret;
+		bf_view.Transform(ret, invView);
+
+
+		return ret;
 	}
 
 	void RenderCamera::UpdateCameraFromFront(Vector3 newFront)

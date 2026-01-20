@@ -4,6 +4,8 @@
 #include "RenderPass/MainCameraPass.h"
 #include "RenderPass/PreprocessPass.h"
 #include "Function/UI/WindowUI.h"
+#include "CascadedShadowManager.h"
+
 
 namespace photon 
 {
@@ -28,12 +30,12 @@ namespace photon
 		}
 
 
-		void PrepareContext(RenderResourceData* data) override;
+		void PrepareContext(EG_FrameContext * frame) override;
 		void Initialize(RenderPipelineCreateInfo* createInfo) override final;
-		void Render() override final;
+		void Render(EG_FrameContext* frame) override final;
 		void Stop() override;
 		void ReStart() override;
-
+		std::shared_ptr<CascadedShadowManager> GetCSMMgr();
 
 
 		void SetCurrEditorUI(WindowUI* ui) override;
@@ -47,6 +49,8 @@ namespace photon
 
 		//std::shared_ptr<RenderPass> m_ColorGradingPass;
 
+
+		std::shared_ptr<CascadedShadowManager> m_CsmMgr;
 		std::shared_ptr<Texture2D> m_RenderTarget;
 		RHI* m_Rhi = nullptr;
 		WindowSystem* m_WindowSystem = nullptr;

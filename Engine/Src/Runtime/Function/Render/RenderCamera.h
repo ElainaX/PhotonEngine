@@ -12,7 +12,7 @@ namespace photon
 	class RenderCamera
 	{
 	public:
-		RenderCamera(float _aspectRatio, float _znear = 0.1f, float _zfar = 1000.0f)
+		RenderCamera(float _aspectRatio, float _znear = 0.1f, float _zfar = 100.0f)
 			: aspectRatio(_aspectRatio), znear(_znear), zfar(_zfar){}
 
 
@@ -25,10 +25,10 @@ namespace photon
 		void MoveRight(float d);
 		void MoveUp(float d);
 
-
 		DirectX::XMMATRIX GetViewMatrix();
 		DirectX::XMMATRIX GetProjMatrix();
-		DirectX::BoundingFrustum GetFrustum();
+		DirectX::BoundingFrustum GetProjFrustum();
+		DirectX::BoundingFrustum GetWorldFrustum();
 
 
 

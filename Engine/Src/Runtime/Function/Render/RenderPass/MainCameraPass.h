@@ -25,9 +25,9 @@ namespace photon
 	public:
 		void Initialize(RHI* rhi, WindowSystem* windowSystem);
 
-		void PrepareContext(RenderResourceData*) override;
+		void PrepareContext(RenderResourceData * data) override;
 
-		void Draw() override;
+		void Draw(EG_FrameContext* frame, PassBlackboard* bb) override;
 
 		void OnlyUI(bool bOnlyUI = true);
 		
@@ -47,6 +47,7 @@ namespace photon
 		UINT m_PassConstantsIdx;
 
 		std::unordered_map<LightData*, std::shared_ptr<CommonRenderItem>> m_LightRenderItems;
+
 
 		std::unordered_map<std::string, std::shared_ptr<CommonRenderItem>> m_InnerCommonRenderItems;
 

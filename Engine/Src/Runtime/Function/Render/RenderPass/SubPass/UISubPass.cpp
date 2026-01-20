@@ -14,12 +14,16 @@ namespace photon
 	void UISubPass::PrepareForData(RenderResourceData* _data)
 	{
 		auto data = dynamic_cast<UISubPassData*>(_data);
-		renderTargetView = data->renderTargetView;
-		depthStencilView = data->depthStencilView;
+		renderTargetView = data->frame->services.rhi->GetCurrBackBufferAsRenderTarget();
+		depthStencilView = data->frame->services.rhi->CreateDepthStencilView(data->bb->Get<Texture2D>("depth_stencil_buffer").get(), nullptr, depthStencilView);
 	}
 
-	void UISubPass::Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport)
+	void UISubPass::Draw(EG_FrameContext* frame, PassBlackboard* bb)
 	{
+		D3D12_RECT scissorRect = { 0, 0, frame->uniforms.viewportSize.x, frame->uniforms.viewportSize.y };
+		D3D12_VIEWPORT viewport = { 0.0f, 0.0f, (float)frame->uniforms.viewportSize.x, (float)frame->uniforms.viewportSize.y, 0.0f, 1.0f };
+
+
 		auto RenderTex = (Texture2D*)renderTargetView->resource;
 		auto DepthTex = (Texture2D*)depthStencilView->resource;
 

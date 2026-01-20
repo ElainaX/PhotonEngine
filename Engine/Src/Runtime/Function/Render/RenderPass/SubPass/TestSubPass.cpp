@@ -16,20 +16,21 @@ namespace photon
 		auto data = dynamic_cast<TestSubPassData*>(_data);
 		m_Shader = data->shader;
 		m_PassConstantIdx = data->passConstantIdx;
-		renderTargetView = data->renderTargetView;
-		depthStencilView = data->depthStencilView;
+
+		renderTargetView = data->frame->services.rhi->CreateRenderTargetView(data->bb->Get<Texture2D>("back_buffer").get(), nullptr, renderTargetView);
+		depthStencilView = data->frame->services.rhi->CreateDepthStencilView(data->bb->Get<Texture2D>("depth_stencil_buffer").get(), nullptr, depthStencilView);
 		if(!m_Shader->GetMacros()->IsVariantLoaded(data->macros) || pipeline == nullptr)
 		{
 			pipeline = pipeline == nullptr ? std::make_shared<DXGraphicsPipeline>() : std::make_shared<DXGraphicsPipeline>(*pipeline);
 			m_RootSignature = m_Rhi->CreateRootSignature(m_Shader, 6, m_Rhi->GetStaticSamplers().data());
 			pipeline->SetShaderMust(m_Shader, data->macros, m_RootSignature.Get());
-			pipeline->SetRenderTargetMust({ data->renderTargetView->resource->dxDesc.Format });
+			pipeline->SetRenderTargetMust({ renderTargetView->resource->dxDesc.Format });
 			//pipeline->SetWireFrameMode();
 			pipeline->FinishOffRenderSet(m_Rhi);
 		}
-		if (data->renderItems.empty())
+		if (data->frame->renderlists.opaque.empty())
 			return;
-		commonRenderItems = data->renderItems;
+		commonRenderItems = data->frame->renderlists.opaque;
 		for(auto& ritem : commonRenderItems)
 		{
 			if(texGuidToShaderResourceViews.contains(ritem->material->diffuseMap->guid))
@@ -57,10 +58,14 @@ namespace photon
 		}
 	}
 
-	void TestSubPass::Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport)
+	void TestSubPass::Draw(EG_FrameContext* frame, PassBlackboard* bb)
 	{
 		if (commonRenderItems.empty())
 			return;
+
+		D3D12_RECT scissorRect = { 0, 0, frame->uniforms.viewportSize.x, frame->uniforms.viewportSize.y};
+		D3D12_VIEWPORT viewport = { 0.0f, 0.0f, (float)frame->uniforms.viewportSize.x, (float)frame->uniforms.viewportSize.y, 0.0f, 1.0f};
+
 		auto RenderTex = (Texture2D*)renderTargetView->resource;
 		auto DepthTex = (Texture2D*)depthStencilView->resource;
 
@@ -87,7 +92,10 @@ namespace photon
 		auto tex0TableIndex = m_Shader->GetPhotonRootSignature()->GetTableParameterIndex(texture0InTable);
 		auto tex1TableIndex = m_Shader->GetPhotonRootSignature()->GetTableParameterIndex(texture1InTable);
 		auto tex2TableIndex = m_Shader->GetPhotonRootSignature()->GetTableParameterIndex(texture2InTable);
+		auto tex3TableIndex = m_Shader->GetPhotonRootSignature()->GetTableParameterIndex(texture3InTable);
 		m_Rhi->CmdSetGraphicsRootDescriptorTable(passConstantTableIndex, passView->gpuHandleInHeap);
+
+		auto csmMgr = bb->Get<CascadedShadowManager>("csm_mgr");
 
 		for(int i = 0; i < commonRenderItems.size(); ++i)
 		{
@@ -101,7 +109,7 @@ namespace photon
 				m_Rhi->CmdSetGraphicsRootDescriptorTable(tex1TableIndex, texGuidToShaderResourceViews[ritem->material->normalMap->guid]->gpuHandleInHeap);
 			if (ritem->material->roughnessMap)
 				m_Rhi->CmdSetGraphicsRootDescriptorTable(tex2TableIndex, texGuidToShaderResourceViews[ritem->material->roughnessMap->guid]->gpuHandleInHeap);
-			
+			m_Rhi->CmdSetGraphicsRootDescriptorTable(tex3TableIndex, csmMgr->GetShaderResourceView()->gpuHandleInHeap);
 			auto meshCollection = ritem->meshCollection;
 			m_Rhi->CmdSetVertexBuffers(0, 1, &meshCollection->VertexBufferView());
 			m_Rhi->CmdSetIndexBuffer(&meshCollection->IndexBufferView());

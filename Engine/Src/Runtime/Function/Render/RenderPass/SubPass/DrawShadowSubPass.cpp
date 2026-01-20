@@ -11,10 +11,9 @@ namespace photon
 	void DrawShadowSubPass::PrepareForData(RenderResourceData* data)
 	{
 		auto shadowData = static_cast<DrawShadowSubPassData*>(data);
-		cascadedShadowManager = shadowData->cascadedShadowManager;
 		m_PassConstantsIndices = shadowData->passConstantses;
 		m_Shader = shadowData->shadowShader;
-		commonRenderItems = shadowData->renderItems;
+		shadowRItems = shadowData->frame->renderlists.shadowCasters;
 
 		if(pipeline == nullptr)
 		{
@@ -26,11 +25,11 @@ namespace photon
 		}
 	}
 
-	void DrawShadowSubPass::Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport)
+	void DrawShadowSubPass::Draw(EG_FrameContext* frame, PassBlackboard* bb)
 	{
-		if (commonRenderItems.empty())
-			return;
-
+		//if (shadowRItems.empty())
+		//	return;
+		auto cascadedShadowManager = bb->Get<CascadedShadowManager>("csm_mgr");
 		auto DepthTexViewes = cascadedShadowManager->GetAllDepthStencilViews();
 		auto Resolution = cascadedShadowManager->GetResolution();
 		D3D12_VIEWPORT viewPort{0.0f, 0.0f, (float)Resolution.x, (float)Resolution.y, 0.0f, 1.0f};
@@ -51,9 +50,9 @@ namespace photon
 			auto objectConstantTableIndex = m_Shader->GetPhotonRootSignature()->GetTableParameterIndex(objectConstantInTable);
 			m_Rhi->CmdSetGraphicsRootDescriptorTable(passConstantTableIndex, passView->gpuHandleInHeap);
 
-			for (int i = 0; i < commonRenderItems.size(); ++i)
+			for (int i = 0; i < shadowRItems.size(); ++i)
 			{
-				auto ritem = commonRenderItems[i];
+				auto ritem = shadowRItems[i];
 				auto objectView = currFrameResource->GetObjectConstantBufferView(ritem->objConstantIdx);
 				m_Rhi->CmdSetGraphicsRootDescriptorTable(objectConstantTableIndex, objectView->gpuHandleInHeap);
 

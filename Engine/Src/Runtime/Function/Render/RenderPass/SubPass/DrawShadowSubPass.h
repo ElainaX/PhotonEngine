@@ -19,11 +19,10 @@ namespace photon
 	public:
 		void Initialize(RHI* _rhi);
 		void PrepareForData(RenderResourceData* data);
-		void Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport);
+		void Draw(EG_FrameContext* frame, PassBlackboard* bb);
 
 
-		std::vector<CommonRenderItem*> commonRenderItems;
-		std::shared_ptr<CascadedShadowManager> cascadedShadowManager;
+		std::vector<CommonRenderItem*> shadowRItems;
 		std::shared_ptr<DXGraphicsPipeline> pipeline;
 
 		ConstantBufferParameter objectConstantInTable = ConstantBufferParameter(0);

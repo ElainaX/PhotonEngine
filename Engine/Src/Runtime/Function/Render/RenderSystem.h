@@ -11,6 +11,7 @@
 #include "RenderScene.h"
 #include "GeometryGenerator.h"
 #include "Function/UI/WindowUI.h"
+#include "EGFrameContext.h"
 
 #include <memory>
 #include <string>
@@ -41,10 +42,13 @@ namespace photon
 		void Tick(GameTimer& gt);
 		void Stop();
 		void ReStart();
+		void BuildEGFrameContext(EG_FrameContext& frameCtx, GameTimer* timer);
+		
 
 		void ReCreateRenderTargetTexAndDepthStencilTex(Vector2i size);
 		std::shared_ptr<RHI> GetRHI();
 		ShaderResourceView* GetFinalOutputShaderResourceView();
+		ShaderResourceView* GetPipelineCsmMgrSRV();
 
 		void SetRenderPipelineType(RenderPipelineType renderType); 
 		RenderCamera* GetRenderCamera();
@@ -60,6 +64,7 @@ namespace photon
 		std::shared_ptr<RHI> m_Rhi;
 		std::unordered_map<RenderPipelineType, std::shared_ptr<RenderPipeline>> m_RenderPipelines;
 		RenderPipeline* m_CurrRenderPipeline = nullptr;
+		RenderPipelineType m_CurrPipelineType = RenderPipelineType::ForwardPipeline;
 		std::shared_ptr<ResourceManager> m_ResourceManager;
 		std::unique_ptr<GeometryGenerator> m_GeometryGenerator;
 
@@ -74,9 +79,12 @@ namespace photon
 		std::vector<std::shared_ptr<RenderScene>> m_RenderScene;
 
 		ShaderResourceView* m_RenderTargetSRV = nullptr;
+		ShaderResourceView* m_CsmSRV = nullptr;
 
 		std::vector<std::shared_ptr<Cubemap>> allCubemaps;
 		bool m_bStopRenderContent = false;
+
+		std::shared_ptr<RenderMeshCollection> m_InnerMeshCollection;
 	};
 
 }

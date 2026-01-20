@@ -78,4 +78,19 @@ namespace photon
 		return m_Meshes.find(guid) != m_Meshes.end();
 	}
 
+	void RenderMeshCollection::Clear()
+	{
+		for (auto& keyVal : m_Meshes)
+		{
+			keyVal.second->bIsLoad = false;
+		}
+
+		m_Meshes.clear();
+
+		bShouldRecreateBuffer = false;
+		vertexBufferGpu.reset();
+		indexBufferGpu.reset();
+		vertexSizeInBytes = 0;
+		indexSizeInBytes = 0;
+	}
 }

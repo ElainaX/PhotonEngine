@@ -18,47 +18,53 @@ namespace photon
 
 		m_MainCameraRenderPass = std::make_shared<MainCameraPass>();
 		m_MainCameraRenderPass->Initialize(m_Rhi, m_WindowSystem);
+
+		m_CsmMgr = std::make_shared<CascadedShadowManager>();
+		m_CsmMgr->Initialize({ 1024, 1024 }, 3);
 	}
 
-	void ForwardRenderPipeline::PrepareContext(RenderResourceData* data)
+	void photon::ForwardRenderPipeline::PrepareContext(EG_FrameContext* frame)
 	{
 		m_UI->PreRender();
-
-
-		ForwardPipelineRenderResourceData* resourceData = dynamic_cast<ForwardPipelineRenderResourceData*>(data);
+		m_BB.Clear();
+		m_BB.Set("csm_mgr", m_CsmMgr);
 		// Update RenderItem Constants
 
 		// PreprocessPass
 		PreprocessPassRenderResourceData preprocessPassData;
-		preprocessPassData.spliters = { 0.003f, 0.01f };
-		preprocessPassData.mainCamera = resourceData->mainCamera;
-		preprocessPassData.mainLight = resourceData->mainLight;
-		preprocessPassData.allRenderItems = resourceData->allRenderItems;
+		preprocessPassData.frame = frame;
+		preprocessPassData.bb = &m_BB;
+		////preprocessPassData.spliters = { 0.003f, 0.01f };
+		////preprocessPassData.mainCamera = frame->mainCamera;
+		////preprocessPassData.mainLight = frame->mainLight;
+		////preprocessPassData.allRenderItems = frame->allRenderItems;
 		m_PreprocessRenderPass->PrepareContext(&preprocessPassData);
 
 		// MainCameraPass 
 		MainPassRenderResourceData mainCameraPassData;
-		mainCameraPassData.allRenderItems = resourceData->allRenderItems;
+		mainCameraPassData.frame = frame;
+		mainCameraPassData.bb = &m_BB;
+		//mainCameraPassData.allRenderItems = resourceData->allRenderItems;
 		//mainCameraPassData.diffuseMap = resourceData->diffuseMap;
-		mainCameraPassData.renderTarget = resourceData->renderTarget;
-		mainCameraPassData.depthStencil = resourceData->depthStencil;
-		mainCameraPassData.mainCamera = resourceData->mainCamera;
-		mainCameraPassData.gameTimer = resourceData->gameTimer;
-		mainCameraPassData.cubemap = resourceData->cubemap;
-		mainCameraPassData.directionalLights = std::move(resourceData->directionalLights);
-		mainCameraPassData.pointLights = std::move(resourceData->pointLights);
-		mainCameraPassData.spotLights = std::move(resourceData->spotLights);
-		mainCameraPassData.cascadedShadowManager = preprocessPassData.cascadedShadowManager;
+		//mainCameraPassData.renderTarget = resourceData->renderTarget;
+		//mainCameraPassData.depthStencil = resourceData->depthStencil;
+		//mainCameraPassData.mainCamera = resourceData->mainCamera;
+		//mainCameraPassData.gameTimer = resourceData->gameTimer;
+		//mainCameraPassData.cubemap = resourceData->cubemap;
+		//mainCameraPassData.directionalLights = std::move(resourceData->directionalLights);
+		//mainCameraPassData.pointLights = std::move(resourceData->pointLights);
+		//mainCameraPassData.spotLights = std::move(resourceData->spotLights);
+		//mainCameraPassData.cascadedShadowManager = preprocessPassData.cascadedShadowManager;
 		m_MainCameraRenderPass->PrepareContext(&mainCameraPassData);
 
 
 
 	}
 
-	void ForwardRenderPipeline::Render()
+	void ForwardRenderPipeline::Render(EG_FrameContext* frame)
 	{
-		m_PreprocessRenderPass->Draw();
-		m_MainCameraRenderPass->Draw();
+		m_PreprocessRenderPass->Draw(frame, &m_BB);
+		m_MainCameraRenderPass->Draw(frame, &m_BB);
 	}
 
 
@@ -73,6 +79,11 @@ namespace photon
 	{
 		m_bStop = false;
 		m_MainCameraRenderPass->OnlyUI(false);
+	}
+
+	std::shared_ptr<CascadedShadowManager> ForwardRenderPipeline::GetCSMMgr()
+	{
+		return m_CsmMgr;
 	}
 
 	void ForwardRenderPipeline::SetCurrEditorUI(WindowUI* ui)

@@ -16,17 +16,19 @@ namespace photon
 	{
 	public:
 		void Initialize(RHI* rhi);
-		void PrepareContext(RenderResourceData* data) override;
-		void Draw() override;
+		void PrepareContext(RenderResourceData * data) override;
+		void Draw(EG_FrameContext* frame, PassBlackboard* bb) override;
 
 	private:
 
 		std::vector<StaticModelPassConstants> m_PassConstantses;
 		std::shared_ptr<DrawShadowSubPass> m_ShadowSubPass;
 		// self-contain的ShadowManager
-		std::shared_ptr<CascadedShadowManager> m_CascadedShadowManager;
+		//std::shared_ptr<CascadedShadowManager> m_CascadedShadowManager;
 		RHI* m_Rhi = nullptr;
 		std::vector<int> m_PassConstantsIndices;
+
+		std::unordered_map<FrameResource*, std::vector<Resource*>> m_PassFrameResources;
 
 		Shader* m_ShadowShader;
 	};

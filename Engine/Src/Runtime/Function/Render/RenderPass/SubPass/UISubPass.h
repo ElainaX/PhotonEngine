@@ -14,7 +14,7 @@ namespace photon
 	public:
 		void Initialize(RHI* _rhi);
 		void PrepareForData(RenderResourceData* data);
-		void Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport);
+		void Draw(EG_FrameContext* frame, PassBlackboard* bb);
 
 		RenderTargetView* renderTargetView;
 		DepthStencilView* depthStencilView;

@@ -18,7 +18,7 @@ namespace photon
 	public:
 		void Initialize(RHI* _rhi);
 		void PrepareForData(RenderResourceData* data);
-		void Draw(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport);
+		void Draw(EG_FrameContext* frame, PassBlackboard* bb);
 
 
 		std::vector<CommonRenderItem*> commonRenderItems;
@@ -33,6 +33,7 @@ namespace photon
 		TextureParameter texture0InTable = TextureParameter(0);
 		TextureParameter texture1InTable = TextureParameter(1);
 		TextureParameter texture2InTable = TextureParameter(2);
+		TextureParameter texture3InTable = TextureParameter(3);
 		FrameResourceType frameResourceType = FrameResourceType::StaticModelFrameResource;
 
 	private:

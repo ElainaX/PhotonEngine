@@ -38,6 +38,18 @@ namespace photon
 			rhs.m_UsedShader = nullptr;
 			rhs.m_PipelineState = nullptr;
 		}
+		DXGraphicsPipeline& operator=(const DXGraphicsPipeline& rhs)
+		{
+			if (this == &rhs)
+				return *this;
+
+			m_UsedShaderBlob = rhs.m_UsedShaderBlob;
+			m_UsedShader = rhs.m_UsedShader;
+			m_PipelineDesc = rhs.m_PipelineDesc;
+			m_PipelineState = nullptr;
+
+			return *this;
+		}
 
 		void SetShaderMust(Shader* shader, const std::vector<MacroInfo>& macros, ID3D12RootSignature* rootSignature);
 		void SetRenderTargetMust(const std::vector<DXGI_FORMAT>& renderTargets);

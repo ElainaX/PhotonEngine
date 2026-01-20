@@ -53,6 +53,8 @@ namespace photon
 
 		void BindBufferUploadBuffer(Buffer* buffer, std::shared_ptr<Buffer> uploadBuffer);
 
+		void DestoryMesh(UINT64 guid);
+		void DestoryMesh(Mesh* mesh);
 
 		void DestoryTexture2D(UINT64 guid);
 		void DestoryTexture2D(Resource* resource);

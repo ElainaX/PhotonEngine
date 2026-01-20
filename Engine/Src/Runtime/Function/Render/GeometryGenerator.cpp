@@ -1,9 +1,12 @@
-//***************************************************************************************
+﻿//***************************************************************************************
 // GeometryGenerator.cpp by Frank Luna (C) 2011 All Rights Reserved.
 //***************************************************************************************
 
 #include "GeometryGenerator.h"
+#include "Core/Math/Vector4.h"
 #include <algorithm>
+#include <array>
+
 
 using namespace DirectX;
 
@@ -656,6 +659,49 @@ namespace photon
 		meshData.Indices32[5] = 3;
 
 		return meshData;
+	}
+	GeometryGenerator::MeshData GeometryGenerator::CreateFrustum(const std::vector<Vector3>& corner)
+	{
+		constexpr std::array<std::array<uint32, 4>, 6> faces = { {
+			{0,1,2,3}, // near
+			{5,4,7,6}, // far
+			{4,0,3,7}, // left
+			{1,5,6,2}, // right
+			{3,2,6,7}, // top
+			{4,5,1,0}, // bottom
+		} };
+
+		MeshData meshData;
+		meshData.Vertices.reserve(8);
+		for (int i = 0; i < 8; ++i)
+		{
+			auto pos = corner[i];
+			meshData.Vertices.push_back(Vertex(pos.x, pos.y, pos.z,
+				0.0f, 0.0f, -1.0f,
+				1.0f, 0.0f, 0.0f,
+				1.0f, 0.0f));
+		}
+
+
+		meshData.Indices32.reserve(6 * 2 * 3);
+		for (const auto& f : faces)
+		{
+			// 顺时针、朝外的两个三角形
+			meshData.Indices32.push_back(f[0]);
+			meshData.Indices32.push_back(f[1]);
+			meshData.Indices32.push_back(f[2]);
+			meshData.Indices32.push_back(f[0]);
+			meshData.Indices32.push_back(f[2]);
+			meshData.Indices32.push_back(f[3]);
+		}
+
+		return meshData;
+	}
+	GeometryGenerator::MeshData GeometryGenerator::CreateFrustum(const DirectX::BoundingFrustum& bounds)
+	{
+		std::vector<Vector3> corners(8);
+		bounds.GetCorners((XMFLOAT3*)&corners[0]);
+		return CreateFrustum(corners);
 	}
 }
 

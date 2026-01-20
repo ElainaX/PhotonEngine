@@ -179,7 +179,7 @@ namespace photon
 	std::shared_ptr<photon::CommonRenderItem> RenderScene::CreateCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor)
 	{
 		auto commonRenderItem = std::make_shared<CommonRenderItem>();
-		commonRenderItem->objConstantIdx = StaticModelObjectConstants::s_CurrObjectIndex++;
+		commonRenderItem->objConstantIdx = g_objIdxHolder.GetObjIndex();
 		commonRenderItem->objectConstants = frameResourceEditor.ToObjectConstants();
 		commonRenderItem->material = mat;
 		commonRenderItem->meshCollection = m_MeshCollection.get();
