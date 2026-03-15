@@ -1,3 +1,4 @@
 ﻿#pragma once
 
-#define MaxCascadedNum 2
+#define MaxCascadedNum 4
+#define ShadowMapSize 2048

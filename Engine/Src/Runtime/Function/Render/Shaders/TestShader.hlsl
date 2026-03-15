@@ -43,6 +43,8 @@ cbuffer cbPass : register(b1)
 #endif
 
 #ifdef MaxCascadedNum
+	float2 gShadowMapSize;
+	float2 gInvShadowMapSize;
 	float4x4 gLightProjViewMatrices[MaxCascadedNum];
 	float4 gSpliters[MaxCascadedNum]; 
 #endif
@@ -181,9 +183,17 @@ float4 PS(VertexOutput pin) : SV_Target
 	return float4(result, 1.0f);
 }
 
+float CascadedBlendWeight(float zView, float splitDepth, float fadeWidth)
+{
+	// 在 [splitDepth - fadeWidth, splitDepth + fadeWidth] 内做过渡
+	float t = (zView - (splitDepth - fadeWidth)) / (fadeWidth);
+	return smoothstep(0.0, 1.0, t);
+}
+
 float CalcShadowFactor(float3 posWorld)
 {
 	float factor = 1.0;
+	int c0 = 0;
 	// 首先判断当前片元处于哪个cascaded volume
 	float3 posView = mul(gView, float4(posWorld, 1.0)).xyz;
 	//factor = ShadowFactorFromShadowMap(gDepthStencilTextures, 0, gLightProjViewMatrices[0], posWorld);
@@ -191,11 +201,22 @@ float CalcShadowFactor(float3 posWorld)
 	{
 		if(posView.z <= gSpliters[i].x)
 		{
-			factor = ShadowFactorFromShadowMap(gDepthStencilTextures, i, gLightProjViewMatrices[i], posWorld);
+			c0 = i;
 			break;
 		}
 	}
-	return factor;
+	factor = ShadowFactorFromShadowMap(gDepthStencilTextures, c0, gLightProjViewMatrices[c0], posWorld);
+	//return factor;
+	int c1 = min(c0 + 1, MaxCascadedNum - 1);
+	if (c0 == c1) return factor;
+
+
+	float w = CascadedBlendWeight(posView.z, gSpliters[c0].x, gSpliters[c0].x * 0.35);
+	if (w <= 0.0) return factor;
+
+	float factor2 = ShadowFactorFromShadowMap(gDepthStencilTextures, c1, gLightProjViewMatrices[c1], posWorld);
+
+ 	return lerp(factor, factor2, w);
 }
 
 
@@ -205,14 +226,26 @@ float ShadowFactorFromShadowMap(Texture2DArray<float2> shadowMap, int slice, flo
 	float3 posLightNDC = posLightClip.xyz / posLightClip.w;
 	float2 uv = posLightNDC.xy * 0.5 + 0.5;
 	uv.y = 1.0 - uv.y;
+
+
+	// PCF Shadow Factor Calc
+	float sum = 0.0;
+	[unroll] for (int x = -2; x <= 2; ++x)
+		[unroll] for (int y = -2; y <= 2; ++y)
+		{
+		float2 o = float2(x, y) * gInvShadowMapSize + uv;
+		float depthInShadowMap = shadowMap.Sample(g_LinearClampSampler, float3(o, slice)).r;
+		sum += posLightNDC.z > depthInShadowMap ? 0.0 : 1.0;
+		}
+
+	return sum / 25.0;
 	
-	float depthInShadowMap = shadowMap.Sample(g_LinearClampSampler, float3(uv, slice)).r;
 	
 	//return depthInShadowMap;
-	if(posLightNDC.z > depthInShadowMap)
-		return 0.0;
-	else
-		return 1.0;
+	//if(posLightNDC.z > depthInShadowMap)
+	//	return 0.0;
+	//else
+	//	return 1.0;
 
 	//return depthInShadowMap;
 }

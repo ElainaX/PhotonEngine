@@ -104,6 +104,9 @@ namespace photon
 		Vector4 ambientLight;
 
 		LightData lights[MaxLights];
+
+		Vector2 shadowMapSize;
+		Vector2 invShadowMapSize;
 		DirectX::XMFLOAT4X4 lightViewProjs[MaxCascadedNum];
 		Vector4 gSpliters[MaxCascadedNum];
 	};

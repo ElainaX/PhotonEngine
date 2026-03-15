@@ -153,6 +153,9 @@ namespace photon
 			frameResource->UpdateObjectConstantBuffer(lightRenderItems.back()->objConstantIdx, &lightRenderItems.back()->objectConstants);
 			index++;
 		}
+
+		m_PassConstants.shadowMapSize = Vector2(ShadowMapSize, ShadowMapSize);
+		m_PassConstants.invShadowMapSize = Vector2(1.0f / ShadowMapSize, 1.0f / ShadowMapSize);
 		auto csmMgr = bb->Get<CascadedShadowManager>("csm_mgr");
 		auto spliters = bb->Get<std::pair<std::vector<float>, std::vector<float>>>("csm_spliters");
 		auto& spliter_dis = spliters->first;

@@ -21,6 +21,7 @@ namespace photon
 			pipeline->SetRenderTargetMust({});
 			m_RootSignature = m_Rhi->CreateRootSignature(m_Shader, 6, m_Rhi->GetStaticSamplers().data());
 			pipeline->SetShaderMust(m_Shader, {}, m_RootSignature.Get());
+			pipeline->SetDepthBias(1000, 1.0f, 0.0f);
 			pipeline->FinishOffRenderSet(m_Rhi);
 		}
 	}

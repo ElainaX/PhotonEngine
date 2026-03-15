@@ -32,7 +32,7 @@ namespace photon
 
 		cascadedShadowMgr->Track(frame->uniforms.mainDirLight, frame->uniforms.mainCamera);
 		preprocessData->bb->Set("csm_spliters", std::make_shared<std::pair<std::vector<float>, std::vector<float>>>
-			( RenderUtil::LogLinearCascadedSplit(frame->uniforms.znear, frame->uniforms.zfar, 20.0f, MaxCascadedNum) ));
+			( RenderUtil::LogLinearCascadedSplit(frame->uniforms.znear, frame->uniforms.zfar, 50.0f, MaxCascadedNum) ));
 		//m_CascadedShadowManager->Track(preprocessData->mainLight, preprocessData->mainCamera);
 		//preprocessData->cascadedShadowManager = m_CascadedShadowManager;
 

@@ -20,7 +20,7 @@ namespace photon
 		m_MainCameraRenderPass->Initialize(m_Rhi, m_WindowSystem);
 
 		m_CsmMgr = std::make_shared<CascadedShadowManager>();
-		m_CsmMgr->Initialize({ 1024, 1024 }, 3);
+		m_CsmMgr->Initialize({ ShadowMapSize, ShadowMapSize }, MaxCascadedNum);
 	}
 
 	void photon::ForwardRenderPipeline::PrepareContext(EG_FrameContext* frame)
