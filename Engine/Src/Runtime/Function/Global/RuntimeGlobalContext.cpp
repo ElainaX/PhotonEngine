@@ -1,4 +1,4 @@
-﻿#include "RuntimeGlobalContext.h"
+#include "RuntimeGlobalContext.h"
 #include "Core/Log/LogManager.h"
 #include "Function/Render/WindowSystem.h"
 #include "Function/Render/RenderSystem.h"
@@ -18,7 +18,7 @@ namespace photon
 
 		renderSystem = std::make_shared<RenderSystem>();
 		RenderSystemInitInfo rsInitInfo;
-		rsInitInfo.windowSystem = windowSystem;
+		rsInitInfo.windowSystem = windowSystem.get();
 		renderSystem->Initialize(rsInitInfo);
 
 		inputSystem = std::make_shared<InputSystem>();

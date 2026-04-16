@@ -1,7 +1,7 @@
-﻿#include "SandBox.h"
+#include "SandBox.h"
 #include "Macro.h"
 #include "Platform/FileSystem/FileSystem.h"
-#include "Resource/GuidAllocator.h"
+#include "Resource/DXResourceHeader.h"
 #include "Function/Util/Md5.h"
 #include "Function/Util/GameTimer.h"
 

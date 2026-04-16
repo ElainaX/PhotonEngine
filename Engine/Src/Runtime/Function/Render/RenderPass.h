@@ -1,21 +1,20 @@
-﻿#pragma once
-
+#pragma once
+#include "RenderPass/PassContext.h"
 
 namespace photon 
 {
-	class RHI;
-	class RenderResourceData;
-	class EG_FrameContext;
-	class PassBlackboard;
-
 	class RenderPass
 	{
 	public:
-		//virtual void Initialize(RHI* rhi) = 0;
-		virtual void PrepareContext(RenderResourceData* frame) = 0;
-		virtual void Draw(EG_FrameContext* frame, PassBlackboard* bb) = 0;
+		virtual ~RenderPass() = default;
+		virtual void Initialize(const RenderPipelineServices& services)
+		{
+			m_services = services;
+		}
+		virtual void Prepare(const PassPrepareContext& ctx) = 0;
+		virtual void Execute(const PassExecuteContext& ctx) = 0;
 
 	protected:
-		RHI* m_Rhi;
+		RenderPipelineServices m_services = {};
 	};
 }

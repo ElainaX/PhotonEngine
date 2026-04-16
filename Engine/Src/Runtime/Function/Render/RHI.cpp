@@ -1,4 +1,4 @@
-﻿#include "RHI.h"
+#include "RHI.h"
 
 namespace photon 
 {

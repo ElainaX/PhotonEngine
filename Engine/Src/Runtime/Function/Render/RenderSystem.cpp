@@ -1,189 +1,252 @@
-﻿#include "RenderSystem.h"
+#include "RenderSystem.h"
 #include "DX12RHI/DX12RHI.h"
 #include "ForwardRenderPipeline.h"
 #include "Function/Util/RenderUtil.h"
+#include "Shader/ShaderFactory.h"
 
-namespace photon 
+namespace photon
 {
 	using namespace DirectX;
 
-	RenderSystem::~RenderSystem()
-	{
-		
-	}
+	RenderSystem::~RenderSystem() = default;
 
 	void RenderSystem::Initialize(RenderSystemInitInfo initInfo)
 	{
 		LOG_INFO("RenderSystemInit");
 		m_WindowSystem = initInfo.windowSystem;
 
-		m_Rhi = std::make_shared<DX12RHI>();
-		RHIInitInfo rhiInitInfo;
-		rhiInitInfo.window_System = m_WindowSystem;
-		m_Rhi->Initialize(rhiInitInfo);
+		m_rhi = std::make_shared<DX12RHI>();
+		m_frameSyncSystem = std::make_shared<FrameSyncSystem>();
 
-		m_ResourceManager = m_Rhi->GetResourceManager();
+		RHIInitInfo rhiInitInfo = { .windowSystem = m_WindowSystem, .frameSyncSystem = m_frameSyncSystem.get() };
+		m_rhi->Initialize(rhiInitInfo);
+		m_frameSyncSystem->Initialize(m_rhi.get());
 
-		m_ShaderFactory = std::make_shared<ShaderFactory>();
+		m_descriptorSystem = std::make_shared<DescriptorSystem>();
+		m_descriptorSystem->Initialize(m_rhi->GetDevice(), m_rhi.get());
 
+		m_gpuResMgr = std::make_shared<GpuResourceManager>();
+		m_gpuResMgr->Initialize(m_rhi.get(), m_descriptorSystem.get());
+
+		m_frameAllocSystem = std::make_shared<FrameAllocatorSystem>();
+		m_frameAllocSystem->Initialize(m_descriptorSystem.get(), m_gpuResMgr.get(), m_rhi.get());
+
+		m_CmdCtxMgr = std::make_shared<CommandContextManager>();
+		m_CmdCtxMgr->Initialize(m_rhi.get());
+
+		auto& initCtx = m_CmdCtxMgr->BeginInitContext();
+		m_frameAllocSystem->BeginBootstrapFrame();
+
+		m_resourceManager = std::make_shared<ResourceManager>();
+		m_resourceManager->Initialize(
+			m_rhi.get(),
+			m_gpuResMgr.get(),
+			m_descriptorSystem.get(),
+			m_frameAllocSystem.get(),
+			m_CmdCtxMgr.get());
 
 		ForwardPipelineCreateInfo forwardCreateInfo;
-		forwardCreateInfo.rhi = m_Rhi.get();
-		forwardCreateInfo.windowSystem = m_WindowSystem.get();
-		m_RenderPipelines[RenderPipelineType::ForwardPipeline] = 
+		forwardCreateInfo.services.rhi = m_rhi.get();
+		forwardCreateInfo.services.windowSystem = m_WindowSystem;
+		forwardCreateInfo.services.resourceManager = m_resourceManager.get();
+		forwardCreateInfo.services.gpuResManager = m_gpuResMgr.get();
+		forwardCreateInfo.services.descriptorSystem = m_descriptorSystem.get();
+		forwardCreateInfo.services.frameAllocator = m_frameAllocSystem.get();
+		forwardCreateInfo.services.cmdCtxMgr = m_CmdCtxMgr.get();
+		forwardCreateInfo.services.pipelineCache = m_resourceManager->GetPipelineStateCache();
+		forwardCreateInfo.services.rootSignatureCache = m_resourceManager->GetRootSignatureCache();
+
+		m_RenderPipelines[RenderPipelineType::ForwardPipeline] =
 			std::make_shared<ForwardRenderPipeline>();
-		m_RenderPipelines[RenderPipelineType::ForwardPipeline]->Initialize(&forwardCreateInfo);
+		m_RenderPipelines[RenderPipelineType::ForwardPipeline]->Initialize(forwardCreateInfo);
 		m_CurrRenderPipeline = m_RenderPipelines[RenderPipelineType::ForwardPipeline].get();
 
-		//m_ResourceData = std::make_shared<RenderResourceData>();
-		Texture2DDesc texDesc;
-		Vector2i swapchainWidthAndHeight = m_WindowSystem->GetClientWidthAndHeight();
-		texDesc.width = swapchainWidthAndHeight.x;
-		texDesc.height = swapchainWidthAndHeight.y;
-		texDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		texDesc.heapProp = ResourceHeapProperties::Default;
-		texDesc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-		texDesc.clearValue = { 0.1f, 0.1f, 0.1f, 1.0f };
-		m_RenderTarget = m_ResourceManager->CreateTexture2D(texDesc);
+		Vector2i size = m_WindowSystem->GetClientWidthAndHeight();
+		CreateOrResizeMainViewportTargets(size);
 
-		Texture2DDesc dsvtex;
-		dsvtex.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		dsvtex.flag = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		dsvtex.heapProp = ResourceHeapProperties::Default;
-		dsvtex.width = swapchainWidthAndHeight.x;
-		dsvtex.height = swapchainWidthAndHeight.y;
-		dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
-		m_DepthStencil = m_ResourceManager->CreateTexture2D(dsvtex);
-		m_Rhi->ResourceStateTransform(m_DepthStencil.get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-		auto camera = std::make_shared<RenderCamera>(swapchainWidthAndHeight.x / (float)swapchainWidthAndHeight.y);
+		auto camera = std::make_shared<RenderCamera>(size.x / static_cast<float>(size.y));
 		m_RenderScene.push_back(std::make_shared<RenderScene>(camera));
-		m_RenderScene[0]->AddDirectionalLight(Vector3{ 1.0f, 1.0f, 1.0f }, Vector3{ 20.0f, -50.0f, 30.0f });
-		//m_RenderScene[0]->AddPointLight(Vector3{ 1.0f, 1.0f, 1.0f }, Vector3{ 1.0f, 2.0f, 3.0f }, 3.0f, 8.0f);
-		//m_RenderScene[0]->AddSpotLight(Vector3{ 1.0f, 1.0f, 0.8f }, Vector3{ 0.0f, 3.0f, 0.0f }, Vector3{0.0f, 0.0f, 0.0f}, 1.0f, 8.0f, 32.0f);
-		//VertexSimple vertices[] =
-		//{
-		//	VertexSimple{Vector3{-0.5f, -0.5f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.0f, 1.0f}},
-		//	VertexSimple{Vector3{0.0f, 0.5f, 0.0f}  , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{0.5f, 0.0f}},
-		//	VertexSimple{Vector3{0.5f, -0.5f, 0.0f} , Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f}, Vector2{1.0f, 1.0f}},
-		//};
-		//uint32_t indices[] = { 0, 1, 2 };
+		m_RenderScene[0]->AddDirectionalLight(
+			Vector3{ 1.0f, 1.0f, 1.0f },
+			Vector3{ 20.0f, -50.0f, 30.0f });
 
-		//auto sphereMeshData = m_GeometryGenerator->CreateSphere(0.5f, 40, 40);
-		//auto sphereIndices = sphereMeshData.Indices32;
-		//std::vector<VertexSimple> sphereVertices(sphereMeshData.Vertices.size());
-		//for (int i = 0; i < sphereMeshData.Vertices.size(); ++i)
-		//{
-		//	auto vert = sphereMeshData.Vertices[i];
-		//	sphereVertices[i].position = vert.Position;
-		//	sphereVertices[i].normal = vert.Normal;
-		//	sphereVertices[i].tangent = vert.TangentU;
-		//	sphereVertices[i].texCoord = vert.TexC;
-		//}
+		// 这里用新版 ResourceManager + handle
+		TextureHandle baseColor = m_resourceManager->LoadTexture(g_AssetTextureFolder / "rustediron2_basecolor.png");
+		TextureHandle roughness = m_resourceManager->LoadTexture(g_AssetTextureFolder / "rustediron2_roughness.png");
+		TextureHandle normal = m_resourceManager->LoadTexture(g_AssetTextureFolder / "rustediron2_normal.png");
 
-		//auto gridMeshData = m_GeometryGenerator->CreateGrid(5.0f, 5.0f, 10, 10);
-		//auto gridIndices = gridMeshData.Indices32;
-		//std::vector<VertexSimple> gridVertices(gridMeshData.Vertices.size());
-		//for (int i = 0; i < gridMeshData.Vertices.size(); ++i)
-		//{
-		//	auto vert = gridMeshData.Vertices[i];
-		//	gridVertices[i].position = vert.Position;
-		//	gridVertices[i].normal = vert.Normal;
-		//	gridVertices[i].tangent = vert.TangentU;
-		//	gridVertices[i].texCoord = vert.TexC;
-		//}
+		ShaderProgramLoadDesc pbrDesc = ShaderFactory::BuildPbrShaderDesc();
+		pbrDesc.entryPoints[ToIndex(ShaderStage::VS)] = "VSMain";
+		pbrDesc.entryPoints[ToIndex(ShaderStage::PS)] = "PSMain";
 
-		//MeshDesc sphereDesc;
-		//sphereDesc.name = L"Standard Sphere";
-		//sphereDesc.type = VertexType::VertexSimple;
-		//sphereDesc.topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		//sphereDesc.vertexRawData = RenderUtil::CreateD3DBlob((void*)sphereVertices.data(), sphereVertices.size() * sizeof(VertexSimple));
-		//sphereDesc.indexRawData = RenderUtil::CreateD3DBlob((void*)sphereIndices.data(), sphereIndices.size() * sizeof(uint32_t));
-		//auto sphereMesh = m_ResourceManager->CreateMesh(sphereDesc);
+		ShaderHandle pbrShader =
+			m_resourceManager->LoadShaderProgram(
+				g_AssetShaderFolder / "Pbr.hlsl",
+				pbrDesc);
+		MaterialHandle pbrMat = m_resourceManager->CreatePBRMaterial(pbrShader, "SimplePBR");
+		m_resourceManager->SetMaterialTextureBinding(pbrMat, "baseColorMap", baseColor);
+		m_resourceManager->SetMaterialTextureBinding(pbrMat, "normalMap", normal);
+		m_resourceManager->SetMaterialTextureBinding(pbrMat, "roughnessMap", roughness);
 
-		//MeshDesc gridDesc;
-		//gridDesc.name = L"Standard Grid";
-		//gridDesc.type = VertexType::VertexSimple;
-		//gridDesc.topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		//gridDesc.vertexRawData = RenderUtil::CreateD3DBlob((void*)gridVertices.data(), gridVertices.size() * sizeof(VertexSimple));
-		//gridDesc.indexRawData = RenderUtil::CreateD3DBlob((void*)gridIndices.data(), gridIndices.size() * sizeof(uint32_t));
-		//auto gridMesh = m_ResourceManager->CreateMesh(gridDesc);
+		auto houseModel = m_resourceManager->LoadModel(g_AssetModelFolder / "SingleHouse/HouseSuburban.obj");
+		RenderItem* houseItem = m_RenderScene[0]->CreateRenderItem();
+		houseItem->mesh = m_resourceManager->GetMeshHandleByGuid(houseModel->meshGuid);
+		houseItem->layers = RenderLayer::Opaque | RenderLayer::ShadowCaster;
+		houseItem->flags.castShadow = true;
+		houseItem->overrideMaterials.push_back(pbrMat);
+		houseItem->overrideMaterials.push_back(pbrMat);
+		houseItem->overrideMaterials.push_back(pbrMat);
+		m_resourceManager->SetMeshShader(houseItem->mesh, pbrShader);
+		{
+			XMMATRIX world = XMMatrixScaling(0.001f, 0.001f, 0.001f);
+			XMStoreFloat4x4(&houseItem->objConstant.world, world);
+		}
 
+		auto floorModel = m_resourceManager->LoadModel(g_AssetModelFolder / "Floor/floor.obj");
+		RenderItem* floorItem = m_RenderScene[0]->CreateRenderItem();
+		floorItem->mesh = m_resourceManager->GetMeshHandleByGuid(floorModel->meshGuid);
+		floorItem->layers = RenderLayer::Opaque | RenderLayer::ShadowCaster;
+		floorItem->flags.castShadow = true;
+		floorItem->overrideMaterials.push_back(pbrMat);
+		floorItem->overrideMaterials.push_back(pbrMat);
+		floorItem->overrideMaterials.push_back(pbrMat);
+		m_resourceManager->SetMeshShader(floorItem->mesh, pbrShader);
+		{
+			XMMATRIX world =
+				XMMatrixScaling(1.4f, 1.4f, 1.4f) *
+				XMMatrixTranslation(0.0f, -1.9f, 0.0f);
+			XMStoreFloat4x4(&floorItem->objConstant.world, world);
+		}
 
-		auto diffuseMap = m_ResourceManager->LoadTexture2D(g_AssetTextureFolder / L"rustediron2_basecolor.png", true);
-		auto roughnessMap = m_ResourceManager->LoadTexture2D(g_AssetTextureFolder / L"rustediron2_roughness.png");
-		auto normalMap = m_ResourceManager->LoadTexture2D(g_AssetTextureFolder / L"rustediron2_normal.png");
+		CreateOrRefreshBackBufferRtvs();
 
-
-		StaticModelMaterialDataConstants matData;
-		matData.diffuseAlbedo = { 1.0f, 0.5f, 0.5f, 1.0f };
-		matData.fresnelR0 = {0.03f, 0.03f, 0.03f};
-		matData.roughness = 0.5f;
-		matData.bInverseRoughness = false;
-		auto sphereMat = m_ResourceManager->CreateMaterial(matData, diffuseMap->guid, normalMap->guid, roughnessMap->guid,  L"Simple PBR Mat");
-	
-		
-
-		
-		StaticFrameResourceEditor standardEditor;
-
-		auto testShader = m_ShaderFactory->Create(L"TestShader");
-
-		//m_RenderScene[0]->AddCommonRenderItem(sphereMesh, sphereMat.get(), testShader, RenderLayer::Opaque, standardEditor);
-
-		//standardEditor.translation = { 0.0f, -1.0f, 0.0f };
-		//m_RenderScene[0]->AddCommonRenderItem(gridMesh, sphereMat.get(), testShader, RenderLayer::Opaque, standardEditor);
-
-		StaticFrameResourceEditor modelEditor = {};
-		modelEditor.scale = { 0.001, 0.001, 0.001 };
-		auto houseModel = m_ResourceManager->LoadModel(g_AssetModelFolder / L"SingleHouse/HouseSuburban.obj");
-		m_RenderScene[0]->AddModel(houseModel, testShader, RenderLayer::Opaque, modelEditor);
-
-		auto floorModel = m_ResourceManager->LoadModel(g_AssetModelFolder / L"Floor/floor.obj");
-		modelEditor.SetScale({ 1.4f, 1.4f, 1.4f });
-		modelEditor.SetTranslation({ 0.0f, -1.9f, 0.0f });
-		m_RenderScene[0]->AddModel(floorModel, testShader, RenderLayer::Opaque, modelEditor);
-
-
-		auto cubemap = m_ResourceManager->LoadCubemap(g_AssetTextureCubemapFolder / L"Maskonaive3", false);
-		m_RenderScene[0]->SetCubemap(cubemap);
-		allCubemaps.push_back(cubemap);
-
-		StaticModelFrameResourceDesc resourceDesc;
-		/*resourceDesc.allObjectNum = StaticModelObjectConstants::s_CurrObjectIndex + 100;*/
-		resourceDesc.allObjectNum = g_objIdxHolder.maxObjIndex;
-		resourceDesc.allPassNum = StaticModelPassConstants::s_CurrPassIndex + 100;
-		resourceDesc.allMatDatasNum = StaticModelMaterialDataConstants::s_CurrMatDataIndex;
-		m_Rhi->CreateFrameResource(FrameResourceType::StaticModelFrameResource, &resourceDesc);
-
-
-		m_InnerMeshCollection = std::make_shared<RenderMeshCollection>();
+		m_frameAllocSystem->EndBootsstrapFrame();
+		m_CmdCtxMgr->SubmitInitContextAndWait(initCtx);
 	}
 
 	void RenderSystem::InitializeEditorUI(WindowUI* windowUI)
 	{
-		m_Rhi->InitializeImGui();
-		m_CurrRenderPipeline->SetCurrEditorUI(windowUI);
+		if (!m_imguiSystem)
+		{
+			m_imguiSystem = std::make_shared<ImGuiSystem>();
+			m_imguiSystem->Initialize(m_rhi.get(), m_WindowSystem);
+		}
+
+		for (auto& [type, pipeline] : m_RenderPipelines)
+		{
+			if (pipeline)
+			{
+				pipeline->SetImGuiSystem(m_imguiSystem.get());
+				pipeline->SetCurrEditorUI(windowUI);
+			}
+		}
 	}
 
-	void RenderSystem::BuildEGFrameContext(EG_FrameContext& frameCtx, GameTimer* timer)
+	void RenderSystem::CreateOrRefreshBackBufferRtvs()
 	{
-		using namespace DirectX;
-		RenderScene* currRenderScene = m_RenderScene[0].get();
-		auto mainCamera = currRenderScene->GetMainCamera();
+		for (auto& h : m_backbufferRtvs)
+		{
+			if (h.IsValid())
+			{
+				m_descriptorSystem->FreeDescriptor(h);
+				h = {};
+			}
+		}
+
+		for (uint32_t i = 0; i < FrameSyncSystem::kMaxFramesInFlight; ++i)
+		{
+			DXTexture2D* backbuffer = m_rhi->GetBackbuffer(i);
+			if (!backbuffer)
+				continue;
+
+			ViewDesc rtvDesc = {};
+			rtvDesc.type = ViewType::RTV;
+			rtvDesc.dimension = ViewDimension::Texture2D;
+			rtvDesc.format = backbuffer->dxDesc.Format;
+
+			m_backbufferRtvs[i] =
+				m_descriptorSystem->CreateDescriptor(backbuffer, rtvDesc);
+		}
+	}
+
+	void RenderSystem::CreateOrResizeMainViewportTargets(Vector2i size)
+	{
+		if (size.x <= 0 || size.y <= 0)
+			return;
+
+		if (m_mainViewportSize == size &&
+			m_sceneColor.handle.IsValid() &&
+			m_sceneDepth.handle.IsValid())
+		{
+			return;
+		}
+
+		if (m_sceneColor.handle.IsValid())
+		{
+			m_resourceManager->DestroyTexture(m_sceneColor, false);
+			m_sceneColor = {};
+		}
+		if (m_sceneDepth.handle.IsValid())
+		{
+			m_resourceManager->DestroyTexture(m_sceneDepth, false);
+			m_sceneDepth = {};
+		}
+
+		m_mainViewportSize = size;
+
+		DXTexture2DDesc colorDesc = {};
+		colorDesc.width = size.x;
+		colorDesc.height = size.y;
+		colorDesc.maxMipLevels = 1;
+		colorDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		colorDesc.heapProp = HeapProp::Default;
+		colorDesc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		colorDesc.hasClearValue = true;
+		colorDesc.clearValue = { 0.1f, 0.1f, 0.1f, 1.0f };
+
+		m_sceneColor = m_resourceManager->CreateRuntimeTexture2D(
+			colorDesc, TextureDimension::Tex2D, "SceneColor");
+
+		DXTexture2DDesc depthDesc = {};
+		depthDesc.width = size.x;
+		depthDesc.height = size.y;
+		depthDesc.maxMipLevels = 1;
+		depthDesc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		depthDesc.heapProp = HeapProp::Default;
+		depthDesc.flag = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		depthDesc.hasClearValue = true;
+		depthDesc.depthStencil = { 1.0f, 0.0f };
+
+		m_sceneDepth = m_resourceManager->CreateRuntimeTexture2D(
+			depthDesc, TextureDimension::Tex2D, "SceneDepth");
+	}
+
+	void RenderSystem::BuildEGFrameContext(
+		EG_FrameContext& frameCtx,
+		GameTimer* timer,
+		DX12CommandContext* graphicsCmd)
+	{
+		RenderScene* currScene = m_RenderScene[0].get();
+		RenderCamera* mainCamera = currScene->GetMainCamera();
+
 		auto viewMat = mainCamera->GetViewMatrix();
 		auto projMat = mainCamera->GetProjMatrix();
 		auto viewProj = XMMatrixMultiply(viewMat, projMat);
+
 		auto viewDet = XMMatrixDeterminant(viewMat);
 		auto projDet = XMMatrixDeterminant(projMat);
 		auto viewProjDet = XMMatrixDeterminant(viewProj);
+
 		auto invViewMat = XMMatrixInverse(&viewDet, viewMat);
 		auto invProjMat = XMMatrixInverse(&projDet, projMat);
 		auto invViewProjMat = XMMatrixInverse(&viewProjDet, viewProj);
 
+		frameCtx.frameIndex = m_frameSyncSystem->GetCurrentFrameIndex();
+		frameCtx.renderScene = currScene;
+
 		frameCtx.uniforms.timer = timer;
-		frameCtx.uniforms.mainCamera = currRenderScene->GetMainCamera();
-		frameCtx.uniforms.prevViewProj = frameCtx.uniforms.viewProj;
+		frameCtx.uniforms.mainCamera = mainCamera;
+
 		XMStoreFloat4x4(&frameCtx.uniforms.view, viewMat);
 		XMStoreFloat4x4(&frameCtx.uniforms.proj, projMat);
 		XMStoreFloat4x4(&frameCtx.uniforms.viewProj, viewProj);
@@ -194,113 +257,220 @@ namespace photon
 		frameCtx.uniforms.camPosWS = mainCamera->pos;
 		frameCtx.uniforms.znear = mainCamera->znear;
 		frameCtx.uniforms.zfar = mainCamera->zfar;
-		frameCtx.uniforms.viewportSize = Vector2i(m_RenderTarget->dxDesc.Width, m_RenderTarget->dxDesc.Height);
-		frameCtx.uniforms.invViewportSize = Vector2(1.0f / m_RenderTarget->dxDesc.Width, 1.0f / m_RenderTarget->dxDesc.Height);
+		frameCtx.uniforms.viewportSize = m_mainViewportSize;
+		frameCtx.uniforms.invViewportSize = {
+			1.0f / static_cast<float>(m_mainViewportSize.x),
+			1.0f / static_cast<float>(m_mainViewportSize.y)
+		};
 
-		frameCtx.uniforms.dirLights = currRenderScene->directionalLights;
-		frameCtx.uniforms.pointLights = currRenderScene->pointLights;
-		frameCtx.uniforms.spotLights = currRenderScene->spotLights;
-		
+		frameCtx.uniforms.dirLights = currScene->directionalLights;
+		frameCtx.uniforms.pointLights = currScene->pointLights;
+		frameCtx.uniforms.spotLights = currScene->spotLights;
+
 		if (!frameCtx.uniforms.dirLights.empty())
 			frameCtx.uniforms.mainDirLight = &frameCtx.uniforms.dirLights[0];
 		if (!frameCtx.uniforms.pointLights.empty())
-			frameCtx.uniforms.mainPointLight= &frameCtx.uniforms.pointLights[0];
+			frameCtx.uniforms.mainPointLight = &frameCtx.uniforms.pointLights[0];
 
-		frameCtx.uniforms.staticFrameResource = (StaticModelFrameResource*)m_Rhi->GetCurrFrameResource(FrameResourceType::StaticModelFrameResource);
+		frameCtx.services.rhi = m_rhi.get();
+		frameCtx.services.resourceManager = m_resourceManager.get();
+		frameCtx.services.gpuResManager = m_gpuResMgr.get();
+		frameCtx.services.descriptorSystem = m_descriptorSystem.get();
+		frameCtx.services.frameAllocator = m_frameAllocSystem.get();
+		frameCtx.services.cmdCtxMgr = m_CmdCtxMgr.get();
+		frameCtx.services.pipelineCache = m_resourceManager->GetPipelineStateCache();
+		frameCtx.services.rootSignatureCache = m_resourceManager->GetRootSignatureCache();
+		frameCtx.services.graphicsCmd = graphicsCmd;
 
+		frameCtx.targets.sceneColor = m_sceneColor;
+		frameCtx.targets.sceneDepth = m_sceneDepth;
+		frameCtx.skybox = currScene->GetCubemap();
 
-		m_InnerMeshCollection->Clear();
-		frameCtx.services.shaderFactory = m_ShaderFactory.get();
-		frameCtx.services.geoGen = m_GeometryGenerator.get();
-		frameCtx.services.resMgr = m_ResourceManager.get();
-		frameCtx.services.rhi = m_Rhi.get();
-		frameCtx.services.innerMeshCollection = m_InnerMeshCollection.get();
+		const auto allItems = currScene->GatherRenderItems();
+		frameCtx.renderlists.all = allItems;
 
-		frameCtx.renderlists.allRitems = currRenderScene->GetCommonRenderItems(m_Rhi.get(), true);
-		frameCtx.renderlists.opaque = frameCtx.renderlists.allRitems;
-		frameCtx.renderlists.innerRitems[frameCtx.uniforms.staticFrameResource].clear();
-		frameCtx.renderlists.shadowCasters.clear();
-		for (auto& ritem : frameCtx.renderlists.opaque)
+		for (const RenderItem* item : allItems)
 		{
-			if (ritem->bCastShadow)
-			{
-				frameCtx.renderlists.shadowCasters.push_back(ritem);
-			}
+			if (!item || !item->IsVisible())
+				continue;
+
+			const bool transparent =
+				item->IsTransparent() || HasLayer(item->layers, RenderLayer::Transparent);
+
+			if (transparent)
+				frameCtx.renderlists.transparent.push_back(item);
+			else
+				frameCtx.renderlists.opaque.push_back(item);
+
+			if (item->flags.castShadow || HasLayer(item->layers, RenderLayer::ShadowCaster))
+				frameCtx.renderlists.shadowCasters.push_back(item);
 		}
 
-		frameCtx.backBuffer = m_RenderTarget;
-		frameCtx.depthStencilBuffer = m_DepthStencil;
-		frameCtx.skybox = currRenderScene->cubemap;
+		PrepareFrameObjectBindings(frameCtx);
+	}
 
+	void RenderSystem::PrepareFrameObjectBindings(EG_FrameContext& frameCtx)
+	{
+		auto* cmd = frameCtx.services.graphicsCmd;
+		auto* gpuResMgr = frameCtx.services.gpuResManager;
+		auto* descriptorSystem = frameCtx.services.descriptorSystem;
+		auto* frameAllocator = frameCtx.services.frameAllocator;
+
+		if (!cmd || !gpuResMgr || !descriptorSystem || !frameAllocator)
+			return;
+
+		const auto items = frameCtx.renderScene->GatherMutableRenderItems();
+		for (RenderItem* item : items)
+		{
+			if (!item || !item->IsVisible())
+				continue;
+
+			FrameResourceRange upload =
+				frameAllocator->AllocateFrameUploadBuffer256<ObjectData>(1);
+
+			DXResource* uploadRes = gpuResMgr->GetResource(upload.buffer);
+			if (!uploadRes)
+				continue;
+
+			cmd->CopyBufferCpuToUpload(
+				uploadRes,
+				upload.range.cbvOffsetInBytes,
+				&item->objConstant,
+				sizeof(ObjectData));
+
+			FrameDescriptorHandle frameCbv =
+				frameAllocator->AllocateFrameCbvDescriptor();
+
+			ViewDesc cbvDesc = {};
+			cbvDesc.type = ViewType::CBV;
+			cbvDesc.dimension = ViewDimension::Buffer;
+			cbvDesc.cbvOffsetInBytes = upload.range.cbvOffsetInBytes;
+			cbvDesc.cbvSizeInBytes = upload.range.cbvSizeInBytes;
+
+			descriptorSystem->CreateDescriptorAtCpuHandle(
+				uploadRes,
+				cbvDesc,
+				frameAllocator->GetCpuHandle(frameCbv));
+
+			item->objCbvHandle = frameCbv;
+		}
+	}
+
+	void RenderSystem::ExecutePresentPass(EG_FrameContext& frameCtx, DX12CommandContext& gfxCtx)
+	{
+		const TextureRenderResource* colorRR =
+			m_resourceManager->GetTextureRenderResource(frameCtx.targets.sceneColor);
+		if (!colorRR)
+			return;
+
+		DXResource* sceneColor = m_gpuResMgr->GetResource(colorRR->texture);
+		DXTexture2D* backbuffer = m_rhi->GetCurrBackbuffer();
+		if (!sceneColor || !backbuffer)
+			return;
+
+		gfxCtx.ResourceStateTransform(sceneColor, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		gfxCtx.ResourceStateTransform(backbuffer, D3D12_RESOURCE_STATE_COPY_DEST);
+		gfxCtx.CopyGpuResource(backbuffer, sceneColor);
+		gfxCtx.ResourceStateTransform(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
 	}
 
 	void RenderSystem::Tick(GameTimer& gt)
 	{
-		if(m_WindowSystem->ShouldClose())
+		if (m_WindowSystem->ShouldClose())
 		{
-			m_Rhi->Clear();
+			m_rhi->Shutdown();
 			return;
 		}
 
-		if (m_WindowSystem->GetClientWidthAndHeight() != Vector2i(m_RenderTarget->dxDesc.Width, m_RenderTarget->dxDesc.Height))
+		Vector2i size = m_WindowSystem->GetClientWidthAndHeight();
+		if (size != m_mainViewportSize)
 		{
-			ReCreateRenderTargetTexAndDepthStencilTex(m_WindowSystem->GetClientWidthAndHeight());
+			m_rhi->ResizeSwapChain(size.x, size.y);
+			CreateOrResizeMainViewportTargets(size);
+			CreateOrRefreshBackBufferRtvs();
 		}
 
-		// Bind Global Info
-		m_Rhi->CmdSetDescriptorHeaps();
-		
-		EG_FrameContext forwardPipelineContext;
-		BuildEGFrameContext(forwardPipelineContext, &gt);
-		//auto ritems = currRenderScene->GetCommonRenderItems(m_Rhi.get(), true);
-		//forwardPipelineData.allRenderItems.resize(ritems.size());
-		for(int i = 0; i< forwardPipelineContext.renderlists.allRitems.size(); ++i)
-		{
-			//UpdateFrameResource()
-			auto ritem = dynamic_cast<CommonRenderItem*>(forwardPipelineContext.renderlists.allRitems[i]);
-			if(ritem->numFrameDirty > 0)
-			{
-				auto frameResource = (CommonRenderItem::TFrameResource*)m_Rhi->GetCurrFrameResource(CommonRenderItem::s_FrameResourceType);
-				frameResource->UpdateObjectConstantBuffer(ritem->objConstantIdx, &ritem->objectConstants);
-				frameResource->UpdateMatDataConstantBuffer(ritem->material->matCBufferIdx, &ritem->material->matCBufferData);
-				ritem->numFrameDirty--;
-			}
-		}
+		m_frameSyncSystem->BeginFrame();
+		uint32_t frameIndex = m_frameSyncSystem->GetCurrentFrameIndex();
 
-		//auto& dirLights = m_RenderScene[0]->directionalLights;
-		//auto& pointLights = m_RenderScene[0]->pointLights;
-		//auto& spotLights = m_RenderScene[0]->spotLights;
-		//forwardPipelineData.directionalLights.resize(dirLights.size());
-		//forwardPipelineData.pointLights.resize(pointLights.size());
-		//forwardPipelineData.spotLights.resize(spotLights.size());
-		//for(int i = 0; i < dirLights.size(); ++i)
-		//{
-		//	forwardPipelineData.directionalLights[i] = &dirLights[i].data;
-		//}
-		//for (int i = 0; i < pointLights.size(); ++i)
-		//{
-		//	forwardPipelineData.pointLights[i] = &pointLights[i].data;
-		//}
-		//for (int i = 0; i < spotLights.size(); ++i)
-		//{
-		//	forwardPipelineData.spotLights[i] = &spotLights[i].data;
-		//}
-		//
-		//forwardPipelineData.depthStencil = m_DepthStencil;
-		//forwardPipelineData.renderTarget = m_RenderTarget;
-		//forwardPipelineData.gameTimer = &gt;
-		//forwardPipelineData.mainCamera = currRenderScene->GetMainCamera();
-		//forwardPipelineData.cubemap = currRenderScene->cubemap.get();
-		//if (!dirLights.empty())
-		//	forwardPipelineData.mainLight = &dirLights[0];
-		//else if (!spotLights.empty())
-		//	forwardPipelineData.mainLight = &spotLights[0];
-		
-		m_CurrRenderPipeline->PrepareContext(&forwardPipelineContext);
+		m_CmdCtxMgr->BeginFrame(frameIndex);
+		m_frameAllocSystem->BeginFrame(frameIndex);
 
-		m_InnerMeshCollection->EndPush(m_Rhi.get());
+		auto& gfxCtx = m_CmdCtxMgr->BeginGraphicsContext(frameIndex);
 
-		m_CurrRenderPipeline->Render(&forwardPipelineContext);
+		EG_FrameContext frameCtx = {};
+		BuildEGFrameContext(frameCtx, &gt, &gfxCtx);
+
+		m_CurrRenderPipeline->Prepare(frameCtx);
+
+		// 任何可能导致 frame descriptor heap identity 改变的操作，只能发生在 Execute 之前。
+		// 所有 subpass / pass 在 Prepare 阶段把 descriptor 都准备好
+		m_frameAllocSystem->FinalizeFrameDescriptors();
+
+		gfxCtx.SetDescriptorHeaps({ m_frameAllocSystem->GetCurrentCbvSrvUavHeap() });
+
+		m_CurrRenderPipeline->Execute(frameCtx);
+
+		if (!IsEditorMode())
+			ExecutePresentPass(frameCtx, gfxCtx);
+		else
+			ExecuteEditorUIPass(frameCtx, gfxCtx);
+
+		uint64_t fenceVal = m_CmdCtxMgr->SubmitGraphicsContext(gfxCtx);
+		m_frameSyncSystem->EndFrame(fenceVal);
+
+		m_gpuResMgr->ProcessDeferredRelease();
+		m_rhi->Present();
+	}
+
+	bool RenderSystem::IsEditorMode() const
+	{
+		return m_imguiSystem != nullptr;
+	}
+
+	void RenderSystem::ExecuteEditorUIPass(EG_FrameContext& frameCtx, DX12CommandContext& gfxCtx)
+	{
+		if (!m_imguiSystem)
+			return;
+
+		const uint32_t backbufferIndex = m_rhi->GetCurrentBackBufferIndex();
+		if (backbufferIndex >= m_backbufferRtvs.size())
+			return;
+
+		DXTexture2D* backbuffer = m_rhi->GetCurrBackbuffer();
+		if (!backbuffer)
+			return;
+
+		DescriptorHandle rtvHandle = m_backbufferRtvs[backbufferIndex];
+		if (!rtvHandle.IsValid())
+			return;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv =
+			m_descriptorSystem->GetCpuHandle(rtvHandle);
+
+		gfxCtx.ResourceStateTransform(backbuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+		D3D12_RECT scissorRect = {
+			0, 0,
+			frameCtx.uniforms.viewportSize.x,
+			frameCtx.uniforms.viewportSize.y
+		};
+
+		D3D12_VIEWPORT viewport = {
+			0.0f,
+			0.0f,
+			static_cast<float>(frameCtx.uniforms.viewportSize.x),
+			static_cast<float>(frameCtx.uniforms.viewportSize.y),
+			0.0f,
+			1.0f
+		};
+
+		gfxCtx.SetViewportsAndScissorRects(scissorRect, viewport);
+		gfxCtx.SetRenderTargets(1, &rtv, true, nullptr);
+
+		m_imguiSystem->Render(gfxCtx);
+
+		gfxCtx.ResourceStateTransform(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
 	}
 
 	void RenderSystem::Stop()
@@ -315,75 +485,25 @@ namespace photon
 		m_CurrRenderPipeline->ReStart();
 	}
 
-	void RenderSystem::ReCreateRenderTargetTexAndDepthStencilTex(Vector2i size)
-	{
-		m_Rhi->FlushCommandQueue();
-
-		Texture2DDesc texDesc;
-		texDesc.width = size.x;
-		texDesc.height = size.y;
-		texDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		texDesc.heapProp = ResourceHeapProperties::Default;
-		texDesc.flag = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-		texDesc.clearValue = { 0.1f, 0.1f, 0.1f, 1.0f };
-		m_RenderTarget = m_ResourceManager->CreateTexture2D(texDesc);
-
-		Texture2DDesc dsvtex;
-		dsvtex.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		dsvtex.flag = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-		dsvtex.heapProp = ResourceHeapProperties::Default;
-		dsvtex.width = size.x;
-		dsvtex.height = size.y;
-		dsvtex.clearValue = { 1.0f, 0.0f, 0.0f, 0.0f };
-		m_DepthStencil = m_ResourceManager->CreateTexture2D(dsvtex);
-		m_Rhi->ResourceStateTransform(m_DepthStencil.get(), D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	}
-
-	std::shared_ptr<photon::RHI> RenderSystem::GetRHI()
-	{
-		return m_Rhi;
-	}
-
-	photon::ShaderResourceView* RenderSystem::GetFinalOutputShaderResourceView()
-	{
-		m_RenderTargetSRV = m_Rhi->CreateShaderResourceView(m_RenderTarget.get(), nullptr, m_RenderTargetSRV);
-		return m_RenderTargetSRV;
-	}
-
-	ShaderResourceView* RenderSystem::GetPipelineCsmMgrSRV()
-	{
-		auto csmMgr = dynamic_cast<ForwardRenderPipeline*>(m_CurrRenderPipeline)->GetCSMMgr();
-		return csmMgr->GetShaderResourceView();
-	}
-
 	void RenderSystem::SetRenderPipelineType(RenderPipelineType renderType)
 	{
-
+		m_CurrPipelineType = renderType;
+		auto it = m_RenderPipelines.find(renderType);
+		m_CurrRenderPipeline = (it != m_RenderPipelines.end()) ? it->second.get() : nullptr;
 	}
 
-	photon::RenderCamera* RenderSystem::GetRenderCamera()
+	RenderCamera* RenderSystem::GetRenderCamera()
 	{
-		return m_RenderScene[0]->GetMainCamera();
+		return m_RenderScene.empty() ? nullptr : m_RenderScene[0]->GetMainCamera();
 	}
 
-	photon::ResourceManager* RenderSystem::GetResourceManager()
+	ResourceManager* RenderSystem::GetResourceManager()
 	{
-		return m_ResourceManager.get();
+		return m_resourceManager.get();
 	}
 
-	photon::GeometryGenerator* RenderSystem::GetGeometryGenerator()
+	RenderScene* RenderSystem::GetRenderScene()
 	{
-		return m_GeometryGenerator.get();
+		return m_RenderScene.empty() ? nullptr : m_RenderScene[0].get();
 	}
-
-	photon::RenderScene* RenderSystem::GetRenderScene()
-	{
-		return m_RenderScene[0].get();
-	}
-
-	photon::ShaderFactory* RenderSystem::GetShaderFactory()
-	{
-		return m_ShaderFactory.get();
-	}
-
 }

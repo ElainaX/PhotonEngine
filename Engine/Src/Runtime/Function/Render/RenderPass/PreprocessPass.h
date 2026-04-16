@@ -1,37 +1,13 @@
-﻿#pragma once
+#pragma once
 #include "Function/Render/RenderPass.h"
-#include "Function/Render/RenderResourceData.h"
-#include "Function/Render/RHI.h"
-#include "../Shader/TestShader.h"
-#include "../RenderObject/RenderMeshCollection.h"
-#include "../DX12RHI/DescriptorHeap/Descriptor.h"
-#include "../DX12RHI/DXPipeline/DXGraphicsPipeline.h"
-#include "Function/Render/WindowSystem.h"
-#include "SubPass/DrawShadowSubPass.h"
-#include "../DX12RHI/FrameResource/StaticModelFrameResource.h"
 
-namespace photon 
+namespace photon
 {
-	class PreprocessPass : public RenderPass 
+	class PreprocessPass : public RenderPass
 	{
 	public:
-		void Initialize(RHI* rhi);
-		void PrepareContext(RenderResourceData * data) override;
-		void Draw(EG_FrameContext* frame, PassBlackboard* bb) override;
-
-	private:
-
-		std::vector<StaticModelPassConstants> m_PassConstantses;
-		std::shared_ptr<DrawShadowSubPass> m_ShadowSubPass;
-		// self-contain的ShadowManager
-		//std::shared_ptr<CascadedShadowManager> m_CascadedShadowManager;
-		RHI* m_Rhi = nullptr;
-		std::vector<int> m_PassConstantsIndices;
-
-		std::unordered_map<FrameResource*, std::vector<Resource*>> m_PassFrameResources;
-
-		Shader* m_ShadowShader;
+		void Initialize(const RenderPipelineServices& services) override;
+		void Prepare(const PassPrepareContext& ctx) override;
+		void Execute(const PassExecuteContext& ctx) override;
 	};
-
-
 }

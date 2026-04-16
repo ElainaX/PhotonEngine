@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cassert>
 #include <cmath>
@@ -11,32 +11,31 @@ namespace photon
 	class Vector3i
 	{
 	public:
-		float x{ 0.f };
-		float y{ 0.f };
-		float z{ 0.f };
+		int x{ 0 };
+		int y{ 0 };
+		int z{ 0 };
 
 	public:
 		Vector3i() = default;
-		Vector3i(float x_, float y_, float z_) : x{ x_ }, y{ y_ }, z{ z_ } {}
-		Vector3i(const DirectX::XMFLOAT3& dxfloat3) : x{ dxfloat3.x }, y{ dxfloat3.y }, z{ dxfloat3.z } {}
+		Vector3i(int x_, int y_, int z_) : x{ x_ }, y{ y_ }, z{ z_ } {}
 
-		explicit Vector3i(const float coords[3]) : x{ coords[0] }, y{ coords[1] }, z{ coords[2] } {}
+		explicit Vector3i(const int coords[3]) : x{ coords[0] }, y{ coords[1] }, z{ coords[2] } {}
 
-		float operator[](size_t i) const
+		int operator[](size_t i) const
 		{
 			assert(i < 3);
 			return *(&x + i);
 		}
 
-		float& operator[](size_t i)
+		int& operator[](size_t i)
 		{
 			assert(i < 3);
 			return *(&x + i);
 		}
 		/// Pointer accessor for direct copying
-		float* ptr() { return &x; }
+		int* ptr() { return &x; }
 		/// Pointer accessor for direct copying
-		const float* ptr() const { return &x; }
+		const int* ptr() const { return &x; }
 
 		bool operator==(const Vector3i& rhs) const { return (x == rhs.x && y == rhs.y && z == rhs.z); }
 
@@ -124,7 +123,7 @@ namespace photon
 			return *this;
 		}
 
-		Vector3i& operator-=(float scalar)
+		Vector3i& operator-=(int scalar)
 		{
 			x -= scalar;
 			y -= scalar;
@@ -166,16 +165,6 @@ namespace photon
 			return *this;
 		}
 
-		/** Returns the length (magnitude) of the vector.
-		@warning
-		This operation requires a square root and is expensive in
-		terms of CPU operations. If you don't need to know the exact
-		length (e.g. for just comparing lengths) use squaredLength()
-		instead.
-		*/
-
-		float length() const { return std::hypot(x, y, z); }
-
 		/** Returns the square of the length(magnitude) of the vector.
 		@remarks
 		This  method is for efficiency - calculating the actual
@@ -188,16 +177,7 @@ namespace photon
 		*/
 		int squaredLength() const { return x * x + y * y + z * z; }
 
-		/** Returns the distance to another vector.
-		@warning
-		This operation requires a square root and is expensive in
-		terms of CPU operations. If you don't need to know the exact
-		distance (e.g. for just comparing distances) use squaredDistance()
-		instead.
-		*/
-
-		float distance(const Vector3i& rhs) const { return (*this - rhs).length(); }
-
+		
 		/** Returns the square of the distance to another vector.
 		@remarks
 		This method is for efficiency - calculating the actual
@@ -223,7 +203,7 @@ namespace photon
 		vec Vector with which to calculate the dot product (together
 		with this one).
 		@returns
-		A float representing the dot product value.
+		A int representing the dot product value.
 		*/
 
 		int dotProduct(const Vector3i& vec) const { return x * vec.x + y * vec.y + z * vec.z; }
@@ -240,11 +220,11 @@ namespace photon
 
 		//void normalise()
 		//{
-		//	float length = std::hypot(x, y, z);
+		//	int length = std::hypot(x, y, z);
 		//	if (length == 0.f)
 		//		return;
 
-		//	float inv_lengh = 1.0f / length;
+		//	int inv_lengh = 1.0f / length;
 		//	x *= inv_lengh;
 		//	y *= inv_lengh;
 		//	z *= inv_lengh;
@@ -321,7 +301,7 @@ namespace photon
 		/** Returns true if this vector is zero length. */
 		bool isZeroLength(void) const
 		{
-			float sqlen = (x * x) + (y * y) + (z * z);
+			int sqlen = (x * x) + (y * y) + (z * z);
 			return (sqlen < (1e-06 * 1e-06));
 		}
 
@@ -352,7 +332,7 @@ namespace photon
 
 		Vector3i absoluteCopy() const { return Vector3i(fabsf(x), fabsf(y), fabsf(z)); }
 
-		static Vector3i lerp(const Vector3i& lhs, const Vector3i& rhs, float alpha) { return lhs + alpha * (rhs - lhs); }
+		static Vector3i lerp(const Vector3i& lhs, const Vector3i& rhs, int alpha) { return lhs + alpha * (rhs - lhs); }
 
 		static Vector3i clamp(const Vector3i& v, const Vector3i& min, const Vector3i& max)
 		{
@@ -360,7 +340,6 @@ namespace photon
 				std::clamp(v.x, min.x, max.x), std::clamp(v.y, min.y, max.y), std::clamp(v.z, min.z, max.z));
 		}
 
-		bool         isNaN() const { return std::isnan(x) || std::isnan(y) || std::isnan(z); }
 		// special points
 		static const Vector3i ZERO;
 		static const Vector3i UNIT_X;

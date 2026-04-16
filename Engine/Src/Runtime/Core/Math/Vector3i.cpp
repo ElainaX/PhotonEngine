@@ -1,4 +1,4 @@
-﻿#include "Vector3i.h"
+#include "Vector3i.h"
 
 namespace photon
 {

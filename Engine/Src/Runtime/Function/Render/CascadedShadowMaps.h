@@ -1,4 +1,4 @@
-﻿#pragma once 
+#pragma once 
 
 #include <vector>
 #include <memory>
@@ -6,7 +6,7 @@
 #include "DX12RHI/DX12RHI.h"
 #include "Core/Math/Vector2i.h"
 #include "Core/Math/Vector4.h"
-#include "Resource/Texture/Texture2DArray.h"
+#include "Resource/DXResourceHeader.h"
 
 namespace photon 
 {
@@ -29,9 +29,9 @@ namespace photon
 		ResourceManager* m_ResourceManager = nullptr;
 		RHI* m_Rhi = nullptr;
 
-		std::shared_ptr<Texture2DArray> m_ShadowMapResources;
-		std::vector<DepthStencilView*> m_ShadowMapDsvs;
-		ShaderResourceView* m_ShadowMapSrv = nullptr;
+		//std::shared_ptr<DXTexture2DArray> m_ShadowMapResources;
+		//std::vector<DepthStencilView*> m_ShadowMapDsvs;
+		//ShaderResourceView* m_ShadowMapSrv = nullptr;
 	};
 
 

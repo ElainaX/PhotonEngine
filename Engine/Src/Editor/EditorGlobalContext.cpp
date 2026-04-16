@@ -1,4 +1,4 @@
-﻿#include "EditorGlobalContext.h"
+#include "EditorGlobalContext.h"
 
 namespace photon 
 {

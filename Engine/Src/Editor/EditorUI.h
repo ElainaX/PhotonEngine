@@ -1,13 +1,13 @@
-﻿#pragma once
+#pragma once
 #include "Function/UI/WindowUI.h"
 #include "ImGui/imgui.h"
-#include "ImGui/imgui_impl_dx12.h"
-#include "PaintItCaller.h"
 #include "Function/Util/GameTimer.h"
 
 #include <unordered_map>
 #include <string>
 #include <functional>
+
+#include "Function/Render/GeometryGenerator.h"
 
 namespace photon 
 {
@@ -15,6 +15,7 @@ namespace photon
 	{
 	public:
 		EditorUI();
+		~EditorUI() = default;
 
 		void Initialize(const WindowUIInitInfo& initInfo) override final;
 		void PreRender() override final;
@@ -28,8 +29,8 @@ namespace photon
 		void DrawSceneWindowUI();
 
 
-		void DrawPaintItModal(Model* model, bool* bOpen);
-		void ChangeModelToPaintIt(Model* model, bool bDiffuse, bool bNormal, bool bSpecular);
+		void DrawPaintItModal(ModelAsset* model, bool* bOpen);
+		void ChangeModelToPaintIt(ModelAsset* model, bool bDiffuse, bool bNormal, bool bSpecular);
 
 	private:
 		using GameObjectInspectorItem = std::function<void(GameObject*)>;
@@ -56,7 +57,12 @@ namespace photon
 
 		GameTimer m_EditorTimer;
 
-		std::shared_ptr<PaintItCaller> m_PaintIt;
+	private:
+		ImTextureID m_GameEngineTexId = 0;
+		TextureHandle m_GameEngineBoundSceneColor = {};
+		Vector2i m_LastGameEngineViewportSize = {};
+
+		//std::shared_ptr<PaintItCaller> m_PaintIt;
 	};
 
 

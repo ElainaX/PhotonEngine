@@ -1,10 +1,13 @@
-﻿#include "Engine.h"
+#include "Engine.h"
 #include "Editor.h"
 #include "Function/Render/WindowSystem.h"
 #include <windows.h>
 int main()
 {
     SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+
+
     auto* photonEngine = new photon::PhotonEngine();
 
     photon::WindowCreateInfo wndCreateInfo{1920, 1080};

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Function/Global/RuntimeGlobalContext.h"
 #include "CascadedShadowMaps.h"

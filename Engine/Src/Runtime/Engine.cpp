@@ -1,4 +1,4 @@
-﻿#include "Engine.h"
+#include "Engine.h"
 #include "Test/SandBox.h"
 #include "Function/Global/RuntimeGlobalContext.h"
 #include "Function/Render/WindowSystem.h"

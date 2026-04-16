@@ -1,89 +1,161 @@
-﻿#pragma once 
+#pragma once 
 
-#include "Resource/ResourceType.h"
-#include "Resource/Texture/Texture2D.h"
-#include "Resource/Texture/Buffer.h"
-#include "Resource/Texture/Texture2DArray.h"
-#include "RenderObject/Mesh.h"
-#include "RenderObject/Model.h"
-#include "RenderObject/Material.h"
-#include "Shader/ShaderFactory.h"
-#include "RHI.h"
-#include "ResourceLoader.h"
-#include "Platform/FileSystem/FileSystem.h"
-
-#include <map>
-#include <unordered_map>
-#include <memory>
+#include <array>
 #include <filesystem>
+#include <map>
+#include <memory>
+#include "ResourceHandle.h"
+#include "DX12RHI/CommandContextManager.h"
+#include "DX12RHI/DXPipeline/PipelineStateCache.h"
+#include "DX12RHI/FrameResource/FrameAllocatorSystem.h"
+#include "DX12RHI/RenderResource/MaterialRenderResource.h"
+#include "DX12RHI/RenderResource/MeshRenderResource.h"
+#include "DX12RHI/RenderResource/ResourceResolver.h"
+#include "DX12RHI/RenderResource/TextureRenderResource.h"
+#include "RenderObject/MaterialAsset.h"
+#include "RenderObject/MaterialCollection.h"
+#include "RenderObject/MeshAsset.h"
+#include "RenderObject/MeshCollection.h"
+#include "RenderObject/ModelAsset.h"
+#include "RenderObject/TextureAsset.h"
+#include "RenderObject/TextureCollection.h"
+#include "ResourceLoader/ResourceLoader.h"
+#include "Shader/ShaderProgramCollection.h"
 
-namespace photon 
+
+namespace photon
 {
-	class ResourceManager 
+
+
+	class ResourceManager : public IResourceView
 	{
 	public:
 		ResourceManager() = default;
 		~ResourceManager() = default;
-		void Initialize(RHI* rhi);
+		void Initialize(DX12RHI* rhi, GpuResourceManager* gpuResMgr,
+			DescriptorSystem* descriptorSystem,
+			FrameAllocatorSystem* frameAllocatorSystem,
+			CommandContextManager* cmdCtxMgr);
+		void Shutdown();
 
-		std::shared_ptr<Texture2DArray> CreateTexture2DArray(Texture2DArrayDesc desc);
-		std::shared_ptr<Cubemap> LoadCubemap(const std::filesystem::path& folder, bool forceLoadSRGB = false);
-		std::shared_ptr<Texture2D> LoadTexture2D(const std::filesystem::path& filepath, bool forceLoadSRGB = false);
-		std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc);
-		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc);
-		std::shared_ptr<Mesh> CreateMesh(MeshDesc desc);
-		std::shared_ptr<Material> CreateMaterial(StaticModelMaterialDataConstants data, UINT64 texGuid, const std::wstring& name);
-		std::shared_ptr<Material> CreateMaterial(StaticModelMaterialDataConstants data, UINT64 diffuseGuid, UINT64 normalGuid, const std::wstring& name);
-		std::shared_ptr<Material> CreateMaterial(StaticModelMaterialDataConstants data, UINT64 diffuseGuid, UINT64 normalGuid, UINT64 roughnessGuid, const std::wstring& name);
-		std::shared_ptr<Material> CreateMaterial(StaticModelMaterialDataConstants data, Texture2D* diffuse, Texture2D* normal, Texture2D* roughness, const std::wstring& name);
-		Shader* LoadShader(const std::wstring& shaderName);
-		std::shared_ptr<Model> LoadModel(const std::filesystem::path& path);
+		// 引擎可支持的导入，这些都是职责明确的函数
+		std::shared_ptr<ModelAsset> LoadModel(const std::filesystem::path& path);
+		MeshHandle LoadMesh(const std::filesystem::path& path);
+		TextureHandle LoadTexture(const std::filesystem::path& path);
+		MaterialHandle LoadMaterial(const std::filesystem::path& path);
+		MaterialHandle CreatePBRMaterial(ShaderHandle shaderHandle, const std::string& debugName = "PBRMaterial");
+		ShaderHandle LoadShaderProgram(const std::filesystem::path& path, const ShaderProgramLoadDesc& loadDesc);
+		bool SetMaterialTextureBinding(MaterialHandle mat, std::string_view name, TextureHandle tex);
 
-		std::shared_ptr<Cubemap> GetCubemap(UINT64 guid);
-		std::shared_ptr<Texture2D> GetTexture2D(UINT64 guid);
-		std::shared_ptr<Texture2D> GetLoadedTexture2D(const std::filesystem::path& filepathRelateToAssetFolder);
-		std::shared_ptr<Buffer> GetBuffer(UINT64 guid);
-		std::shared_ptr<Mesh> GetMesh(UINT64 guid);
+		TextureHandle CreateRuntimeTexture2D(
+			const DXTexture2DDesc& desc,
+			TextureDimension dimension = TextureDimension::Tex2D,
+			const std::string& debugName = "RuntimeTex2D");
 
-		std::shared_ptr<Buffer> GetBufferUploadBuffer(Buffer* buffer);
-		std::shared_ptr<Buffer> GetBufferUploadBuffer(UINT64 bufferGuid);
-		std::shared_ptr<Buffer> GetTextureUploadBuffer(Texture2D* tex);
-		std::shared_ptr<Buffer> GetTextureUploadBuffer(UINT64 texGuid);
+		TextureHandle CreateRuntimeTexture2DArray(
+			const DXTexture2DArrayDesc& desc,
+			TextureDimension dimension = TextureDimension::Tex2DArray,
+			const std::string& debugName = "RuntimeTex2DArray");
+
+		TextureHandle CreateRuntimeTextureCube(
+			const DXTexture2DArrayDesc& desc,
+			const std::string& debugName = "RuntimeCubemap");
 
 
-		void BindBufferUploadBuffer(Buffer* buffer, std::shared_ptr<Buffer> uploadBuffer);
+		// --------- Destroy / Unload ----------
+		bool DestroyTexture(TextureHandle h, bool eraseAsset = true);
+		bool DestroyMesh(MeshHandle h, bool eraseAsset = true);
+		bool DestroyMaterial(MaterialHandle h, bool eraseAsset = true);
+		bool DestroyShaderProgram(ShaderHandle h, bool eraseAsset = true);
 
-		void DestoryMesh(UINT64 guid);
-		void DestoryMesh(Mesh* mesh);
+		// model 目前还不是 handle 资源，先只支持删 asset 记录，不默认级联删子资源
+		bool UnloadModel(Guid modelGuid);
 
-		void DestoryTexture2D(UINT64 guid);
-		void DestoryTexture2D(Resource* resource);
+		const ShaderStageAsset* GetShaderStageAsset(Guid guid) const;
 
-		void DestoryTexture2DArray(UINT64 guid);
-		void DestoryTexture2DArray(Resource* resource);
+		// --------- IResourceView ----------------
+		const MeshAsset* GetMeshAsset(Guid guid) const override;
+		const MeshRenderResource* GetMeshRenderResource(MeshHandle h) const override;
+
+		const TextureAsset* GetTextureAsset(Guid guid) const override;
+		const TextureRenderResource* GetTextureRenderResource(TextureHandle h) const override;
+
+		const MaterialAsset* GetMaterialAsset(Guid guid) const override;
+		const MaterialRenderResource* GetMaterialRenderResource(MaterialHandle h) const override;
+
+		const ShaderProgramAsset* GetShaderProgramAsset(Guid guid) const override;
+		const ShaderProgramRenderResource* GetShaderProgramRenderResource(ShaderHandle h) const override;
+
+		bool SetMeshShader(MeshHandle mesh, ShaderHandle shader);
+
+		MeshHandle GetMeshHandleByGuid(Guid guid) const override;
+		TextureHandle GetTextureHandleByGuid(Guid guid) const override;
+		MaterialHandle GetMaterialHandleByGuid(Guid guid) const override;
+		ShaderHandle GetShaderHandleByGuid(Guid guid) const override;
+
+		MaterialHandle GetFallbackMaterial() const override;
+		TextureHandle GetFallbackTexture() const override;
+		ShaderHandle GetFallbackShader() const override;
+
+		PipelineStateCache* GetPipelineStateCache() const { return m_pipelineStateCache.get(); }
+		RootSignatureCache* GetRootSignatureCache() const { return m_rootSignatureCache.get(); }
+		VertexLayoutRegistry* GetVertexLayoutRegistry() const { return m_vertexLayoutRegistry.get(); }
 
 	private:
-		void LoadModelToGpu(Model* model);
+		ShaderStageAsset* GetShaderStageAssetMutable(Guid guid);
+		// --------- IResourceView ----------------
+		MeshAsset* GetMeshAssetMutable(Guid guid);
+		MeshRenderResource* GetMeshRenderResourceMutable(MeshHandle h);
+		TextureAsset* GetTextureAssetMutable(Guid guid);
+		TextureRenderResource* GetTextureRenderResourceMutable(TextureHandle h);
+		MaterialAsset* GetMaterialAssetMutable(Guid guid);
+		MaterialRenderResource* GetMaterialRenderResourceMutable(MaterialHandle h);
+		ShaderProgramAsset* GetShaderProgramAssetMutable(Guid guid);
+		ShaderProgramRenderResource* GetShaderProgramRenderResourceMutable(ShaderHandle h);
 
-		std::unique_ptr<ShaderFactory> m_ShaderFactory;
-		std::unique_ptr<ResourceLoader> m_ResourceLoader;
-		std::unordered_map<Buffer*, std::shared_ptr<Buffer>> m_BufferToUploadBuffer;
-		std::unordered_map<Texture2D*, std::shared_ptr<Buffer>> m_Texture2DToUploadBuffer;
-		
-		std::map<UINT64, std::shared_ptr<Cubemap>> m_Cubemaps;
-		std::map<UINT64, std::shared_ptr<Texture2D>> m_Textures;
-		std::map<UINT64, std::shared_ptr<Texture2DArray>> m_TextureArrays;
-		std::map<UINT64, std::shared_ptr<Buffer>> m_Buffers;
-		std::map<UINT64, std::shared_ptr<Mesh>> m_Meshs;
-		std::map<UINT64, std::shared_ptr<Material>> m_Materials;
-		std::map<UINT64, std::shared_ptr<Model>> m_Models;
-		std::map<std::wstring, UINT64> m_LoadedTextures;
-		std::array<std::wstring, 6> m_CubemapPureNames = {
-			L"posx", L"negx", L"posy", L"negy", L"posz", L"negz"
-		};
+		ShaderHandle LoadShaderProgram(const std::filesystem::path& path);
 
+		ShaderProgramAsset ImportShaderProgramAsset(const std::filesystem::path& path, const ShaderProgramLoadDesc* loadDesc);
+		MeshAsset ImportStaticMeshAsset(const std::filesystem::path& path);
+		TextureAsset ImportTextureAsset(const std::filesystem::path& path);
+		MaterialAsset ImportMaterialAsset(const std::filesystem::path& path, ShaderHandle shaderHandle);
+		void BuildDefaultAssets();
 
-		RHI* m_Rhi = nullptr;
+	private:
+		// assets
+		std::map<Guid, std::shared_ptr<ModelAsset>> m_modelAssets;
+		std::map<Guid, MeshAsset> m_meshAssets;
+		std::map<Guid, TextureAsset> m_textureAssets;
+		std::map<Guid, MaterialAsset> m_materialAssets;
+		std::map<Guid, ShaderProgramAsset> m_shaderProgramAssets;
+		std::map<Guid, ShaderStageAsset> m_shaderStageAssets;
+
+		// guid -> handle
+		std::map<Guid, MeshHandle> m_meshGuidToHandle;
+		std::map<Guid, TextureHandle> m_textureGuidToHandle;
+		std::map<Guid, MaterialHandle> m_materialGuidToHandle;
+		std::map<Guid, ShaderHandle> m_shaderGuidToHandle;
+
+		// collections
+		std::shared_ptr<VertexLayoutRegistry> m_vertexLayoutRegistry;
+		std::shared_ptr<MeshCollection> m_meshCollection;
+		std::shared_ptr<TextureCollection> m_textureCollection;
+		std::shared_ptr<MaterialCollection> m_materialCollection;
+		std::shared_ptr<ShaderProgramCollection> m_shaderProgramCollection;
+		std::shared_ptr<RootSignatureCache> m_rootSignatureCache;
+		std::shared_ptr<PipelineStateCache> m_pipelineStateCache;
+		std::shared_ptr<RenderResourceFactory> m_renderResourceFactory;
+		std::shared_ptr<ConstantBufferCollection> m_constantBufferCollection;
+
+		DX12RHI* m_rhi = nullptr;
+		GpuResourceManager* m_gpuResMgr = nullptr;
+		DescriptorSystem* m_descriptorSystem = nullptr;
+		FrameAllocatorSystem* m_frameAllocatorSystem = nullptr;
+		CommandContextManager* m_cmdCtxMgr = nullptr;
+
+		MaterialHandle m_fallbackMaterial = {};
+		TextureHandle  m_fallbackTexture = {};
+		ShaderHandle   m_fallbackShader = {};
 	};
 
 

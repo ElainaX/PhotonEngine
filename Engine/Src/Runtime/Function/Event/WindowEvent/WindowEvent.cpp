@@ -1,4 +1,4 @@
-﻿#include "WindowEvent.h"
+#include "WindowEvent.h"
 
 #include <format>
 

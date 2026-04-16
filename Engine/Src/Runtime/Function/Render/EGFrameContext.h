@@ -1,82 +1,96 @@
-﻿#pragma once 
+#pragma once
 #include "Function/Util/GameTimer.h"
 #include "RenderCamera.h"
-#include "Core/Math/Vector4.h"
+#include "Core/Math/MathFunction.h"
 #include <DirectXMath.h>
-#include <memory>
+#include <vector>
 
-#include "Function/Render/Shader/ShaderFactory.h"
-#include "Function/Render/GeometryGenerator.h"
-#include "ResourceManager.h"
-#include "RenderObject/RenderItem.h"
-#include "Resource/Texture/Cubemap.h"
+#include "RenderItem.h"
+#include "Resource/DXResourceHeader.h"
+#include "Function/Render/DX12RHI/GpuResource.h"
+#include "Function/Render/DX12RHI/DescriptorHeap/Descriptor.h"
 
 namespace photon
 {
-struct FrameUniforms
-{
-	GameTimer* timer;
+	class DX12RHI;
+	class ResourceManager;
+	class GpuResourceManager;
+	class DescriptorSystem;
+	class FrameAllocatorSystem;
+	class CommandContextManager;
+	class PipelineStateCache;
+	class RootSignatureCache;
+	class DX12CommandContext;
+	class RenderScene;
 
-	// main camera data
-	RenderCamera* mainCamera;
-	DirectX::XMFLOAT4X4 view;
-	DirectX::XMFLOAT4X4 proj;
-	DirectX::XMFLOAT4X4 viewProj;
-	DirectX::XMFLOAT4X4 invView;
-	DirectX::XMFLOAT4X4 invProj;
-	DirectX::XMFLOAT4X4 invViewProj;
-	DirectX::XMFLOAT4X4 prevViewProj;
+	struct FrameUniforms
+	{
+		GameTimer* timer = nullptr;
 
-	Vector3 camPosWS;
-	float znear, zfar;
-	Vector2i viewportSize;
-	Vector2 invViewportSize;
+		RenderCamera* mainCamera = nullptr;
 
+		DirectX::XMFLOAT4X4 view = Identity4x4();
+		DirectX::XMFLOAT4X4 proj = Identity4x4();
+		DirectX::XMFLOAT4X4 viewProj = Identity4x4();
+		DirectX::XMFLOAT4X4 invView = Identity4x4();
+		DirectX::XMFLOAT4X4 invProj = Identity4x4();
+		DirectX::XMFLOAT4X4 invViewProj = Identity4x4();
+		DirectX::XMFLOAT4X4 prevViewProj = Identity4x4();
 
-	// light
-	std::vector<DirLight> dirLights;
-	std::vector<PointLight> pointLights;
-	std::vector<SpotLight> spotLights;
+		Vector3 camPosWS = {};
+		float znear = 0.1f;
+		float zfar = 1000.0f;
 
-	DirLight* mainDirLight;
-	PointLight* mainPointLight;
+		Vector2i viewportSize = {};
+		Vector2 invViewportSize = {};
 
+		std::vector<DirLight> dirLights;
+		std::vector<PointLight> pointLights;
+		std::vector<SpotLight> spotLights;
 
-	StaticModelFrameResource* staticFrameResource;
-};
+		DirLight* mainDirLight = nullptr;
+		PointLight* mainPointLight = nullptr;
+	};
 
+	struct FrameServices
+	{
+		DX12RHI* rhi = nullptr;
+		ResourceManager* resourceManager = nullptr;
+		GpuResourceManager* gpuResManager = nullptr;
+		DescriptorSystem* descriptorSystem = nullptr;
+		FrameAllocatorSystem* frameAllocator = nullptr;
+		CommandContextManager* cmdCtxMgr = nullptr;
+		PipelineStateCache* pipelineCache = nullptr;
+		RootSignatureCache* rootSignatureCache = nullptr;
+		DX12CommandContext* graphicsCmd = nullptr;
+	};
 
-struct FrameServices
-{
-	ShaderFactory* shaderFactory;
-	GeometryGenerator* geoGen;
-	ResourceManager* resMgr;
-	RHI* rhi;
-	RenderMeshCollection* innerMeshCollection;
-};
+	struct FrameRenderLists
+	{
+		std::vector<const RenderItem*> all;
+		std::vector<const RenderItem*> opaque;
+		std::vector<const RenderItem*> transparent;
+		std::vector<const RenderItem*> shadowCasters;
+	};
 
+	struct FrameRenderTargets
+	{
+		TextureHandle sceneColor = {};
+		TextureHandle sceneDepth = {};
+	};
 
-struct FrameRenderLists
-{
-	std::vector<CommonRenderItem*> allRitems;
-	std::vector<CommonRenderItem*> opaque;
-	std::vector<CommonRenderItem*> transparent;
-	std::vector<CommonRenderItem*> shadowCasters;
-	std::unordered_map<FrameResource*, std::vector<std::shared_ptr<CommonRenderItem>>> innerRitems;
-};
+	struct EG_FrameContext
+	{
+		uint32_t frameIndex = 0;
 
+		RenderScene* renderScene = nullptr;
 
-// EG 就是Engine的意思，与DX12中的FrameContext区别开来
-struct EG_FrameContext
-{
-	FrameUniforms uniforms;
-	FrameServices services;
-	FrameRenderLists renderlists;
+		FrameUniforms uniforms = {};
+		FrameServices services = {};
+		FrameRenderLists renderlists = {};
+		FrameRenderTargets targets = {};
 
-	// frame outputs/inputs
-	std::shared_ptr<Texture2D> backBuffer;
-	std::shared_ptr<Texture2D> depthStencilBuffer;
-	std::shared_ptr<Cubemap> skybox;
-};
-
+		//std::shared_ptr<DXTextureCube> skybox;
+		TextureHandle skybox = {};
+	};
 }

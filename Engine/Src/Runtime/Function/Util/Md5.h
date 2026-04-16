@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 /// <summary>
 /// Md5校验封装
 /// </summary>

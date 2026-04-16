@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "WindowSystem.h"
 #include "Core/Math/Quaternion.h"
 

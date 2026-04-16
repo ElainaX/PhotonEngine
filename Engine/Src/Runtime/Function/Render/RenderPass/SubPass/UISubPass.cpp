@@ -1,42 +1,53 @@
-﻿#include "UISubPass.h"
-#include "Function/Util/RenderUtil.h"
+#include "UISubPass.h"
+#include "Function/Render/EGFrameContext.h"
+#include "Function/Render/ResourceManager.h"
+#include "Function/UI/ImGuiSystem.h"
 
-namespace photon 
+namespace photon
 {
-
-
-
-	void UISubPass::Initialize(RHI* _rhi)
+	void UISubPass::Prepare(const PassPrepareContext& ctx)
 	{
-		m_Rhi = _rhi;
+		ClearDrawList();
 	}
 
-	void UISubPass::PrepareForData(RenderResourceData* _data)
+	void UISubPass::Execute(const PassExecuteContext& ctx)
 	{
-		auto data = dynamic_cast<UISubPassData*>(_data);
-		renderTargetView = data->frame->services.rhi->GetCurrBackBufferAsRenderTarget();
-		depthStencilView = data->frame->services.rhi->CreateDepthStencilView(data->bb->Get<Texture2D>("depth_stencil_buffer").get(), nullptr, depthStencilView);
+		if (!ctx.frame || !ctx.cmd || !ctx.services)
+			return;
+
+		ResourceManager& rm = *ctx.services->resourceManager;
+
+		const TextureRenderResource* colorRR = rm.GetTextureRenderResource(ctx.frame->targets.sceneColor);
+		const TextureRenderResource* depthRR = rm.GetTextureRenderResource(ctx.frame->targets.sceneDepth);
+		if (!colorRR || !depthRR)
+			return;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE colorRtv =
+			ctx.services->descriptorSystem->GetCpuHandle(colorRR->rtv);
+		D3D12_CPU_DESCRIPTOR_HANDLE depthDsv =
+			ctx.services->descriptorSystem->GetCpuHandle(depthRR->dsv);
+
+		D3D12_RECT scissorRect = {
+			0, 0,
+			ctx.frame->uniforms.viewportSize.x,
+			ctx.frame->uniforms.viewportSize.y
+		};
+
+		D3D12_VIEWPORT viewport = {
+			0.0f,
+			0.0f,
+			static_cast<float>(ctx.frame->uniforms.viewportSize.x),
+			static_cast<float>(ctx.frame->uniforms.viewportSize.y),
+			0.0f,
+			1.0f
+		};
+
+		ctx.cmd->SetViewportsAndScissorRects(scissorRect, viewport);
+		ctx.cmd->SetRenderTargets(1, &colorRtv, true, &depthDsv);
+		
+		if (ctx.services->imguiSystem)
+		{
+			ctx.services->imguiSystem->Render(*ctx.cmd);
+		}
 	}
-
-	void UISubPass::Draw(EG_FrameContext* frame, PassBlackboard* bb)
-	{
-		D3D12_RECT scissorRect = { 0, 0, frame->uniforms.viewportSize.x, frame->uniforms.viewportSize.y };
-		D3D12_VIEWPORT viewport = { 0.0f, 0.0f, (float)frame->uniforms.viewportSize.x, (float)frame->uniforms.viewportSize.y, 0.0f, 1.0f };
-
-
-		auto RenderTex = (Texture2D*)renderTargetView->resource;
-		auto DepthTex = (Texture2D*)depthStencilView->resource;
-
-		m_Rhi->ResourceStateTransform(RenderTex, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		m_Rhi->ResourceStateTransform(DepthTex, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-		m_Rhi->CmdClearRenderTarget(renderTargetView, RenderTex->clearValue);
-		m_Rhi->CmdClearDepthStencil(depthStencilView, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, DepthTex->clearValue.x, RenderUtil::FloatRoundToUINT(DepthTex->clearValue.y));
-
-		m_Rhi->CmdSetViewportsAndScissorRects(scissorRect, viewport);
-
-		m_Rhi->CmdSetRenderTargets(1, &renderTargetView->cpuHandleInHeap, true, &depthStencilView->cpuHandleInHeap);
-		m_Rhi->CmdDrawImGui();
-	}
-
 }

@@ -1,96 +1,84 @@
-﻿#include "ForwardRenderPipeline.h"
-#include "RenderPass/MainCameraPass.h"
-#include "RenderPass/PreprocessPass.h"
-#include "RenderResourceData.h"
-#include "DX12RHI/DX12RHI.h"
+#include "ForwardRenderPipeline.h"
 
-namespace photon 
+namespace photon
 {
-
-	void ForwardRenderPipeline::Initialize(RenderPipelineCreateInfo* createInfo)
+	void ForwardRenderPipeline::Initialize(const RenderPipelineCreateInfo& createInfo)
 	{
-		ForwardPipelineCreateInfo* info = dynamic_cast<ForwardPipelineCreateInfo*>(createInfo);
-		m_Rhi = info->rhi;
-		m_WindowSystem = info->windowSystem;
+		m_services = createInfo.services;
 
-		m_PreprocessRenderPass = std::make_shared<PreprocessPass>();
-		m_PreprocessRenderPass->Initialize(m_Rhi);
+		m_preprocessPass = std::make_shared<PreprocessPass>();
+		m_preprocessPass->Initialize(m_services);
 
-		m_MainCameraRenderPass = std::make_shared<MainCameraPass>();
-		m_MainCameraRenderPass->Initialize(m_Rhi, m_WindowSystem);
+		m_mainCameraPass = std::make_shared<MainCameraPass>();
+		m_mainCameraPass->Initialize(m_services);
 
-		m_CsmMgr = std::make_shared<CascadedShadowManager>();
-		m_CsmMgr->Initialize({ ShadowMapSize, ShadowMapSize }, MaxCascadedNum);
+		m_csmMgr = std::make_shared<CascadedShadowManager>();
+		m_csmMgr->Initialize({ ShadowMapSize, ShadowMapSize }, MaxCascadedNum);
 	}
 
-	void photon::ForwardRenderPipeline::PrepareContext(EG_FrameContext* frame)
+	void ForwardRenderPipeline::Prepare(EG_FrameContext& frame)
 	{
-		m_UI->PreRender();
-		m_BB.Clear();
-		m_BB.Set("csm_mgr", m_CsmMgr);
-		// Update RenderItem Constants
+		if (m_ui && m_services.imguiSystem)
+		{
+			m_services.imguiSystem->BeginFrame();
+			m_ui->PreRender();              // 这里只负责搭 UI
+			m_services.imguiSystem->EndFrame();
+		}
 
-		// PreprocessPass
-		PreprocessPassRenderResourceData preprocessPassData;
-		preprocessPassData.frame = frame;
-		preprocessPassData.bb = &m_BB;
-		////preprocessPassData.spliters = { 0.003f, 0.01f };
-		////preprocessPassData.mainCamera = frame->mainCamera;
-		////preprocessPassData.mainLight = frame->mainLight;
-		////preprocessPassData.allRenderItems = frame->allRenderItems;
-		m_PreprocessRenderPass->PrepareContext(&preprocessPassData);
+		m_blackboard.Clear();
+		m_blackboard.Set("csm_mgr", m_csmMgr);
 
-		// MainCameraPass 
-		MainPassRenderResourceData mainCameraPassData;
-		mainCameraPassData.frame = frame;
-		mainCameraPassData.bb = &m_BB;
-		//mainCameraPassData.allRenderItems = resourceData->allRenderItems;
-		//mainCameraPassData.diffuseMap = resourceData->diffuseMap;
-		//mainCameraPassData.renderTarget = resourceData->renderTarget;
-		//mainCameraPassData.depthStencil = resourceData->depthStencil;
-		//mainCameraPassData.mainCamera = resourceData->mainCamera;
-		//mainCameraPassData.gameTimer = resourceData->gameTimer;
-		//mainCameraPassData.cubemap = resourceData->cubemap;
-		//mainCameraPassData.directionalLights = std::move(resourceData->directionalLights);
-		//mainCameraPassData.pointLights = std::move(resourceData->pointLights);
-		//mainCameraPassData.spotLights = std::move(resourceData->spotLights);
-		//mainCameraPassData.cascadedShadowManager = preprocessPassData.cascadedShadowManager;
-		m_MainCameraRenderPass->PrepareContext(&mainCameraPassData);
+		PassPrepareContext preprocessCtx = {};
+		preprocessCtx.frame = &frame;
+		preprocessCtx.blackboard = &m_blackboard;
+		preprocessCtx.services = &m_services;
+		preprocessCtx.renderScene = frame.renderScene;
+		preprocessCtx.camera = frame.uniforms.mainCamera;
+		preprocessCtx.visibleItems = &frame.renderlists.shadowCasters;
+		m_preprocessPass->Prepare(preprocessCtx);
 
-
-
+		PassPrepareContext mainCtx = {};
+		mainCtx.frame = &frame;
+		mainCtx.blackboard = &m_blackboard;
+		mainCtx.services = &m_services;
+		mainCtx.renderScene = frame.renderScene;
+		mainCtx.camera = frame.uniforms.mainCamera;
+		mainCtx.visibleItems = &frame.renderlists.opaque;
+		m_mainCameraPass->Prepare(mainCtx);
 	}
 
-	void ForwardRenderPipeline::Render(EG_FrameContext* frame)
+	void ForwardRenderPipeline::Execute(EG_FrameContext& frame)
 	{
-		m_PreprocessRenderPass->Draw(frame, &m_BB);
-		m_MainCameraRenderPass->Draw(frame, &m_BB);
+		PassExecuteContext execCtx = {};
+		execCtx.frame = &frame;
+		execCtx.blackboard = &m_blackboard;
+		execCtx.services = &m_services;
+		execCtx.cmd = frame.services.graphicsCmd;
+
+		m_preprocessPass->Execute(execCtx);
+		m_mainCameraPass->Execute(execCtx);
 	}
-
-
 
 	void ForwardRenderPipeline::Stop()
 	{
-		m_bStop = true;
-		m_MainCameraRenderPass->OnlyUI(true);
+		m_stop = true;
+		if (m_mainCameraPass)
+		{
+			m_mainCameraPass->OnlyUI(true);
+		}
 	}
 
 	void ForwardRenderPipeline::ReStart()
 	{
-		m_bStop = false;
-		m_MainCameraRenderPass->OnlyUI(false);
-	}
-
-	std::shared_ptr<CascadedShadowManager> ForwardRenderPipeline::GetCSMMgr()
-	{
-		return m_CsmMgr;
+		m_stop = false;
+		if (m_mainCameraPass)
+		{
+			m_mainCameraPass->OnlyUI(false);
+		}
 	}
 
 	void ForwardRenderPipeline::SetCurrEditorUI(WindowUI* ui)
 	{
-		m_UI = ui;
+		m_ui = ui;
 	}
-
 }
-
-

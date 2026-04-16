@@ -1,4 +1,4 @@
-﻿#include "WindowSystem.h"
+#include "WindowSystem.h"
 #include "Function/Global/RuntimeGlobalContext.h"
 #include "Macro.h"
 
@@ -19,7 +19,7 @@ namespace photon
 		// 创建Window
 		m_Width = createInfo.width;
 		m_Height = createInfo.height;
-		m_Title = std::wstring(createInfo.title);
+		m_Title = createInfo.title;
 		m_WndClass = { sizeof(WNDCLASSEXW) };
 		// 窗口类风格设置
 		m_WndClass.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;

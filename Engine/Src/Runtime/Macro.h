@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Core/Log/LogManager.h"
 #include "Function/Global/RuntimeGlobalContext.h"
 

@@ -1,16 +1,12 @@
-﻿#pragma once
+#pragma once
 #include "RHI.h"
-#include "RenderType.h"
+#include "RenderTypes.h"
 #include "RenderPipeline.h"
-#include "RenderResourceData.h"
 #include "ResourceManager.h"
-#include "RenderResourceData.h"
-#include "Shader/ShaderFactory.h"
-#include "RenderObject/RenderItem.h"
 #include "Platform/FileSystem/FileSystem.h"
 #include "RenderScene.h"
-#include "GeometryGenerator.h"
 #include "Function/UI/WindowUI.h"
+#include "Function/UI/ImGuiSystem.h"
 #include "EGFrameContext.h"
 
 #include <memory>
@@ -18,18 +14,17 @@
 #include <unordered_map>
 #include <filesystem>
 
+#include "DX12RHI/CommandContextManager.h"
 
-namespace photon 
+namespace photon
 {
-
 	class WindowSystem;
 	class GameTimer;
 
 	struct RenderSystemInitInfo
 	{
-		std::shared_ptr<WindowSystem> windowSystem;
+		WindowSystem* windowSystem = nullptr;
 	};
-
 
 	class RenderSystem
 	{
@@ -42,49 +37,52 @@ namespace photon
 		void Tick(GameTimer& gt);
 		void Stop();
 		void ReStart();
-		void BuildEGFrameContext(EG_FrameContext& frameCtx, GameTimer* timer);
-		
 
-		void ReCreateRenderTargetTexAndDepthStencilTex(Vector2i size);
-		std::shared_ptr<RHI> GetRHI();
-		ShaderResourceView* GetFinalOutputShaderResourceView();
-		ShaderResourceView* GetPipelineCsmMgrSRV();
+		void BuildEGFrameContext(EG_FrameContext& frameCtx, GameTimer* timer, DX12CommandContext* graphicsCmd);
+		void PrepareFrameObjectBindings(EG_FrameContext& frameCtx);
 
-		void SetRenderPipelineType(RenderPipelineType renderType); 
+		void SetRenderPipelineType(RenderPipelineType renderType);
 		RenderCamera* GetRenderCamera();
 		ResourceManager* GetResourceManager();
-		GeometryGenerator* GetGeometryGenerator();
 		RenderScene* GetRenderScene();
-		ShaderFactory* GetShaderFactory();
 
+	public:
+		TextureHandle GetSceneColorHandle() const { return m_sceneColor; }
+		Vector2i GetMainViewportSize() const { return m_mainViewportSize; }
+		bool HasEditorUI() const { return m_imguiSystem != nullptr; }
+		ImGuiSystem* GetImGuiSystem() const { return m_imguiSystem.get(); }
+		DescriptorSystem* GetDescriptorSystem() const { return m_descriptorSystem.get(); }
 
 	private:
+		void CreateOrRefreshBackBufferRtvs();
+		void CreateOrResizeMainViewportTargets(Vector2i size);
+		void ExecutePresentPass(EG_FrameContext& frameCtx, DX12CommandContext& gfxCtx);
+		void ExecuteEditorUIPass(EG_FrameContext& frameCtx, DX12CommandContext& gfxCtx);
+		bool IsEditorMode() const;
 
-
-		std::shared_ptr<RHI> m_Rhi;
-		std::unordered_map<RenderPipelineType, std::shared_ptr<RenderPipeline>> m_RenderPipelines;
+	private:
 		RenderPipeline* m_CurrRenderPipeline = nullptr;
+		std::unordered_map<RenderPipelineType, std::shared_ptr<RenderPipeline>> m_RenderPipelines;
 		RenderPipelineType m_CurrPipelineType = RenderPipelineType::ForwardPipeline;
-		std::shared_ptr<ResourceManager> m_ResourceManager;
-		std::unique_ptr<GeometryGenerator> m_GeometryGenerator;
 
+		std::shared_ptr<DX12RHI> m_rhi;
+		std::shared_ptr<FrameSyncSystem> m_frameSyncSystem;
+		std::shared_ptr<ResourceManager> m_resourceManager;
+		std::shared_ptr<GpuResourceManager> m_gpuResMgr;
+		std::shared_ptr<DescriptorSystem> m_descriptorSystem;
+		std::shared_ptr<CommandContextManager> m_CmdCtxMgr;
+		std::shared_ptr<FrameAllocatorSystem> m_frameAllocSystem;
+		std::shared_ptr<ImGuiSystem> m_imguiSystem;
 
-		std::shared_ptr<WindowSystem> m_WindowSystem;
-		std::shared_ptr<ShaderFactory> m_ShaderFactory;
-
-		std::shared_ptr<Texture2D> m_RenderTarget;
-		std::shared_ptr<Texture2D> m_DepthStencil;
-		//std::shared_ptr<Texture2D> m_ResourceTex;
-
+		WindowSystem* m_WindowSystem = nullptr;
 		std::vector<std::shared_ptr<RenderScene>> m_RenderScene;
 
-		ShaderResourceView* m_RenderTargetSRV = nullptr;
-		ShaderResourceView* m_CsmSRV = nullptr;
+		TextureHandle m_sceneColor = {};
+		TextureHandle m_sceneDepth = {};
+		std::array<DescriptorHandle, FrameSyncSystem::kMaxFramesInFlight> m_backbufferRtvs = {};
 
-		std::vector<std::shared_ptr<Cubemap>> allCubemaps;
+		Vector2i m_mainViewportSize = {};
+
 		bool m_bStopRenderContent = false;
-
-		std::shared_ptr<RenderMeshCollection> m_InnerMeshCollection;
 	};
-
 }

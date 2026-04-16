@@ -1,4 +1,4 @@
-﻿# Define Variables
+# Define Variables
 file(GLOB_RECURSE SOURCE_FILES "*.cpp")
 file(GLOB_RECURSE HEAD_FILES "*.h")
 file(GLOB_RECURSE HLSL_FILES "*.hlsl")
@@ -24,6 +24,7 @@ target_link_libraries(PhotonRuntime PUBLIC ImGui)
 target_link_libraries(PhotonRuntime PUBLIC d3d12.lib)
 target_link_libraries(PhotonRuntime PUBLIC d3dcompiler.lib)
 target_link_libraries(PhotonRuntime PUBLIC dxgi.lib)
+target_link_libraries(PhotonRuntime PUBLIC dxguid.lib)
 target_link_libraries(PhotonRuntime PUBLIC $<$<CONFIG:Debug>:${PHOTON_ROOT_DIR}/Engine/3rdparty/assimp/assimp-vc143-mtd.lib>)
 target_link_libraries(PhotonRuntime PUBLIC $<$<CONFIG:Release>:${PHOTON_ROOT_DIR}/Engine/3rdparty/assimp/assimp-vc143-mt.lib>)
 

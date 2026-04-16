@@ -1,82 +1,155 @@
-﻿#pragma once
-
-#include "ShaderParameter/RootSignature.h"
-#include "ShaderMacros.h"
+#pragma once
 
 #include <string>
+#include <array>
 #include <vector>
-#include <d3d12.h>
-#include <d3dcompiler.h>
-#include <windows.h>
-#include <wrl.h>
+
+#include "ShaderEnum.h"
+#include "Function/Render/ResourceHandle.h"
+#include "Function/Render/RenderObject/AssetMeta.h"
+#include "ShaderMacros.h"
+#include "ShaderParameter/ShaderConstantBuffer.h"
 
 namespace photon 
 {
 
-	struct ShaderBlob
+	struct ShaderStageAsset
 	{
-		virtual D3D12_SHADER_BYTECODE GetVSShaderByteCode()
+		AssetMeta meta;
+
+		ShaderStage stage = ShaderStage::VS;
+		std::filesystem::path sourcePath;
+
+		std::string entryPoint;
+		std::string targetProfile;
+
+		std::vector<MacroInfo> macros;
+
+		bool enableDebugInfo = false;
+		bool treatWarningAsErrors = false;
+	};
+
+	struct ShaderStageReference
+	{
+		bool valid = false;
+		Guid stageAssetGuid;
+	};
+
+	struct ShaderParameterDesc
+	{
+		std::string name;
+		ShaderParameterType type = ShaderParameterType::Cbv;
+		ShaderParameterScope scope = ShaderParameterScope::Material;
+
+
+		uint32_t bindPoint = 0;
+		uint32_t registerSpace = 0;
+		uint32_t arraySize = 1;
+	};
+
+	struct ShaderProgramAsset
+	{
+		AssetMeta meta;
+
+		// 每个Stage是否存在，由Valid控制
+		std::array<ShaderStageReference, static_cast<size_t>(ShaderStage::Count)> stages = {};
+
+		// 资源级参数
+		std::vector<ShaderParameterDesc> parameters;
+
+		// 常量缓冲内部布局
+		std::vector<ShaderConstantBufferDesc> constantBuffers;
+
+		bool HasStage(ShaderStage stage) const
 		{
-			return D3D12_SHADER_BYTECODE{};
+			return stages[ToIndex(stage)].valid;
 		}
-		virtual D3D12_SHADER_BYTECODE GetPSShaderByteCode()
+
+		const ShaderStageReference* TryGetStage(ShaderStage stage) const
 		{
-			return D3D12_SHADER_BYTECODE{};
+			const auto& s = stages[ToIndex(stage)];
+			return s.valid ? &s : nullptr;
 		}
-		virtual D3D12_SHADER_BYTECODE GetDSShaderByteCode()
+
+		void SetStage(ShaderStage stage, Guid guid)
 		{
-			return D3D12_SHADER_BYTECODE{};
+			auto& s = stages[ToIndex(stage)];
+			s.valid = true;
+			s.stageAssetGuid = guid;
 		}
-		virtual D3D12_SHADER_BYTECODE GetHSShaderByteCode()
+
+		void ClearStage(ShaderStage stage)
 		{
-			return D3D12_SHADER_BYTECODE{};
-		}
-		virtual D3D12_SHADER_BYTECODE GetGSShaderByteCode()
-		{
-			return D3D12_SHADER_BYTECODE{};
-		}
-		virtual D3D12_SHADER_BYTECODE GetCSShaderByteCode()
-		{
-			return D3D12_SHADER_BYTECODE{};
+			stages[ToIndex(stage)] = {};
 		}
 	};
 
-	class Shader
+	struct CompiledShaderBytecode
 	{
-	public:
-		Shader(const std::wstring& filepath)
-			: sourceFilepath(filepath) {
-		}
+		ShaderStage stage = ShaderStage::VS;
 
-		virtual void InitializeRootSignature() = 0;
-		virtual Microsoft::WRL::ComPtr<ID3DBlob> GetDXSerializedRootSignatureBlob(int samplerCount = 0, const D3D12_STATIC_SAMPLER_DESC* samplerDesc = nullptr,
-			D3D12_ROOT_SIGNATURE_FLAGS flag = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT) = 0;
-		virtual std::vector<D3D12_INPUT_ELEMENT_DESC>& GetShaderInputLayout() = 0;
+		std::string entryPoint;
+		std::string targetProfile;
 
-		RootSignature* GetPhotonRootSignature(){
-			return &m_Signature;
-		}
+		std::vector<std::byte> data;
 
-		ShaderMacros* GetMacros(){
-			return &m_Macros;
-		}
-
-		virtual ShaderBlob* Compile(const std::vector<MacroInfo>& macros) = 0;
-
-		std::wstring sourceFilepath;
-		
-	protected:
-		UINT GetFlag1()
-		{
-#if defined(DEBUG) || defined(_DEBUG)
-			return D3DCOMPILE_DEBUG;
-#else
-			return D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-		}
-
-	protected:
-		RootSignature m_Signature;
-		ShaderMacros m_Macros;
+		bool Empty() const { return data.empty(); }
 	};
+
+	struct ShaderStageBytecodeSlot
+	{
+		bool valid = false;
+		CompiledShaderBytecode bytecode;
+	};
+
+	struct NativeShaderBytecodeView
+	{
+		const void* ptr = nullptr;
+		size_t size = 0;
+	};
+
+	struct ShaderProgramRenderResource
+	{
+		ShaderHandle handle;
+		Guid assetGuid;
+
+		std::array<ShaderStageBytecodeSlot, static_cast<size_t>(ShaderStage::Count)> stages = {};
+
+		RootSignatureHandle rootSignature;
+
+		std::vector<ShaderParameterDesc> parameters;
+		std::vector<ShaderConstantBufferDesc> constantBuffers;
+
+		bool HasStage(ShaderStage stage) const
+		{
+			return stages[ToIndex(stage)].valid;
+		}
+
+		const CompiledShaderBytecode* TryGetStageBytecode(ShaderStage stage) const
+		{
+			const auto& s = stages[ToIndex(stage)];
+			return s.valid ? &s.bytecode : nullptr;
+		}
+	};
+
+	inline ShaderProgramKind DeduceShaderProgramKind(const ShaderProgramAsset& asset)
+	{
+		if (asset.HasStage(ShaderStage::CS))
+			return ShaderProgramKind::Compute;
+
+		if (asset.HasStage(ShaderStage::MS) || asset.HasStage(ShaderStage::AS))
+			return ShaderProgramKind::Mesh;
+
+		return ShaderProgramKind::Graphics;
+	}
+
+	inline NativeShaderBytecodeView GetNativeBytecodeView(const CompiledShaderBytecode& bc)
+	{
+		NativeShaderBytecodeView view;
+		view.ptr = bc.data.empty() ? nullptr : bc.data.data();
+		view.size = bc.data.size();
+		return view;
+	}
+
+	
 }

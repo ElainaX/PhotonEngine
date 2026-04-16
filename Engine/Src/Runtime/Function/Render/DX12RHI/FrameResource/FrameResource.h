@@ -1,31 +1,30 @@
-﻿#pragma once
+#pragma once
+#include "Function/Render/DX12RHI/GpuResource.h"
+#include "Function/Render/DX12RHI/ViewDesc.h"
+#include "Function/Render/DX12RHI/DescriptorHeap/Descriptor.h"
 
 namespace photon 
 {
-	class RHI;
 	enum class FrameResourceType
 	{
-		StaticModelFrameResource,
-		DynamicModelFrameResource
+		Unknown = 0,
+		DefaultBuffer,
+		UploadBuffer
+	};
+
+	// buffer以及对应的指针
+	struct FrameResourceRange
+	{
+		FrameResourceType frameResType = FrameResourceType::Unknown;
+		GpuResourceHandle buffer = {};
+		ConstantBufferRange range;
 	};
 
 
-	struct FrameResourceDesc
+	struct FrameDescriptorRange
 	{
-		virtual ~FrameResourceDesc(){}
-	};
-
-	class FrameResource
-	{
-	public:
-		FrameResourceType GetType() const
-		{
-			return m_FrameResourceType;
-		}
-		virtual ~FrameResource() {}
-	
-	protected:
-		FrameResourceType m_FrameResourceType;
-		RHI* m_Rhi = nullptr;
+		FrameDescriptorHandle startHandle;
+		uint32_t count = 1;
+		uint32_t descriptorPerSize = 0;
 	};
 }

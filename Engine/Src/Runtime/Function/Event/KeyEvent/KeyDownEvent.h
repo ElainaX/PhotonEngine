@@ -1,4 +1,4 @@
-﻿#include "KeyEvent.h"
+#include "KeyEvent.h"
 
 #include <format>
 

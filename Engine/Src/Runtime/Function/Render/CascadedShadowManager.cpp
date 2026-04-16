@@ -1,4 +1,4 @@
-﻿#include "CascadedShadowManager.h"
+#include "CascadedShadowManager.h"
 
 namespace photon 
 {

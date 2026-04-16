@@ -1,4 +1,4 @@
-﻿#include "WindowUtil.h"
+#include "WindowUtil.h"
 
 namespace photon 
 {

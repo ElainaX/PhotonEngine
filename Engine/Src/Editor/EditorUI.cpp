@@ -1,15 +1,6 @@
-﻿#include "EditorUI.h"
-#include "Macro.h"
+#include "EditorUI.h"
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_internal.h"
-#include "ImGui/imgui_impl_dx12.h"
-#include "ImGui/imgui_impl_win32.h"
-
-#include <format>
-#include <thread>
-#include <chrono>
-
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace photon 
 {
@@ -19,198 +10,198 @@ namespace photon
 	{
 		m_EditorTimer.Reset();
 
-		m_PaintIt = std::make_shared<PaintItCaller>((g_EditorFolder / L"paint_it").generic_wstring());
+		//m_PaintIt = std::make_shared<PaintItCaller>((g_EditorFolder / L"paint_it").generic_wstring());
 
 
-		// Create Editor For GameObject Inspector
-		m_GameObjectEditors["CommonRenderItem"] = [this](GameObject* go)
-			{
-				auto ri = dynamic_cast<CommonRenderItem*>(go);
-				auto mesh = m_ResourceManager->GetMesh(ri->meshGuid);
-				auto material = ri->material;
-				auto shader = ri->shader;
-				auto renderLayer = ri->renderLayer;
-				auto frameResourceEditor = m_RenderSystem->GetRenderScene()->GetCommonRItemFrameResourceEditor(go->GameObjectId);
+		//// Create Editor For GameObject Inspector
+		//m_GameObjectEditors["CommonRenderItem"] = [this](GameObject* go)
+		//	{
+		//		auto ri = dynamic_cast<CommonRenderItem*>(go);
+		//		auto mesh = m_ResourceManager->GetMesh(ri->meshGuid);
+		//		auto material = ri->material;
+		//		auto shader = ri->shader;
+		//		auto renderLayer = ri->renderLayer;
+		//		auto frameResourceEditor = m_RenderSystem->GetRenderScene()->GetCommonRItemFrameResourceEditor(go->GameObjectId);
 
-				auto wndSize = ImGui::GetContentRegionAvail();
+		//		auto wndSize = ImGui::GetContentRegionAvail();
 
-				auto renderLayers = GetAllRenderLayerStringList();
-				auto layerComboGetter = [](void* data, int n) {
-					return ((std::string*)data)[n].c_str();
-					};
+		//		auto renderLayers = GetAllRenderLayerStringList();
+		//		auto layerComboGetter = [](void* data, int n) {
+		//			return ((std::string*)data)[n].c_str();
+		//			};
 
-				static int currRenderLayer = (int)RenderLayer::Count;
-				currRenderLayer = (int)renderLayer;
-				if(ImGui::Combo("RenderLayer", &currRenderLayer, layerComboGetter, renderLayers.data(), renderLayers.size()))
-				{
-					ri->renderLayer = (RenderLayer)currRenderLayer;
-				}
-				ImGui::Separator();
+		//		static int currRenderLayer = (int)RenderLayer::Count;
+		//		currRenderLayer = (int)renderLayer;
+		//		if(ImGui::Combo("RenderLayer", &currRenderLayer, layerComboGetter, renderLayers.data(), renderLayers.size()))
+		//		{
+		//			ri->renderLayer = (RenderLayer)currRenderLayer;
+		//		}
+		//		ImGui::Separator();
 
-				if(ImGui::CollapsingHeader("Transform"))
-				{
-					ImGui::Text("Translation");
-					if (ImGui::DragFloat("x##1", &frameResourceEditor->translation.x, 0.1f)
-						|| ImGui::DragFloat("y##1", &frameResourceEditor->translation.y, 0.1f)
-						|| ImGui::DragFloat("z##1", &frameResourceEditor->translation.z, 0.1f))
-					{
-						frameResourceEditor->bDirty = true;
-					}
-					ImGui::Separator();
+		//		if(ImGui::CollapsingHeader("Transform"))
+		//		{
+		//			ImGui::Text("Translation");
+		//			if (ImGui::DragFloat("x##1", &frameResourceEditor->translation.x, 0.1f)
+		//				|| ImGui::DragFloat("y##1", &frameResourceEditor->translation.y, 0.1f)
+		//				|| ImGui::DragFloat("z##1", &frameResourceEditor->translation.z, 0.1f))
+		//			{
+		//				frameResourceEditor->bDirty = true;
+		//			}
+		//			ImGui::Separator();
 
-					ImGui::Text("Rotation");
-					if (ImGui::DragFloat("x##2", &frameResourceEditor->rotationXYZ.x, 0.1f)
-						|| ImGui::DragFloat("y##2", &frameResourceEditor->rotationXYZ.y, 0.1f)
-						|| ImGui::DragFloat("z##2", &frameResourceEditor->rotationXYZ.z, 0.1f))
-					{
-						frameResourceEditor->bDirty = true;
-					}
-					ImGui::Separator();
+		//			ImGui::Text("Rotation");
+		//			if (ImGui::DragFloat("x##2", &frameResourceEditor->rotationXYZ.x, 0.1f)
+		//				|| ImGui::DragFloat("y##2", &frameResourceEditor->rotationXYZ.y, 0.1f)
+		//				|| ImGui::DragFloat("z##2", &frameResourceEditor->rotationXYZ.z, 0.1f))
+		//			{
+		//				frameResourceEditor->bDirty = true;
+		//			}
+		//			ImGui::Separator();
 
-					ImGui::Text("Scale");
-					if (ImGui::DragFloat("x##3", &frameResourceEditor->scale.x, 0.1f)
-						|| ImGui::DragFloat("y##3", &frameResourceEditor->scale.x, 0.1f)
-						|| ImGui::DragFloat("z##3", &frameResourceEditor->scale.z, 0.1f))
-					{
-						frameResourceEditor->scale.y = frameResourceEditor->scale.z = frameResourceEditor->scale.x;
-						frameResourceEditor->bDirty = true;
-					}
-				}
+		//			ImGui::Text("Scale");
+		//			if (ImGui::DragFloat("x##3", &frameResourceEditor->scale.x, 0.1f)
+		//				|| ImGui::DragFloat("y##3", &frameResourceEditor->scale.x, 0.1f)
+		//				|| ImGui::DragFloat("z##3", &frameResourceEditor->scale.z, 0.1f))
+		//			{
+		//				frameResourceEditor->scale.y = frameResourceEditor->scale.z = frameResourceEditor->scale.x;
+		//				frameResourceEditor->bDirty = true;
+		//			}
+		//		}
 
-				if (ImGui::CollapsingHeader("Render"))
-				{
-					ImGui::Text(std::format("Mesh(#{})", mesh->guid).c_str());
-					ImGui::Text("Name");
-					ImGui::SameLine();
-					ImGui::Text(WString2String(mesh->name).c_str());
-					ImGui::Separator();
+		//		if (ImGui::CollapsingHeader("Render"))
+		//		{
+		//			ImGui::Text(std::format("Mesh(#{})", mesh->guid).c_str());
+		//			ImGui::Text("Name");
+		//			ImGui::SameLine();
+		//			ImGui::Text(WString2String(mesh->name).c_str());
+		//			ImGui::Separator();
 
-					ImGui::Text("Shader");
-					ImGui::Text("Path");
-					ImGui::SameLine();
-					ImGui::TextWrapped("%s", WString2String(shader->sourceFilepath).c_str());
-					ImGui::Separator();
-
-
-					ImGui::Text(std::format("Material(#{})", material->guid).c_str());
-					static ShaderResourceView* texImageView = nullptr;
-					texImageView = m_RenderSystem->GetRHI()->CreateShaderResourceView(material->diffuseMap, nullptr, texImageView);
-					if(ImGui::TreeNode("Texture"))
-					{
-						ImGui::TextWrapped("%s", WString2String(material->diffuseMap->name).c_str());
-						ImGui::Image(texImageView->gpuHandleInHeap.ptr, ImVec2(wndSize.x - 30, wndSize.x - 30));
-						ImGui::TreePop();
-					}
-					ImGui::Separator();
-
-					if(ImGui::ColorEdit4("DiffuseAlbedo", (float*)&material->matCBufferData.diffuseAlbedo))
-					{
-						ri->SetDirty();
-					}
-					if(ImGui::SliderFloat3("FresnelR0", (float*)&material->matCBufferData.fresnelR0, 0.0f, 1.0f))
-					{
-						ri->SetDirty();
-					}
-					if(ImGui::SliderFloat("Roughness", (float*)&material->matCBufferData.roughness, 0.0f, 1.0f))
-					{
-						ri->SetDirty();
-					}
-					
-				}
-			};
-			m_GameObjectEditors["Model"] = [this](GameObject* go)
-				{
-					auto model = dynamic_cast<Model*>(go);
-					auto frameResourceEditor = m_RenderSystem->GetRenderScene()->GetCommonRItemFrameResourceEditor(go->GameObjectId);
-					auto resourceManager = m_RenderSystem->GetResourceManager();
-					if (ImGui::CollapsingHeader("Transform"))
-					{
-						ImGui::Text("Translation");
-						if (ImGui::DragFloat("x##1", &frameResourceEditor->translation.x, 0.1f)
-							|| ImGui::DragFloat("y##1", &frameResourceEditor->translation.y, 0.1f)
-							|| ImGui::DragFloat("z##1", &frameResourceEditor->translation.z, 0.1f))
-						{
-							frameResourceEditor->bDirty = true;
-						}
-						ImGui::Separator();
-
-						ImGui::Text("Rotation");
-						if (ImGui::DragFloat("x##2", &frameResourceEditor->rotationXYZ.x, 0.1f)
-							|| ImGui::DragFloat("y##2", &frameResourceEditor->rotationXYZ.y, 0.1f)
-							|| ImGui::DragFloat("z##2", &frameResourceEditor->rotationXYZ.z, 0.1f))
-						{
-							frameResourceEditor->bDirty = true;
-						}
-						ImGui::Separator();
-
-						ImGui::Text("Scale");
-						if (ImGui::DragFloat("x##3", &frameResourceEditor->scale.x, 0.01f)
-							|| ImGui::DragFloat("y##3", &frameResourceEditor->scale.x, 0.01f)
-							|| ImGui::DragFloat("z##3", &frameResourceEditor->scale.z, 0.01f))
-						{
-							frameResourceEditor->scale.y = frameResourceEditor->scale.z = frameResourceEditor->scale.x;
-							frameResourceEditor->bDirty = true;
-						}
-					}
-
-					static bool bShouldOpenModal = false;
-					if(ImGui::CollapsingHeader("Paint It"))
-					{
-						if(ImGui::Button("Prompt Generate"))
-						{
-							ImGui::OpenPopup("PaintIt");
-							bShouldOpenModal = true;
-							m_RenderSystem->Stop();
-						}
-						ImGui::SameLine();
-						if(ImGui::Button("Back to Raw"))
-						{
-							model->GlobalRebackRawDiffuseMap();
-							model->GlobalRebackRawNormalMap();
-							model->GlobalRebackRawSpecularMap();
-						}
-					}
-
-					DrawPaintItModal(model, &bShouldOpenModal);
+		//			ImGui::Text("Shader");
+		//			ImGui::Text("Path");
+		//			ImGui::SameLine();
+		//			ImGui::TextWrapped("%s", WString2String(shader->sourceFilepath).c_str());
+		//			ImGui::Separator();
 
 
-				};
-		m_GameObjectEditors["DirLight"] = [this](GameObject* go)
-			{
-				auto dirlight = dynamic_cast<DirLight*>(go);
-				ImGui::ColorEdit4("Light Color", (float*)&dirlight->data.strength);
-				ImGui::SliderFloat3("Light Position", (float*)&dirlight->data.position, -5.0f, 5.0f);
-				dirlight->data.direction = -dirlight->data.position.normalisedCopy();
-				ImGui::SliderFloat3("Light Direction", (float*)&dirlight->data.direction, -1.0f, 1.0f);
-			};
+		//			ImGui::Text(std::format("Material(#{})", material->guid).c_str());
+		//			static ShaderResourceView* texImageView = nullptr;
+		//			texImageView = m_RenderSystem->GetRHI()->CreateShaderResourceView(material->diffuseMap, nullptr, texImageView);
+		//			if(ImGui::TreeNode("Texture"))
+		//			{
+		//				ImGui::TextWrapped("%s", WString2String(material->diffuseMap->name).c_str());
+		//				ImGui::Image(texImageView->gpuHandleInHeap.ptr, ImVec2(wndSize.x - 30, wndSize.x - 30));
+		//				ImGui::TreePop();
+		//			}
+		//			ImGui::Separator();
 
-		m_GameObjectEditors["PointLight"] = [this](GameObject* go)
-			{
-				auto pointlight = dynamic_cast<PointLight*>(go);
-				ImGui::ColorEdit4("Light Color", (float*)&pointlight->data.strength);
-				ImGui::DragFloat("falloffStart", &pointlight->data.falloffStart);
-				ImGui::DragFloat("falloffEnd", &pointlight->data.falloffEnd);
-				if (pointlight->data.falloffEnd < pointlight->data.falloffStart)
-				{
-					pointlight->data.falloffEnd = pointlight->data.falloffStart;
-				}
-				ImGui::DragFloat3("Light Position", (float*)&pointlight->data.position);
-			};
+		//			if(ImGui::ColorEdit4("DiffuseAlbedo", (float*)&material->matCBufferData.diffuseAlbedo))
+		//			{
+		//				ri->SetDirty();
+		//			}
+		//			if(ImGui::SliderFloat3("FresnelR0", (float*)&material->matCBufferData.fresnelR0, 0.0f, 1.0f))
+		//			{
+		//				ri->SetDirty();
+		//			}
+		//			if(ImGui::SliderFloat("Roughness", (float*)&material->matCBufferData.roughness, 0.0f, 1.0f))
+		//			{
+		//				ri->SetDirty();
+		//			}
+		//			
+		//		}
+		//	};
+		//	m_GameObjectEditors["ModelAsset"] = [this](GameObject* go)
+		//		{
+		//			auto model = dynamic_cast<ModelAsset*>(go);
+		//			auto frameResourceEditor = m_RenderSystem->GetRenderScene()->GetCommonRItemFrameResourceEditor(go->GameObjectId);
+		//			auto resourceManager = m_RenderSystem->GetResourceManager();
+		//			if (ImGui::CollapsingHeader("Transform"))
+		//			{
+		//				ImGui::Text("Translation");
+		//				if (ImGui::DragFloat("x##1", &frameResourceEditor->translation.x, 0.1f)
+		//					|| ImGui::DragFloat("y##1", &frameResourceEditor->translation.y, 0.1f)
+		//					|| ImGui::DragFloat("z##1", &frameResourceEditor->translation.z, 0.1f))
+		//				{
+		//					frameResourceEditor->bDirty = true;
+		//				}
+		//				ImGui::Separator();
 
-		m_GameObjectEditors["SpotLight"] = [this](GameObject* go)
-			{
-				auto spotlight = dynamic_cast<SpotLight*>(go);
-				ImGui::ColorEdit4("Light Color", (float*)&spotlight->data.strength);
-				ImGui::DragFloat("falloffStart", &spotlight->data.falloffStart, 1.0f, 0.0f);
-				ImGui::DragFloat("falloffEnd", &spotlight->data.falloffEnd, 1.0f, spotlight->data.falloffStart);
-				if (spotlight->data.falloffEnd < spotlight->data.falloffStart)
-				{
-					spotlight->data.falloffEnd = spotlight->data.falloffStart;
-				}
-				ImGui::DragFloat3("Light Position", (float*)&spotlight->data.position);
-				ImGui::SliderFloat3("Spot Direction", (float*)&spotlight->data.direction, -1.0f, 1.0f);
-				ImGui::DragFloat("Spot Power", (float*)&spotlight->data.spotPower, 1.0f, 1.0f, 128.0f);
-			};
+		//				ImGui::Text("Rotation");
+		//				if (ImGui::DragFloat("x##2", &frameResourceEditor->rotationXYZ.x, 0.1f)
+		//					|| ImGui::DragFloat("y##2", &frameResourceEditor->rotationXYZ.y, 0.1f)
+		//					|| ImGui::DragFloat("z##2", &frameResourceEditor->rotationXYZ.z, 0.1f))
+		//				{
+		//					frameResourceEditor->bDirty = true;
+		//				}
+		//				ImGui::Separator();
+
+		//				ImGui::Text("Scale");
+		//				if (ImGui::DragFloat("x##3", &frameResourceEditor->scale.x, 0.01f)
+		//					|| ImGui::DragFloat("y##3", &frameResourceEditor->scale.x, 0.01f)
+		//					|| ImGui::DragFloat("z##3", &frameResourceEditor->scale.z, 0.01f))
+		//				{
+		//					frameResourceEditor->scale.y = frameResourceEditor->scale.z = frameResourceEditor->scale.x;
+		//					frameResourceEditor->bDirty = true;
+		//				}
+		//			}
+
+		//			static bool bShouldOpenModal = false;
+		//			if(ImGui::CollapsingHeader("Paint It"))
+		//			{
+		//				if(ImGui::Button("Prompt Generate"))
+		//				{
+		//					ImGui::OpenPopup("PaintIt");
+		//					bShouldOpenModal = true;
+		//					m_RenderSystem->Stop();
+		//				}
+		//				ImGui::SameLine();
+		//				if(ImGui::Button("Back to Raw"))
+		//				{
+		//					model->GlobalRebackRawDiffuseMap();
+		//					model->GlobalRebackRawNormalMap();
+		//					model->GlobalRebackRawSpecularMap();
+		//				}
+		//			}
+
+		//			DrawPaintItModal(model, &bShouldOpenModal);
+
+
+		//		};
+		//m_GameObjectEditors["DirLight"] = [this](GameObject* go)
+		//	{
+		//		auto dirlight = dynamic_cast<DirLight*>(go);
+		//		ImGui::ColorEdit4("Light Color", (float*)&dirlight->data.strength);
+		//		ImGui::SliderFloat3("Light Position", (float*)&dirlight->data.position, -5.0f, 5.0f);
+		//		dirlight->data.direction = -dirlight->data.position.normalisedCopy();
+		//		ImGui::SliderFloat3("Light Direction", (float*)&dirlight->data.direction, -1.0f, 1.0f);
+		//	};
+
+		//m_GameObjectEditors["PointLight"] = [this](GameObject* go)
+		//	{
+		//		auto pointlight = dynamic_cast<PointLight*>(go);
+		//		ImGui::ColorEdit4("Light Color", (float*)&pointlight->data.strength);
+		//		ImGui::DragFloat("falloffStart", &pointlight->data.falloffStart);
+		//		ImGui::DragFloat("falloffEnd", &pointlight->data.falloffEnd);
+		//		if (pointlight->data.falloffEnd < pointlight->data.falloffStart)
+		//		{
+		//			pointlight->data.falloffEnd = pointlight->data.falloffStart;
+		//		}
+		//		ImGui::DragFloat3("Light Position", (float*)&pointlight->data.position);
+		//	};
+
+		//m_GameObjectEditors["SpotLight"] = [this](GameObject* go)
+		//	{
+		//		auto spotlight = dynamic_cast<SpotLight*>(go);
+		//		ImGui::ColorEdit4("Light Color", (float*)&spotlight->data.strength);
+		//		ImGui::DragFloat("falloffStart", &spotlight->data.falloffStart, 1.0f, 0.0f);
+		//		ImGui::DragFloat("falloffEnd", &spotlight->data.falloffEnd, 1.0f, spotlight->data.falloffStart);
+		//		if (spotlight->data.falloffEnd < spotlight->data.falloffStart)
+		//		{
+		//			spotlight->data.falloffEnd = spotlight->data.falloffStart;
+		//		}
+		//		ImGui::DragFloat3("Light Position", (float*)&spotlight->data.position);
+		//		ImGui::SliderFloat3("Spot Direction", (float*)&spotlight->data.direction, -1.0f, 1.0f);
+		//		ImGui::DragFloat("Spot Power", (float*)&spotlight->data.spotPower, 1.0f, 1.0f, 128.0f);
+		//	};
 	}
 
 	void EditorUI::Initialize(const WindowUIInitInfo& initInfo)
@@ -218,57 +209,28 @@ namespace photon
 		m_WindowSystem = initInfo.windowSystem;
 		m_RenderSystem = initInfo.renderSystem;
 		m_ResourceManager = m_RenderSystem->GetResourceManager();
-		m_GeometryGenerator = m_RenderSystem->GetGeometryGenerator();
-
-		// Setup Dear ImGui context
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
-		//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
-		//io.ConfigViewportsNoAutoMerge = true;
-		//io.ConfigViewportsNoTaskBarIcon = true;
-
-		m_FontTitle = io.Fonts->AddFontFromFileTTF("E:\\Code\\PhotonEngine\\Engine\\Assets\\Fonts\\consolab.ttf", 16.0f);
-		m_FontBody = io.Fonts->AddFontFromFileTTF("E:\\Code\\PhotonEngine\\Engine\\Assets\\Fonts\\consola.ttf", 16.0f);
-
-		// Setup Dear ImGui style
-		ImGui::StyleColorsDark();
-		//ImGui::StyleColorsClassic();
-
-		// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
-		//ImGuiStyle& style = ImGui::GetStyle();
-		//if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		//{
-		//	style.WindowRounding = 0.0f;
-		//	style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-		//}
-
-		ImGui_ImplWin32_Init(m_WindowSystem->GetHwnd());
-		m_WindowSystem->RegisterBeforeAllEventCallBack([](Win32WndProcInfo& procInfo, bool& bContinue) {
-			if (ImGui_ImplWin32_WndProcHandler(procInfo.hwnd, procInfo.msg, procInfo.wparam, procInfo.lparam))
-			{
-				bContinue = false;
-			}
-		});
+		//m_GeometryGenerator = m_RenderSystem->GetGeometryGenerator();
 
 		m_RenderSystem->InitializeEditorUI(this);
+
+		ImGuiIO& io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		// io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+		m_FontTitle = io.Fonts->AddFontFromFileTTF(
+			"E:\\Code\\PhotonEngine\\Engine\\Assets\\Fonts\\consolab.ttf", 16.0f);
+		m_FontBody = io.Fonts->AddFontFromFileTTF(
+			"E:\\Code\\PhotonEngine\\Engine\\Assets\\Fonts\\consola.ttf", 16.0f);
+
+		ImGui::StyleColorsDark();
 	}
 
 	void EditorUI::PreRender()
 	{
 		m_EditorTimer.Tick();
-
-		ImGui_ImplDX12_NewFrame();
-		ImGui_ImplWin32_NewFrame();
-		ImGui::NewFrame();
-
 		ShowEditorUI();
-
-
-		ImGui::Render();
 	}
 
 	void EditorUI::ShowEditorUI()
@@ -381,8 +343,6 @@ namespace photon
 
 	void EditorUI::DrawGameEngineWindowUI()
 	{
-		static Vector2i clientSize = {0, 0};
-
 		auto windowFlags = ImGuiWindowFlags_None;
 
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
@@ -391,30 +351,76 @@ namespace photon
 
 		ImGui::Begin("GameEngine", &m_bGameEngineWindowOpen, windowFlags);
 
-		if (ImGui::IsWindowFocused())
-		{
-			m_WindowSystem->SetFocusOnRenderWindow(true);
-		}
-		else 
-		{
-			m_WindowSystem->SetFocusOnRenderWindow(false);
-		}
-
-
 		ImGui::PopStyleVar(3);
 
-		ImVec2 currSize = ImGui::GetContentRegionAvail();
-		if(clientSize.x != currSize.x || clientSize .y != currSize.y)
+		// 这一块区域是你真正想显示场景画面的 client 区域
+		ImVec2 avail = ImGui::GetContentRegionAvail();
+		Vector2i viewportSize = {
+			std::max(1, static_cast<int>(avail.x)),
+			std::max(1, static_cast<int>(avail.y))
+		};
+
+		// 让 WindowSystem 知道当前 editor 视口大小
+		if (viewportSize != m_LastGameEngineViewportSize)
 		{
-			clientSize.x = currSize.x;
-			clientSize.y = currSize.y;
-			m_WindowSystem->SetViewportSize(clientSize);
-			//m_RenderSystem->ReCreateRenderTargetTexAndDepthStencilTex(clientSize);
+			m_LastGameEngineViewportSize = viewportSize;
+			m_WindowSystem->SetViewportSize(viewportSize);
 		}
 
+		// 鼠标悬停 / 聚焦时，把输入焦点交给 render viewport
+		const bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+		const bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
+		m_WindowSystem->SetFocusOnRenderWindow(hovered || focused);
+
+		// 尝试显示场景输出
+		TextureHandle sceneColor = m_RenderSystem->GetSceneColorHandle();
+		if (sceneColor.handle.IsValid())
 		{
-			ShaderResourceView* srv = m_RenderSystem->GetFinalOutputShaderResourceView();
-			ImGui::Image((ImTextureID)(srv->gpuHandleInHeap.ptr), currSize);
+			auto* rm = m_RenderSystem->GetResourceManager();
+			auto* imguiSystem = m_RenderSystem->GetImGuiSystem();
+
+			const TextureRenderResource* sceneColorRR =
+				rm ? rm->GetTextureRenderResource(sceneColor) : nullptr;
+
+			if (imguiSystem && sceneColorRR && sceneColorRR->srv.IsValid())
+			{
+				// sceneColor 改变了，就重新注册一遍 ImGui texture id
+				if (!m_GameEngineTexId || !(sceneColor == m_GameEngineBoundSceneColor))
+				{
+					if (m_GameEngineTexId)
+					{
+						imguiSystem->UnregisterExternalSrv(m_GameEngineTexId);
+						m_GameEngineTexId = 0;
+					}
+
+					m_GameEngineTexId =
+						imguiSystem->RegisterExternalSrv(
+							m_RenderSystem->GetDescriptorSystem(),
+							sceneColorRR->srv);
+
+					m_GameEngineBoundSceneColor = sceneColor;
+				}
+
+				if (m_GameEngineTexId)
+				{
+					ImGui::Image(m_GameEngineTexId, avail);
+				}
+				else
+				{
+					ImGui::SetCursorPos(ImVec2(20, 20));
+					ImGui::TextUnformatted("Game viewport texture registration failed.");
+				}
+			}
+			else
+			{
+				ImGui::SetCursorPos(ImVec2(20, 20));
+				ImGui::TextUnformatted("SceneColor SRV is not ready.");
+			}
+		}
+		else
+		{
+			ImGui::SetCursorPos(ImVec2(20, 20));
+			ImGui::TextUnformatted("SceneColor is invalid.");
 		}
 
 		ImGui::End();
@@ -422,27 +428,27 @@ namespace photon
 
 	void EditorUI::DrawInspectorWindowUI()
 	{
-		ImGui::Begin("Inspector", &m_bGameEngineWindowOpen);
+		//ImGui::Begin("Inspector", &m_bGameEngineWindowOpen);
 
-		if(m_SelectedGameObject)
-		{
-			if(m_GameObjectEditors.find(m_SelectedGameObject->GetGameObjectType()) != m_GameObjectEditors.end())
-			{
-				m_GameObjectEditors[m_SelectedGameObject->GetGameObjectType()](m_SelectedGameObject);
-			}
-			else 
-			{
-				assert(0);
-			}
-		}
+		//if(m_SelectedGameObject)
+		//{
+		//	if(m_GameObjectEditors.find(m_SelectedGameObject->GetGameObjectType()) != m_GameObjectEditors.end())
+		//	{
+		//		m_GameObjectEditors[m_SelectedGameObject->GetGameObjectType()](m_SelectedGameObject);
+		//	}
+		//	else 
+		//	{
+		//		assert(0);
+		//	}
+		//}
 
-		ImVec2 currSize = ImGui::GetContentRegionAvail();
-		{
-			ShaderResourceView* srv = m_RenderSystem->GetPipelineCsmMgrSRV();
-			ImGui::Image((ImTextureID)(srv->gpuHandleInHeap.ptr), currSize);
-		}
+		//ImVec2 currSize = ImGui::GetContentRegionAvail();
+		//{
+		//	ShaderResourceView* srv = m_RenderSystem->GetPipelineCsmMgrSRV();
+		//	ImGui::Image((ImTextureID)(srv->gpuHandleInHeap.ptr), currSize);
+		//}
 
-		ImGui::End();
+		//ImGui::End();
 	}
 	bool BufferingBar(const char* label, float value, const ImVec2& size_arg, const ImU32& bg_col, const ImU32& fg_col) {
 		ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -548,109 +554,109 @@ namespace photon
 	{
 		ImGui::Begin("Scene", &m_bGameEngineWindowOpen);
 
-		{
-			auto renderScene = m_RenderSystem->GetRenderScene();
-			auto ritems = renderScene->GetCommonRenderItems(nullptr);
-			auto& dirlights = renderScene->directionalLights;
-			auto& pointLights = renderScene->pointLights;
-			auto& spotLights = renderScene->spotLights;
-			auto& models = renderScene->GetModelRenderItems();
+		//{
+		//	auto renderScene = m_RenderSystem->GetRenderScene();
+		//	auto ritems = renderScene->GetCommonRenderItems(nullptr);
+		//	auto& dirlights = renderScene->directionalLights;
+		//	auto& pointLights = renderScene->pointLights;
+		//	auto& spotLights = renderScene->spotLights;
+		//	auto& models = renderScene->GetModelRenderItems();
 
-			for(auto& ri : ritems)
-			{
-				ImGui::PushID(ri->GameObjectId);
-				if (ImGui::Selectable(ri->GetGameObjectType().c_str(), m_SelectedGameObject == ri))
-				{
-					m_SelectedGameObject = ri;
-				}
-				ImGui::PopID();
-			}
+		//	for(auto& ri : ritems)
+		//	{
+		//		ImGui::PushID(ri->GameObjectId);
+		//		if (ImGui::Selectable(ri->GetGameObjectType().c_str(), m_SelectedGameObject == ri))
+		//		{
+		//			m_SelectedGameObject = ri;
+		//		}
+		//		ImGui::PopID();
+		//	}
 
-			for(auto& keyval : models)
-			{
-				auto model = keyval.first;
-				auto ritems = keyval.second;
-				ImGui::PushID(model->GameObjectId);
+		//	for(auto& keyval : models)
+		//	{
+		//		auto model = keyval.first;
+		//		auto ritems = keyval.second;
+		//		ImGui::PushID(model->GameObjectId);
 
-				ImGuiTreeNodeFlags nodeFlag = ImGuiTreeNodeFlags_OpenOnArrow;
+		//		ImGuiTreeNodeFlags nodeFlag = ImGuiTreeNodeFlags_OpenOnArrow;
 
-				if(m_SelectedGameObject == model.get())
-				{
-					nodeFlag |= ImGuiTreeNodeFlags_Selected;
-				}
-
-
-				if(ImGui::TreeNodeEx(model->GetGameObjectType().c_str(), nodeFlag))
-				{
-					if (ImGui::IsItemClicked())
-					{
-						m_SelectedGameObject = model.get();
-					}
-					for(auto& ri : ritems)
-					{
-						ImGui::PushID(ri->GameObjectId);
-						if (ImGui::Selectable(ri->GetGameObjectType().c_str(), m_SelectedGameObject == ri.get()))
-						{
-							m_SelectedGameObject = ri.get();
-						}
-						ImGui::PopID();
-					}
-
-					ImGui::TreePop();
-				}
+		//		if(m_SelectedGameObject == model.get())
+		//		{
+		//			nodeFlag |= ImGuiTreeNodeFlags_Selected;
+		//		}
 
 
-				ImGui::PopID();
-			}
+		//		if(ImGui::TreeNodeEx(model->GetGameObjectType().c_str(), nodeFlag))
+		//		{
+		//			if (ImGui::IsItemClicked())
+		//			{
+		//				m_SelectedGameObject = model.get();
+		//			}
+		//			for(auto& ri : ritems)
+		//			{
+		//				ImGui::PushID(ri->GameObjectId);
+		//				if (ImGui::Selectable(ri->GetGameObjectType().c_str(), m_SelectedGameObject == ri.get()))
+		//				{
+		//					m_SelectedGameObject = ri.get();
+		//				}
+		//				ImGui::PopID();
+		//			}
 
-			for (auto& light : dirlights)
-			{
-				ImGui::PushID(light.GameObjectId);
-				if (ImGui::Selectable(light.GetGameObjectType().c_str(), m_SelectedGameObject == &light))
-				{
-					if (m_SelectedGameObject != &light)
-					{
-						m_SelectedGameObject = &light;
-					}
-				}
-				ImGui::PopID();
-			}
-			for (auto& light : pointLights)
-			{
-				ImGui::PushID(light.GameObjectId);
-				if (ImGui::Selectable(light.GetGameObjectType().c_str(), m_SelectedGameObject == &light))
-				{
-					if (m_SelectedGameObject != &light)
-					{
-						m_SelectedGameObject = &light;
-					}
-				}
-				ImGui::PopID();
-			}
-
-			for (auto& light : spotLights)
-			{
-				ImGui::PushID(light.GameObjectId);
-				if (ImGui::Selectable(light.GetGameObjectType().c_str(), m_SelectedGameObject == &light))
-				{
-					if (m_SelectedGameObject != &light)
-					{
-						m_SelectedGameObject = &light;
-					}
-				}
-				ImGui::PopID();
-			}
+		//			ImGui::TreePop();
+		//		}
 
 
+		//		ImGui::PopID();
+		//	}
 
-		}
+		//	for (auto& light : dirlights)
+		//	{
+		//		ImGui::PushID(light.GameObjectId);
+		//		if (ImGui::Selectable(light.GetGameObjectType().c_str(), m_SelectedGameObject == &light))
+		//		{
+		//			if (m_SelectedGameObject != &light)
+		//			{
+		//				m_SelectedGameObject = &light;
+		//			}
+		//		}
+		//		ImGui::PopID();
+		//	}
+		//	for (auto& light : pointLights)
+		//	{
+		//		ImGui::PushID(light.GameObjectId);
+		//		if (ImGui::Selectable(light.GetGameObjectType().c_str(), m_SelectedGameObject == &light))
+		//		{
+		//			if (m_SelectedGameObject != &light)
+		//			{
+		//				m_SelectedGameObject = &light;
+		//			}
+		//		}
+		//		ImGui::PopID();
+		//	}
+
+		//	for (auto& light : spotLights)
+		//	{
+		//		ImGui::PushID(light.GameObjectId);
+		//		if (ImGui::Selectable(light.GetGameObjectType().c_str(), m_SelectedGameObject == &light))
+		//		{
+		//			if (m_SelectedGameObject != &light)
+		//			{
+		//				m_SelectedGameObject = &light;
+		//			}
+		//		}
+		//		ImGui::PopID();
+		//	}
+
+
+
+		//}
 
 		ImGui::End();
 	}
 
-	void EditorUI::DrawPaintItModal(Model* model, bool* bOpen)
+	void EditorUI::DrawPaintItModal(ModelAsset* model, bool* bOpen)
 	{
-		if (!(*bOpen))
+		/*if (!(*bOpen))
 			return;
 		static bool bInGeneratingMode = false;
 		static bool bSubstiDiffuseMap = true;
@@ -751,7 +757,7 @@ namespace photon
 		}
 
 		ImGui::EndPopup();
-
+*/
 
 
 		/*static std::string path = "";
@@ -781,29 +787,29 @@ namespace photon
 		}*/
 	}
 
-	void EditorUI::ChangeModelToPaintIt(Model* model, bool bDiffuse, bool bNormal, bool bSpecular)
+	void EditorUI::ChangeModelToPaintIt(ModelAsset* model, bool bDiffuse, bool bNormal, bool bSpecular)
 	{
-		ResourceManager* manager = g_RuntimeGlobalContext.renderSystem->GetResourceManager();
+		//ResourceManager* manager = g_RuntimeGlobalContext.renderSystem->GetResourceManager();
 
-		auto diffuseMap = m_PaintIt->GetOutputDiffuseMapPath();
-		auto normalMap = m_PaintIt->GetOutputNormalMapPath();
-		auto specularMap = m_PaintIt->GetOutputSpecularMapPath();
-		
-		if (bDiffuse)
-		{
-			auto texDiffuse = manager->LoadTexture2D(diffuseMap);
-			model->GlobalSwitchDiffuseMap(texDiffuse);
-		}
-		if(bNormal)
-		{
-			auto texNormal = manager->LoadTexture2D(normalMap);
-			model->GlobalSwitchNormalMap(texNormal);
-		}
-		if (bSpecular)
-		{
-			auto texSpecular = manager->LoadTexture2D(specularMap);
-			model->GlobalSwitchSpecularMap(texSpecular);
-		}
+		//auto diffuseMap = m_PaintIt->GetOutputDiffuseMapPath();
+		//auto normalMap = m_PaintIt->GetOutputNormalMapPath();
+		//auto specularMap = m_PaintIt->GetOutputSpecularMapPath();
+		//
+		//if (bDiffuse)
+		//{
+		//	auto texDiffuse = manager->LoadTexture2D(diffuseMap);
+		//	model->GlobalSwitchDiffuseMap(texDiffuse);
+		//}
+		//if(bNormal)
+		//{
+		//	auto texNormal = manager->LoadTexture2D(normalMap);
+		//	model->GlobalSwitchNormalMap(texNormal);
+		//}
+		//if (bSpecular)
+		//{
+		//	auto texSpecular = manager->LoadTexture2D(specularMap);
+		//	model->GlobalSwitchSpecularMap(texSpecular);
+		//}
 
 	}
 

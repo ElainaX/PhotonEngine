@@ -1,210 +1,125 @@
-﻿#pragma once
-#include <dxgi1_4.h>
+#pragma once
+#include <dxgi1_6.h>
 #include <d3d12.h>
-#include <DirectXColors.h>
 #include <wrl.h>
 #include <array>
-#include <unordered_map>
 
 
 
 #include "d3dx12.h"
 #include "Function/Render/RHI.h"
 #include "DX12Define.h"
+#include "FrameSyncSystem.h"
 #include "Function/Render/WindowSystem.h"
-#include "Resource/Texture/Texture2D.h"
-#include "Resource/Texture/Texture2DArray.h"
-#include "Core/Math/Vector4.h"
-#include "Core/Math/Vector3i.h"
-#include "DX12Resource/VertexType.h"
-#include "DX12Resource/VertexBuffer.h"
-#include "DX12Resource/IndexBuffer.h"
-#include "DX12Resource/VertexLayout.h"
-#include "../RenderObject/RenderItem.h"
-#include "DescriptorHeap/CbvSrvUavDescriptorHeap.h"
-#include "DescriptorHeap/DsvDescriptorHeap.h"
-#include "DescriptorHeap/RtvDescriptorHeap.h"
-#include "DescriptorHeap/SamplerDescriptorHeap.h"
-#include "DXPipeline/DXGraphicsPipeline.h"
-#include "FrameResource/FrameResource.h"
-#include "FrameResource/StaticModelFrameResource.h"
+#include "Resource/DXResourceHeader.h"
+#include "ViewDesc.h"
+
 
 namespace photon 
 {
 	class ResourceManager;
 
 
-	struct FrameContext
-	{
-		//std::shared_ptr<Buffer> bigConstantBuffer = nullptr;
-		//std::shared_ptr<Buffer> bigUploadConstantBuffer = nullptr;
-		std::unordered_map<FrameResourceType, std::shared_ptr<FrameResource>> frameResources;
-		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAllocator = nullptr;
-		UINT64 fenceValue = 0;
-	};
+	//struct FrameContext
+	//{
+	//	std::unordered_map<FrameResourceType, std::shared_ptr<FrameResource>> frameResources;
+	//	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAllocator = nullptr;
+	//	UINT64 fenceValue = 0;
+	//};
 
 	struct SwapChainContent
 	{
-		std::shared_ptr<Texture2D> backBuffer = nullptr;
-		RenderTargetView* rtview = nullptr;
-		ShaderResourceView* srview = nullptr;
+		std::shared_ptr<DXTexture2D> backBuffer;
 	};
 
-	class DX12RHI : public RHI 
+
+	// DX12RHI以后只负责
+	// 1. 资源创建底层函数
+	// 2. queue/fence/present/execute持有
+	// 3. 为CommandContextManager提供底层支持
+	class DX12RHI final : public RHI 
 	{
 	public:
-		virtual ~DX12RHI() override;
+		~DX12RHI() override;
 
-		void Initialize(RHIInitInfo initializeInfo) override final;
-		void InitializeImGui() override;
+		bool Initialize(const RHIInitInfo& initializeInfo) override;
+		void Shutdown() override;
 
-		void CreateSwapChain() override final;
-		void ReCreateSwapChain() override final;
-		void CreateFactory() override final;
-		void CreateDevice() override final;
-		void CreateFence() override final;
-
-
-		void CreateCommandObjects() override final;
-		void CreateSwapChainRenderTarget() override final;
-		void CreateDescriptorHeaps() override final;
-		void CreateAssetAllocator() override final;
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> CreateRootSignature(Shader* shader, int samplerCount = 0, const D3D12_STATIC_SAMPLER_DESC* samplerDesc = nullptr) override;
-		Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateGraphicsPipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc) override;
-		std::shared_ptr<VertexBuffer> CreateVertexBuffer(VertexType type, const void* data, UINT64 sizeInBytes) override;
-		std::shared_ptr<IndexBuffer> CreateIndexBuffer(const void* data, UINT64 sizeInBytes) override;
-		std::shared_ptr<ConstantBuffer> CreateConstantBuffer(unsigned int elementCount, unsigned int singleElementSizeInBytes) override;
-		ConstantBufferView* CreateConstantBufferView(const D3D12_CONSTANT_BUFFER_VIEW_DESC* pDesc, ConstantBufferView* thisView = nullptr) override;
-		ConstantBufferView* CreateConstantBufferView() override;
-		ShaderResourceView* CreateShaderResourceView(Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc, ShaderResourceView* thisView = nullptr) override;
-		ShaderResourceView* CreateShaderResourceView() override;
-		UnorderedAccessView* CreateUnorderedAccessView(Resource* resource, Resource* counterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* pDesc, UnorderedAccessView* thisView = nullptr)override;
-		UnorderedAccessView* CreateUnorderedAccessView()override;
-		DepthStencilView* CreateDepthStencilView(Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* pDesc, DepthStencilView* thisView = nullptr)override;
-		DepthStencilView* CreateDepthStencilView()override;
-		RenderTargetView* CreateRenderTargetView(Resource* resource, const D3D12_RENDER_TARGET_VIEW_DESC* pDesc, RenderTargetView* thisView = nullptr)override;
-		RenderTargetView* CreateRenderTargetView()override;
-		SamplerView* CreateSampler(const D3D12_SAMPLER_DESC* pDesc, SamplerView* thisView = nullptr) override;
-		SamplerView* CreateSampler() override;
-
-		void FlushCommandQueue() override final;
-		void WaitForFenceValue(uint64_t fenceValue) override final;
-		void CreateDebugManager() override final;
-
-		void Clear() override;
-
-		unsigned int GetCurrBackBufferIndex() override final;
-		std::shared_ptr<ResourceManager> GetResourceManager() override;
-
-		std::shared_ptr<Cubemap> CreateCubemap(CubemapDesc desc) override;
-		std::shared_ptr<Texture2D> CreateTexture2D(Texture2DDesc desc) override final;
-		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc) override final;
-		std::shared_ptr<Buffer> CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes) override final;
-		std::shared_ptr<Texture2D> LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize = 0, bool bForceLoadSRGB = false) override;
-
-
-		void CopyDataCpuToGpu(Resource* dstResource, const void* data, UINT64 sizeInBytes) override;
-		void CopyDataCpuToGpu(Resource* dstResource, UINT64 startPosInBytes, const void* data, UINT64 sizeInBytes) override;
-		void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource) override;
-		void CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource, UINT64 dstStartPosInBytes, UINT64 srcStartPosInBytes, UINT64 sizeInBytes) override;
-		void CopySubResourceDataCpuToGpu(Resource* dest, Resource* upload, UINT64 uploadOffsetInBytes, D3D12_SUBRESOURCE_DATA* resources, UINT resourcesStartIdx = 0, UINT resourcesNum = 1) override;
-		void CopyTextureSubRegionGpuToGpu(Resource* dest, Resource* src, UINT32 destArrayIndex, Vector3i destResourceCoords = {0, 0, 0},
-			UINT32 srcArrayIndex = 0, Vector3i srcResourceCoordsStart = { 0, 0, 0 }, Vector3i srcResourceCoordsEnd = {-1, -1, -1}) override;
-		void CopyTexturesToCubemap(Resource* cubemap, const std::array<std::shared_ptr<Texture2D>, 6>& textures);
-
-		void CopyTextureToSwapChain(Texture2D* tex) override;
 		void Present() override;
+		void ResizeSwapChain(uint32_t width, uint32_t height) override;
 
 
-		void BeginSingleRenderPass() override;
-		void EndSingleRenderPass() override;
+		uint64_t GetCompletedFenceValue(QueueType queueType) const override;
+		uint64_t SignalQueue(QueueType queueType) override;
+		void WaitForFenceValue(QueueType queueType, uint64_t fenceValue) override;
 
+	public:
+		ID3D12Device* GetDevice() const { return m_device.Get(); }
+		IDXGISwapChain3* GetSwapChain() const { return m_swapChain.Get(); }
+		ID3D12CommandQueue* GetGraphicsQueue() const { return m_graphicsQueue.Get(); }
+		ID3D12CommandQueue* GetComputeQueue() const { return m_computeQueue.Get(); }
+		ID3D12CommandQueue* GetCopyQueue() const { return m_copyQueue.Get(); }
 
-		void ResourceStateTransform(Resource* resource, D3D12_RESOURCE_STATES stateAfter) override;
-		void PrepareForPresent() override;
+		UINT GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type) const;
 
+		// 四大DX GPU资源
+		HRESULT CreateDXBuffer(const DXBufferDesc& desc, DXBuffer& outResource);
+		HRESULT CreateDXTexture2D(const DXTexture2DDesc& desc, DXTexture2D& outResource);
+		HRESULT CreateDXTexture2DArray(const DXTexture2DArrayDesc& desc, DXTexture2DArray& outResource);
+		HRESULT CreateDXTexture3D(const DXTexture3DDesc& desc, DXTexture3D& outResource);
 
+		Microsoft::WRL::ComPtr<ID3D12PipelineState> CreateGraphicsPipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc);
 
-		void CmdSetViewportsAndScissorRects(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport) override;
-		void CmdSetPipelineState(ID3D12PipelineState* pipeline) override;
-		void CmdSetGraphicsRootSignature(ID3D12RootSignature* rootSignature) override;
-		void CmdSetRenderTargets(UINT numRenderTargetViews, const D3D12_CPU_DESCRIPTOR_HANDLE* pRenderTargetDescriptors, bool RTsSingleHandleToDescriptorRange, const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor) override;
-		void CmdSetDescriptorHeaps(const std::vector<ID3D12DescriptorHeap*>& descriptorHeaps) override;
-		void CmdSetDescriptorHeaps() override;
-		void CmdSetGraphicsRootDescriptorTable(UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor) override;
-		void CmdSetGraphicsRootConstantBufferView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation) override;
-		void CmdSetVertexBuffers(UINT startSlot, UINT numViews, const D3D12_VERTEX_BUFFER_VIEW* pViews) override;
-		void CmdSetIndexBuffer(const D3D12_INDEX_BUFFER_VIEW* pView) override;
-		void CmdSetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY PrimitiveTopology) override;
-		void CmdDrawIndexedInstanced(UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation) override;
-		void CmdClearRenderTarget(RenderTargetView* view, Vector4 clearRGBA, UINT numRects = 0, const D3D12_RECT* clearRect = nullptr) override;
-		void CmdClearDepthStencil(DepthStencilView* view, D3D12_CLEAR_FLAGS ClearFlags, float depth, UINT8 stencil, UINT numRects = 0, const D3D12_RECT* clearRect = nullptr) override;
-		void CmdDrawImGui() override;
+		uint32_t GetCurrentBackBufferIndex() const;
+		DXTexture2D* GetCurrBackbuffer();
+		DXTexture2D* GetBackbuffer(uint32_t idx);
 
-
-		FrameResource* GetCurrFrameResource(FrameResourceType type) override;
-		void CreateFrameResource(FrameResourceType type, FrameResourceDesc* desc) override;
-		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers() override;
-
-
-
-
-		std::shared_ptr<Texture2D> GetCurrBackBufferResource() override { return m_SwapChainContents[m_CurrBackBufferIndex].backBuffer; }
-		RenderTargetView* GetCurrBackBufferAsRenderTarget() override;
-		ShaderResourceView* GetCurrBackBufferAsShaderResource(const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc) override;
-
-
-
-
-
-
-		std::shared_ptr<Texture2DArray> CreateTexture2DArray(Texture2DArrayDesc desc) override;
+		uint64_t GetResourceSizeInBytes(ID3D12Resource* pResource);
 
 	private:
-		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> GetCurrFrameContextCmdAllocator() { return m_FrameContexts[m_CurrFrameContextIndex]->cmdAllocator; }
+		ID3D12CommandQueue* GetQueueByType(QueueType type) const;
+		ID3D12Fence* GetFenceByType(QueueType type) const;
+
+
+		void FlushCommandQueue();
+
+		void CreateSwapChain();
+		void ReCreateSwapChain();
+		void CreateFactory();
+		void CreateDevice();
+		void CreateFence();
+		void CreateCommandObjects();
+		void CreateSwapChainRenderTarget();
+		void CreateDebugManager();
 		void OnWindowResize(const WindowResizeEvent& e);
 
+
 	private:
-		UINT64 m_FenceValue = 0;
-		uint32_t m_CurrBackBufferIndex = 0;
-		uint32_t m_CurrFrameContextIndex = 0;
-		Vector4 m_ClearColor = { 1.0f, 1.0f, 1.0f, 1.0f };
+		Microsoft::WRL::ComPtr<IDXGIFactory7> m_factory;
+		Microsoft::WRL::ComPtr<IDXGIAdapter4> m_adapter;
+		Microsoft::WRL::ComPtr<ID3D12Device3> m_device;
+		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_swapChain;
+		std::array<SwapChainContent, g_SwapChainCount> m_swapChainContents;
+		HANDLE m_swapChainWaitableObject = {};
 
-		std::shared_ptr<RtvDescriptorHeap> m_RtvHeap;
-		std::shared_ptr<DsvDescriptorHeap> m_DsvHeap;
-		std::shared_ptr<CbvSrvUavDescriptorHeap> m_CbvUavSrvHeap;
-		std::shared_ptr<SamplerDescriptorHeap> m_SamplerHeap;
+		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_graphicsQueue;
+		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_computeQueue;
+		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_copyQueue;
 
-		std::shared_ptr<ResourceManager> m_ResourceManager;
-
-		FrameContext* m_CurrFrameContext = nullptr;
-
-		// temp resource
-		// delete when has more class
-		//uint32_t m_RtvDescriptorSize = 0;
-		//uint32_t m_DsvDescriptorSize = 0;
-		//Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_RtvHeap;
-		//Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_DsvHeap;
+		Microsoft::WRL::ComPtr<ID3D12Fence1> m_graphicsFence;
+		Microsoft::WRL::ComPtr<ID3D12Fence1> m_computeFence;
+		Microsoft::WRL::ComPtr<ID3D12Fence1> m_copyFence;
 
 
 
-		Microsoft::WRL::ComPtr<IDXGIFactory4> m_Factory;
-		Microsoft::WRL::ComPtr <IDXGIAdapter3> m_Adapter;
-		Microsoft::WRL::ComPtr<ID3D12Device3> m_Device;
-		Microsoft::WRL::ComPtr<IDXGISwapChain3> m_SwapChain;
-		std::array<SwapChainContent, g_SwapChainCount> m_SwapChainContents;
-		HANDLE m_SwapChainWaitableObject;
+		uint64_t m_graphicsFenceValue = 1;
+		uint64_t m_computeFenceValue = 1;
+		uint64_t m_copyFenceValue = 1;
 
 
-		Microsoft::WRL::ComPtr<ID3D12Fence1> m_Fence; 
-		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_CmdQueue;
-		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> m_MainCmdAllocator;
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> m_MainCmdList;
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList6> m_FrameResourceCmdList;
-		ID3D12GraphicsCommandList6* m_CurrCmdList;
-		std::array<std::shared_ptr<FrameContext>, g_FrameContextCount> m_FrameContexts;
-
-		std::shared_ptr<WindowSystem> m_WindowSystem;
+		WindowSystem* m_windowSystem = nullptr;
+		GpuResourceManager* m_gpuResManager = nullptr;
+		FrameSyncSystem* m_frameSyncSystem = nullptr;
 
 	};
 }

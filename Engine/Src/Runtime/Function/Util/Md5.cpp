@@ -1,4 +1,4 @@
-﻿#include "Md5.h"
+#include "Md5.h"
 #include "Macro.h"
 
 #include <sstream>

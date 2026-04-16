@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <array>
 #include <cmath>
@@ -34,6 +34,13 @@ namespace photon
 	inline Vector3 toVector3(const Vector4& vec)
 	{
 		return Vector3{ vec.x, vec.y, vec.z };
+	}
+
+	inline DirectX::XMFLOAT4X4 Identity4x4()
+	{
+		DirectX::XMFLOAT4X4 m;
+		XMStoreFloat4x4(&m, DirectX::XMMatrixIdentity());
+		return m;
 	}
 
 

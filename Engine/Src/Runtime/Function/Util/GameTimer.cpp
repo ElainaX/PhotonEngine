@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include "GameTimer.h"
 
 #include "Macro.h"

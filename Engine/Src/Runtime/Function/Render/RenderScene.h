@@ -1,66 +1,51 @@
-﻿#pragma once
+#pragma once
 
 #include "RenderCamera.h"
 #include "Light.h"
-#include "RenderObject/RenderItem.h"
-#include "RenderObject/Model.h"
-#include "RenderObject/RenderMeshCollection.h"
-#include "Resource/Texture/Cubemap.h"
+#include "RenderItem.h"
 
 #include <memory>
-#include <unordered_map>
+#include <vector>
 
-namespace photon 
+namespace photon
 {
-
 	class RenderScene
 	{
 	public:
-		RenderScene(std::shared_ptr<RenderCamera> mainCamera)
+		explicit RenderScene(std::shared_ptr<RenderCamera> mainCamera)
 		{
 			Initialize(mainCamera);
 		}
 
 		void Initialize(std::shared_ptr<RenderCamera> mainCamera);
 
-		CommonRenderItem* AddCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor);
-		void AddModel(std::shared_ptr<Model> model, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor);
+		RenderItem* CreateRenderItem();
+
+		std::vector<RenderItem*> GatherMutableRenderItems();
+		std::vector<const RenderItem*> GatherRenderItems() const;
+
 		DirLight* AddDirectionalLight(Vector3 strength, Vector3 dir);
 		PointLight* AddPointLight(Vector3 strength, Vector3 position, float falloffStart, float falloffEnd);
 		SpotLight* AddSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower);
 
-		Cubemap* SetCubemap(std::shared_ptr<Cubemap> cubemap);
-
+		void SetCubemap(TextureHandle cubemap) { m_skybox = cubemap; }
+		TextureHandle GetCubemap() const { return m_skybox; }
 
 		void SetMainRenderCamera(RenderCamera* mainCam);
-		RenderCamera* AddRenderCamera(std::shared_ptr<RenderCamera> camera, bool bSetMainCamera = false);
+		RenderCamera* AddRenderCamera(std::shared_ptr<RenderCamera> camera, bool setMain = false);
 		void RemoveRenderCamera(RenderCamera* camera);
-
 		RenderCamera* GetMainCamera();
-		std::vector<CommonRenderItem*> GetCommonRenderItems(RHI* rhi, bool needModelRitems = false);
-		StaticFrameResourceEditor* GetCommonRItemFrameResourceEditor(uint64_t gameObjectId);
 
-		std::unordered_map<std::shared_ptr<Model>, std::vector<std::shared_ptr<CommonRenderItem>>>& GetModelRenderItems();
-
-
+	public:
 		std::vector<DirLight> directionalLights;
 		std::vector<PointLight> pointLights;
 		std::vector<SpotLight> spotLights;
 
-		std::shared_ptr<Cubemap> cubemap;
+		TextureHandle m_skybox = {};
 
 	private:
-		std::shared_ptr<CommonRenderItem> CreateCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor);
-
-
-		std::unordered_map<uint64_t, StaticFrameResourceEditor> m_StaticFrameResourceEditors;
-
-		std::shared_ptr<RenderMeshCollection> m_MeshCollection;
-		std::vector<std::shared_ptr<CommonRenderItem>> m_RenderItems;
-		std::unordered_map<std::shared_ptr<Model>, std::vector<std::shared_ptr<CommonRenderItem>>> m_ModelRenderItems;
-		std::vector<std::shared_ptr<RenderCamera>> m_Cameras;
-
+		uint64_t m_nextRenderItemId = 1;
+		std::vector<std::unique_ptr<RenderItem>> m_renderItems;
+		std::vector<std::shared_ptr<RenderCamera>> m_cameras;
 	};
-
-
 }

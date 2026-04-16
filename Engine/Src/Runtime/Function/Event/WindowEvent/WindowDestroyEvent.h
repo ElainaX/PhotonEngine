@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "WindowEvent.h"
 
 namespace photon 

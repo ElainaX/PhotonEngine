@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 #include "CmdExecutor.h"
 
 namespace photon 
 {
 
-	class PaintItCaller
+	/*class PaintItCaller
 	{
 	public:
 		PaintItCaller(const std::wstring& _paintItDir, const std::wstring& _anacondaPython = L"E:/Env/envs/paint_it/python.exe");
@@ -39,5 +39,5 @@ namespace photon
 		std::wstring m_NegPrompt;
 		std::wstring m_OutputDir;
 		CmdExecutor m_CmdExecutor;
-	};
+	};*/
 }

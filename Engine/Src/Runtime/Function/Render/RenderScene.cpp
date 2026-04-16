@@ -1,50 +1,54 @@
-﻿#include "RenderScene.h"
-
+#include "RenderScene.h"
 #include <algorithm>
 
-namespace photon 
+namespace photon
 {
-
-
-
 	void RenderScene::Initialize(std::shared_ptr<RenderCamera> mainCamera)
 	{
-		m_MeshCollection = std::make_shared<RenderMeshCollection>();
-		m_Cameras.push_back(mainCamera);
+		m_cameras.clear();
+		m_cameras.push_back(mainCamera);
+
 		directionalLights.reserve(MaxDirLights);
 		pointLights.reserve(MaxPointLights);
 		spotLights.reserve(MaxSpotLights);
 	}
 
-	photon::CommonRenderItem* RenderScene::AddCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor)
+	RenderItem* RenderScene::CreateRenderItem()
 	{
-		auto commonRenderItem = CreateCommonRenderItem(mesh, mat, shader, renderLayer, frameResourceEditor);
-		m_RenderItems.push_back(commonRenderItem);
+		auto item = std::make_unique<RenderItem>();
+		item->id = m_nextRenderItemId++;
+		item->layers = RenderLayer::Opaque;
+		item->flags.visible = true;
+		item->flags.castShadow = true;
+		item->flags.receiveShadow = true;
+		item->flags.transparent = false;
+		item->flags.doubleSided = false;
+		item->flags.staticObject = true;
 
-		frameResourceEditor.bDirty = false;
-		m_StaticFrameResourceEditors[commonRenderItem->GameObjectId] = frameResourceEditor;
-
-		return commonRenderItem.get();
+		auto* ret = item.get();
+		m_renderItems.push_back(std::move(item));
+		return ret;
 	}
 
-
-
-	void RenderScene::AddModel(std::shared_ptr<Model> model, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor)
+	std::vector<RenderItem*> RenderScene::GatherMutableRenderItems()
 	{
-		std::pair<std::shared_ptr<Model>, std::vector<std::shared_ptr<CommonRenderItem>>> keyValue = std::make_pair(model, std::vector<std::shared_ptr<CommonRenderItem>>{});
-		for(auto& meshInfo : model->meshes)
-		{
-			auto ritem = CreateCommonRenderItem(meshInfo->mesh, meshInfo->mat, shader, renderLayer, frameResourceEditor);
-			keyValue.second.push_back(ritem);
-			m_StaticFrameResourceEditors.insert({ ritem->GameObjectId, frameResourceEditor });
-		}
-		StaticFrameResourceEditor modelEditor = frameResourceEditor;
-		modelEditor.bDirty = true;
-		m_StaticFrameResourceEditors.insert({ model->GameObjectId, modelEditor });
-		m_ModelRenderItems.insert(keyValue);
+		std::vector<RenderItem*> ret;
+		ret.reserve(m_renderItems.size());
+		for (auto& item : m_renderItems)
+			ret.push_back(item.get());
+		return ret;
 	}
 
-	photon::DirLight* RenderScene::AddDirectionalLight(Vector3 strength, Vector3 dir)
+	std::vector<const RenderItem*> RenderScene::GatherRenderItems() const
+	{
+		std::vector<const RenderItem*> ret;
+		ret.reserve(m_renderItems.size());
+		for (const auto& item : m_renderItems)
+			ret.push_back(item.get());
+		return ret;
+	}
+
+	DirLight* RenderScene::AddDirectionalLight(Vector3 strength, Vector3 dir)
 	{
 		if (directionalLights.size() >= MaxDirLights)
 			return nullptr;
@@ -53,7 +57,7 @@ namespace photon
 		return &directionalLights.back();
 	}
 
-	photon::PointLight* RenderScene::AddPointLight(Vector3 strength, Vector3 position, float falloffStart, float falloffEnd)
+	PointLight* RenderScene::AddPointLight(Vector3 strength, Vector3 position, float falloffStart, float falloffEnd)
 	{
 		if (pointLights.size() >= MaxPointLights)
 			return nullptr;
@@ -61,7 +65,7 @@ namespace photon
 		return &pointLights.back();
 	}
 
-	photon::SpotLight* RenderScene::AddSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower)
+	SpotLight* RenderScene::AddSpotLight(Vector3 strength, Vector3 position, Vector3 dir, float falloffStart, float falloffEnd, float spotPower)
 	{
 		if (spotLights.size() >= MaxSpotLights)
 			return nullptr;
@@ -69,132 +73,32 @@ namespace photon
 		return &spotLights.back();
 	}
 
-	photon::Cubemap* RenderScene::SetCubemap(std::shared_ptr<Cubemap> _cubemap)
-	{
-		cubemap = _cubemap;
-		return cubemap.get();
-	}
-
 	void RenderScene::SetMainRenderCamera(RenderCamera* mainCam)
 	{
-		auto find_it = std::find_if(m_Cameras.begin(), m_Cameras.end(), [mainCam](auto sptr) {
-				return sptr.get() == mainCam;
-			});
-
-		if(find_it != m_Cameras.end())
-		{
-			find_it->swap(*(m_Cameras.begin()));
-		}
+		auto it = std::find_if(m_cameras.begin(), m_cameras.end(),
+			[mainCam](const auto& p) { return p.get() == mainCam; });
+		if (it != m_cameras.end())
+			std::iter_swap(m_cameras.begin(), it);
 	}
 
-	photon::RenderCamera* RenderScene::AddRenderCamera(std::shared_ptr<RenderCamera> camera, bool bSetMainCamera)
+	RenderCamera* RenderScene::AddRenderCamera(std::shared_ptr<RenderCamera> camera, bool setMain)
 	{
-		m_Cameras.push_back(camera);
-		if(bSetMainCamera)
-		{
+		m_cameras.push_back(camera);
+		if (setMain)
 			SetMainRenderCamera(camera.get());
-		}
-		return m_Cameras[0].get();
+		return camera.get();
 	}
 
 	void RenderScene::RemoveRenderCamera(RenderCamera* camera)
 	{
-		auto find_it = std::find_if(m_Cameras.begin(), m_Cameras.end(), [camera](auto sptr) {
-			return sptr.get() == camera;
-			});
-		m_Cameras.erase(find_it);
+		auto it = std::find_if(m_cameras.begin(), m_cameras.end(),
+			[camera](const auto& p) { return p.get() == camera; });
+		if (it != m_cameras.end())
+			m_cameras.erase(it);
 	}
 
-	photon::RenderCamera* RenderScene::GetMainCamera()
+	RenderCamera* RenderScene::GetMainCamera()
 	{
-		if (m_Cameras.empty())
-			return nullptr;
-		return m_Cameras[0].get();
+		return m_cameras.empty() ? nullptr : m_cameras[0].get();
 	}
-
-	std::vector<photon::CommonRenderItem*> RenderScene::GetCommonRenderItems(RHI* rhi, bool bNeedModels)
-	{
-		if(rhi)
-		{
-			m_MeshCollection->EndPush(rhi);
-		}
-
-		std::vector<photon::CommonRenderItem*> ret(m_RenderItems.size());
-		for(int i = 0; i < ret.size(); ++i)
-		{
-			auto frameResourceEditor = GetCommonRItemFrameResourceEditor(m_RenderItems[i]->GameObjectId);
-			if(frameResourceEditor->bDirty)
-			{
-				m_RenderItems[i]->objectConstants = frameResourceEditor->ToObjectConstants();
-				m_RenderItems[i]->SetDirty();
-				frameResourceEditor->bDirty = false;
-			}
-			ret[i] = m_RenderItems[i].get();
-		}
-
-		if(bNeedModels)
-		{
-			for (auto& keyval : m_ModelRenderItems)
-			{
-				auto model = keyval.first;
-				auto ritems = keyval.second;
-
-				auto frameEditor = GetCommonRItemFrameResourceEditor(model->GameObjectId);
-				if (frameEditor->bDirty)
-				{
-					for (auto& ri : ritems)
-					{
-						ri->objectConstants = frameEditor->ToObjectConstants();
-						ri->SetDirty();
-						frameEditor->bDirty = false;
-					}
-				}
-				for (auto& ri : ritems)
-				{
-					ret.push_back(ri.get());
-				}
-			}
-		}
-
-
-		return ret;
-	}
-
-
-	photon::StaticFrameResourceEditor* RenderScene::GetCommonRItemFrameResourceEditor(uint64_t gameObjectId)
-	{
-		auto find_it = m_StaticFrameResourceEditors.find(gameObjectId);
-		if(find_it != m_StaticFrameResourceEditors.end())
-		{
-			return &(find_it->second);
-		}
-		return nullptr;
-	}
-
-	std::unordered_map<std::shared_ptr<photon::Model>, std::vector<std::shared_ptr<photon::CommonRenderItem>>>& RenderScene::GetModelRenderItems()
-	{
-		return m_ModelRenderItems;
-	}
-
-	std::shared_ptr<photon::CommonRenderItem> RenderScene::CreateCommonRenderItem(std::shared_ptr<Mesh> mesh, Material* mat, Shader* shader, RenderLayer renderLayer, StaticFrameResourceEditor frameResourceEditor)
-	{
-		auto commonRenderItem = std::make_shared<CommonRenderItem>();
-		commonRenderItem->objConstantIdx = g_objIdxHolder.GetObjIndex();
-		commonRenderItem->objectConstants = frameResourceEditor.ToObjectConstants();
-		commonRenderItem->material = mat;
-		commonRenderItem->meshCollection = m_MeshCollection.get();
-		commonRenderItem->primitiveType = mesh->topology;
-		commonRenderItem->meshGuid = mesh->guid;
-		commonRenderItem->shader = shader;
-		commonRenderItem->renderLayer = renderLayer;
-		commonRenderItem->numFrameDirty = g_FrameContextCount;
-
-		if (!m_MeshCollection->IsMeshLoaded(mesh->guid))
-		{
-			m_MeshCollection->PushMesh(mesh);
-		}
-
-		return commonRenderItem;
-	}
-
 }

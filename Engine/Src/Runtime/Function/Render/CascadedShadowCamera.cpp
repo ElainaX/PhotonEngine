@@ -1,4 +1,4 @@
-﻿#include "CascadedShadowCamera.h"
+#include "CascadedShadowCamera.h"
 #include <algorithm>
 
 namespace photon 

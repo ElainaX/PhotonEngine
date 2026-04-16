@@ -1,21 +1,13 @@
-﻿#include "DX12RHI.h"
+#include "DX12RHI.h"
 #include "Function/Render/WindowSystem.h"
 #include "Macro.h"
 #include "d3dx12.h"
 #include "Platform/FileSystem/FileSystem.h"
-#include "../Shader/TestShader.h"
-#include "../ResourceManager.h"
 #include "Function/Util/RenderUtil.h"
-#include "DirectXTK/WICTextureLoader12.h"
-#include "ImGui/imgui.h"
-#include "ImGui/imgui_impl_dx12.h"
-
-
-#include <dxgi1_4.h>
+#include <dxgi1_6.h>
 #include <d3d12.h>
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
-#include <cmath>
 
 namespace photon 
 {
@@ -24,15 +16,11 @@ namespace photon
 	{
 	}
 
-	void DX12RHI::Initialize(RHIInitInfo initializeInfo)
+	bool DX12RHI::Initialize(const RHIInitInfo& initializeInfo)
 	{
-		// 等待被删除
-		m_ResourceManager = std::make_shared<ResourceManager>();
-		m_ResourceManager->Initialize(this);
-
-
-		m_WindowSystem = initializeInfo.window_System;
-		PHOTON_ASSERT(m_WindowSystem != nullptr, "WindowSystem Is NullPtr! DX12RHI Init Error!");
+		m_windowSystem = initializeInfo.windowSystem;
+		m_frameSyncSystem = initializeInfo.frameSyncSystem;
+		PHOTON_ASSERT(m_windowSystem  && m_frameSyncSystem, "WindowSystem Is NullPtr! DX12RHI Init Error!");
 
 		CreateDebugManager();
 
@@ -44,27 +32,17 @@ namespace photon
 
 		CreateCommandObjects();
 
-		CreateDescriptorHeaps();
-
 		CreateSwapChain();
 
-
-
-		// RegisterWindowClass
-		auto OnWindowResizeLambda = [this](WindowResizeEvent& event)
-			{
-				this->OnWindowResize(event);
-			};
-
-		m_WindowSystem->RegisterOnWindowResizeCallback(OnWindowResizeLambda);
-
+		return true;
 	}
 
+	// 注意，这里只需要创建SwapChain的颜色缓冲，因为我们会把ImGui的图直接复制回SwapChain，不需要深度缓冲
 	void DX12RHI::CreateSwapChain()
 	{
 		DXGI_SWAP_CHAIN_DESC1 scDesc;
 		{
-			Vector2i widthAndHeight = m_WindowSystem->GetClientWidthAndHeight();
+			Vector2i widthAndHeight = m_windowSystem->GetClientWidthAndHeight();
 			ZeroMemory(&scDesc, sizeof(scDesc));
 			scDesc.BufferCount = g_SwapChainCount;
 			scDesc.Width = widthAndHeight.x;
@@ -80,18 +58,16 @@ namespace photon
 			scDesc.Stereo = FALSE;
 		}
 		Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain1;
-		DX_LogIfFailed(m_Factory->CreateSwapChainForHwnd(m_CmdQueue.Get(), m_WindowSystem->GetHwnd(), 
+		DX_LogIfFailed(m_factory->CreateSwapChainForHwnd(m_graphicsQueue.Get(), m_windowSystem->GetHwnd(), 
 			&scDesc, nullptr, nullptr, &swapChain1));
-		DX_LogIfFailed(swapChain1->QueryInterface(IID_PPV_ARGS(&m_SwapChain)));
+		DX_LogIfFailed(swapChain1->QueryInterface(IID_PPV_ARGS(&m_swapChain)));
 
-		DX_LogIfFailed(m_SwapChain->SetMaximumFrameLatency(g_SwapChainCount));
-		m_SwapChainWaitableObject = m_SwapChain->GetFrameLatencyWaitableObject();
+		DX_LogIfFailed(m_swapChain->SetMaximumFrameLatency(g_SwapChainCount));
+		m_swapChainWaitableObject = m_swapChain->GetFrameLatencyWaitableObject();
 
 		for(int i = 0; i < g_SwapChainCount; ++i)
 		{
-			m_SwapChainContents[i] = SwapChainContent();
-			m_SwapChainContents[i].rtview = m_RtvHeap->CreateRenderTargetView();
-			m_SwapChainContents[i].srview = m_CbvUavSrvHeap->CreateShaderResourceView();
+			m_swapChainContents[i] = SwapChainContent();
 		}
 
 		CreateSwapChainRenderTarget();
@@ -100,58 +76,44 @@ namespace photon
 	void DX12RHI::ReCreateSwapChain()
 	{
 		LOG_INFO("Recreate SwapChain");
-		auto [width, height] = m_WindowSystem->GetClientWidthAndHeight();
-		// ReCreate之前需要等待所有FrameResource已经渲染结束
-		FlushCommandQueue();
-		m_CurrBackBufferIndex = 0;
-
-		// Clean Up SwapChain Resource
-		for (UINT i = 0; i < g_SwapChainCount; i++)
-		{
-			if (m_SwapChainContents[i].backBuffer != nullptr)
-			{
-				m_SwapChainContents[i].backBuffer->gpuResource->Release();
-				m_SwapChainContents[i].backBuffer->gpuResource = nullptr;
-			}
-		}
-		// 0: maintain, DXGI_FORMAT_UNKNOWN: maintain
-		DX_LogIfFailed(m_SwapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_UNKNOWN, 
-							DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT));
-		CreateSwapChainRenderTarget();
+		auto [width, height] = m_windowSystem->GetClientWidthAndHeight();
+		ResizeSwapChain(width, height);
 	}
 
 	void DX12RHI::CreateFactory()
 	{
-		DX_LogIfFailed(CreateDXGIFactory2(0, IID_PPV_ARGS(&m_Factory)));
+		DX_LogIfFailed(CreateDXGIFactory2(0, IID_PPV_ARGS(&m_factory)));
 	}
 
 	void DX12RHI::CreateDevice()
 	{
-		PHOTON_ASSERT(m_Factory.Get() != nullptr, "Factory Not Created!");
+		PHOTON_ASSERT(m_factory.Get() != nullptr, "Factory Not Created!");
 		
 		Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter1;
-		DX_LogIfFailed(m_Factory->EnumAdapters1(0, &adapter1));
+		DX_LogIfFailed(m_factory->EnumAdapters1(0, &adapter1));
 		// 高级功能需要Query
-		DX_LogIfFailed(adapter1->QueryInterface(IID_PPV_ARGS(&m_Adapter)));
+		DX_LogIfFailed(adapter1->QueryInterface(IID_PPV_ARGS(&m_adapter)));
 
 		DXGI_ADAPTER_DESC gpuDesc;
-		DX_LogIfFailed(m_Adapter->GetDesc(&gpuDesc));
+		DX_LogIfFailed(m_adapter->GetDesc(&gpuDesc));
 		LOG_INFO("Successfully Connect To GPU: {}", WString2String(gpuDesc.Description));
 
-		DX_LogIfFailed(D3D12CreateDevice(m_Adapter.Get(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&m_Device)));
+		DX_LogIfFailed(D3D12CreateDevice(m_adapter.Get(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&m_device)));
 	}
 
 	void DX12RHI::CreateFence()
 	{
-		PHOTON_ASSERT(m_Device.Get() != nullptr, "Device Not Created!");
+		PHOTON_ASSERT(m_device.Get() != nullptr, "Device Not Created!");
 		Microsoft::WRL::ComPtr<ID3D12Fence> fence0;
-		DX_LogIfFailed(m_Device->CreateFence(0u, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence0)));
-		DX_LogIfFailed(fence0->QueryInterface(IID_PPV_ARGS(&m_Fence)));
+		DX_LogIfFailed(m_device->CreateFence(0u, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence0)));
+		DX_LogIfFailed(fence0->QueryInterface(IID_PPV_ARGS(&m_graphicsFence)));
+		DX_LogIfFailed(fence0->QueryInterface(IID_PPV_ARGS(&m_computeFence)));
+		DX_LogIfFailed(fence0->QueryInterface(IID_PPV_ARGS(&m_copyFence)));
 	}
 
 	void DX12RHI::CreateCommandObjects()
 	{
-		PHOTON_ASSERT(m_Device.Get() != nullptr, "Device Not Created!");
+		PHOTON_ASSERT(m_device.Get() != nullptr, "Device Not Created!");
 
 		D3D12_COMMAND_QUEUE_DESC queueDesc;
 		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -159,107 +121,65 @@ namespace photon
 		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 		queueDesc.NodeMask = 0;
 		
-		DX_LogIfFailed(m_Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_CmdQueue)));
+		DX_LogIfFailed(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_graphicsQueue)));
 
+		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+		DX_LogIfFailed(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_computeQueue)));
 
-		DX_LogIfFailed(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_MainCmdAllocator)));
-		for(int i = 0; i < g_FrameContextCount; ++i)
-		{
-			Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator;
-			DX_LogIfFailed(m_Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocator)));
-			m_FrameContexts[i] = std::make_shared<FrameContext>();  
-			m_FrameContexts[i]->cmdAllocator = allocator;
-		}
+		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+		DX_LogIfFailed(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_copyQueue)));
 
-		// CmdList刚开启的时候是打开状态，需要手动关闭
-		DX_LogIfFailed(m_Device->CreateCommandList(0u, D3D12_COMMAND_LIST_TYPE_DIRECT, m_MainCmdAllocator.Get(), nullptr, IID_PPV_ARGS(&m_MainCmdList)));
-		DX_LogIfFailed(m_Device->CreateCommandList(0u, D3D12_COMMAND_LIST_TYPE_DIRECT, m_FrameContexts[m_CurrFrameContextIndex]->cmdAllocator.Get(), nullptr, IID_PPV_ARGS(&m_FrameResourceCmdList)));
-		DX_LogIfFailed(m_MainCmdList->Close());
-		m_CurrCmdList = m_FrameResourceCmdList.Get();
-		m_CurrFrameContext = m_FrameContexts[m_CurrFrameContextIndex].get();
 	}
 
 	void DX12RHI::CreateSwapChainRenderTarget()
 	{
 		for (UINT i = 0; i < g_SwapChainCount; i++)
 		{
-			ID3D12Resource* pBackBuffer = nullptr;
-			m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
-			m_SwapChainContents[i].backBuffer = std::make_shared<Texture2D>(pBackBuffer->GetDesc(), ResourceHeapProperties::Default, pBackBuffer, nullptr);
-			m_SwapChainContents[i].backBuffer->name = L"SwapChain Buffer" + std::to_wstring(i);
-			auto rtView = m_RtvHeap->CreateRenderTargetView(m_SwapChainContents[i].backBuffer.get(), nullptr, m_SwapChainContents[i].rtview);
+			Microsoft::WRL::ComPtr<ID3D12Resource> backBuffer;
+			DX_LogIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+
+			D3D12_RESOURCE_DESC dxDesc = backBuffer->GetDesc();
+			DXTexture2DDesc desc = {};
+			desc.width = dxDesc.Width;
+			desc.height = dxDesc.Height;
+			desc.maxMipLevels = dxDesc.MipLevels;
+			desc.format = dxDesc.Format;
+			desc.flag = dxDesc.Flags;
+			desc.heapProp = HeapProp::Default;
+			desc.hasClearValue = false;
+
+			auto name = "SwapChain DXTexture2D" + std::to_string(i);
+
+			m_swapChainContents[i].backBuffer = std::make_shared<DXTexture2D>();
+			m_swapChainContents[i].backBuffer->Initialize(desc, backBuffer, name);
+			m_swapChainContents[i].backBuffer->state = D3D12_RESOURCE_STATE_PRESENT;
 		}
-	}
-
-	void DX12RHI::CreateDescriptorHeaps()
-	{
-		//m_RtvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		//D3D12_DESCRIPTOR_HEAP_DESC heapDesc;
-		//heapDesc.NumDescriptors = g_SwapChainCount + 1;
-		//heapDesc.NodeMask = 0;
-		//heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		//heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		//DX_LogIfFailed(m_Device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_RtvHeap)));
-
-		//CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(m_RtvHeap->GetCPUDescriptorHandleForHeapStart());
-		//for(int i = 0; i < g_SwapChainCount; ++i)
-		//{
-		//	m_SwapChainContents[i] = std::make_shared<SwapChainContent>();
-		//	m_SwapChainContents[i]->cpuDescriptor = rtvHeapHandle;
-		//	rtvHeapHandle.Offset(m_RtvDescriptorSize);
-		//}
-
-		//m_DsvDescriptorSize = m_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-		//D3D12_DESCRIPTOR_HEAP_DESC dsvheapDesc;
-		//dsvheapDesc.NumDescriptors = 1;
-		//dsvheapDesc.NodeMask = 0;
-		//dsvheapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-		//dsvheapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		//DX_LogIfFailed(m_Device->CreateDescriptorHeap(&dsvheapDesc, IID_PPV_ARGS(&m_DsvHeap)));
-
-		m_RtvHeap = std::make_shared<RtvDescriptorHeap>(m_Device.Get(), g_RenderTargetHeapSize);
-		m_DsvHeap = std::make_shared<DsvDescriptorHeap>(m_Device.Get(), g_DepthStencilHeapSize);
-		m_CbvUavSrvHeap = std::make_shared<CbvSrvUavDescriptorHeap>(m_Device.Get(),
-			g_CbvSrvUavHeapSize, static_cast<int>(g_CbvSrvUavHeapSize * 0.4), static_cast<int>(g_CbvSrvUavHeapSize * 0.4));
-		m_SamplerHeap = std::make_shared<SamplerDescriptorHeap>(m_Device.Get(), g_SamplerHeapSize);
-	}
-
-
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> DX12RHI::CreateRootSignature(Shader* shader, int samplerCount /*= 0*/, const D3D12_STATIC_SAMPLER_DESC* samplerDesc /*= nullptr*/)
-	{
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> ret;
-		auto signature = shader->GetDXSerializedRootSignatureBlob(samplerCount, samplerDesc);
-		DX_LogIfFailed(m_Device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&ret)));
-		return ret;
-	}
-
-	void DX12RHI::CreateAssetAllocator()
-	{
 	}
 
 	void DX12RHI::FlushCommandQueue()
 	{
-		UINT fenceValue = ++m_FenceValue;
-		m_CmdQueue->Signal(m_Fence.Get(), fenceValue);
-		if(m_Fence->GetCompletedValue() < fenceValue)
+		UINT fenceValue = ++m_graphicsFenceValue;
+		m_graphicsQueue->Signal(m_graphicsFence.Get(), fenceValue);
+		if(m_graphicsFence->GetCompletedValue() < fenceValue)
 		{
 			HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
-			m_Fence->SetEventOnCompletion(fenceValue, eventHandle);
-			HANDLE waitableObjects[] = { eventHandle, m_SwapChainWaitableObject };
+			m_graphicsFence->SetEventOnCompletion(fenceValue, eventHandle);
+			HANDLE waitableObjects[] = { eventHandle, m_swapChainWaitableObject };
 			WaitForMultipleObjectsEx(2, waitableObjects, TRUE, INFINITE, TRUE);
 			CloseHandle(eventHandle);
 		}
 	}
 
-	void DX12RHI::WaitForFenceValue(uint64_t fenceValue)
+	void DX12RHI::WaitForFenceValue(QueueType queueType, uint64_t fenceValue)
 	{
-		if (fenceValue <= 0)
+		if (fenceValue == 0)
 			return;
+		auto fence = GetFenceByType(queueType);
 
-		if (m_Fence->GetCompletedValue() < fenceValue)
+		if (m_graphicsFence->GetCompletedValue() < fenceValue)
 		{
 			HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
-			DX_LogIfFailed(m_Fence->SetEventOnCompletion(fenceValue, eventHandle));
+			DX_LogIfFailed(m_graphicsFence->SetEventOnCompletion(fenceValue, eventHandle));
 			WaitForSingleObjectEx(eventHandle, INFINITE, false);
 			bool closed = CloseHandle(eventHandle);
 		}
@@ -279,619 +199,242 @@ namespace photon
 #endif
 	}
 
-	unsigned int DX12RHI::GetCurrBackBufferIndex()
-	{
-		return m_CurrBackBufferIndex;
-	}
-
-
-
-	std::shared_ptr<photon::Texture2DArray> DX12RHI::CreateTexture2DArray(Texture2DArrayDesc desc)
-	{
-		D3D12_RESOURCE_DESC dxDesc = Texture2DArray::ToDxDesc(desc);
-		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
-		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
-		if (desc.flag & (D3D12_RESOURCE_DIMENSION_BUFFER | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
-		{
-			D3D12_CLEAR_VALUE optClearValue;
-			optClearValue.Color[0] = desc.clearValue.x;
-			optClearValue.Color[1] = desc.clearValue.y;
-			optClearValue.Color[2] = desc.clearValue.z;
-			optClearValue.Color[3] = desc.clearValue.w;
-			optClearValue.Format = desc.clearValueFormat == DXGI_FORMAT_R32_TYPELESS ? desc.format : desc.clearValueFormat;
-			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
-				state, &optClearValue, IID_PPV_ARGS(&resource)));
-		}
-		else
-		{
-			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
-				state, nullptr, IID_PPV_ARGS(&resource)));
-		}
-		auto texArray = std::make_shared<Texture2DArray>(desc, resource);
-		if(!desc.textures.empty())
-		{
-			for(int i = 0; i < desc.textures.size(); ++i)
-			{
-				CopyTextureSubRegionGpuToGpu(texArray.get(), desc.textures[i].get(), i);
-			}
-		}
-		return texArray;
-	}
-
-	std::shared_ptr<photon::Cubemap> DX12RHI::CreateCubemap(CubemapDesc desc)
-	{
-		D3D12_RESOURCE_DESC dxDesc = Cubemap::ToDxDesc(desc);
-		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
-		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
-		if (desc.flag & (D3D12_RESOURCE_DIMENSION_BUFFER | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
-		{
-			D3D12_CLEAR_VALUE optClearValue;
-			optClearValue.Color[0] = desc.clearValue.x;
-			optClearValue.Color[1] = desc.clearValue.y;
-			optClearValue.Color[2] = desc.clearValue.z;
-			optClearValue.Color[3] = desc.clearValue.w;
-			optClearValue.Format = desc.format;
-			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
-				state, &optClearValue, IID_PPV_ARGS(&resource)));
-		}
-		else
-		{
-			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
-				state, nullptr, IID_PPV_ARGS(&resource)));
-		}
-		auto cubemap = std::make_shared<Cubemap>(desc, resource);
-		CopyTexturesToCubemap(cubemap.get(), desc.cubemapTextures);
-		return cubemap;
-	}
-
-	std::shared_ptr<Texture2D> DX12RHI::CreateTexture2D(Texture2DDesc desc)
-	{
-		D3D12_RESOURCE_DESC dxDesc = Texture2D::ToDxDesc(desc);
-
-		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
-		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
-
-		if (desc.flag & (D3D12_RESOURCE_DIMENSION_BUFFER | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
-		{
-			D3D12_CLEAR_VALUE optClearValue;
-			optClearValue.Color[0] = desc.clearValue.x;
-			optClearValue.Color[1] = desc.clearValue.y;
-			optClearValue.Color[2] = desc.clearValue.z;
-			optClearValue.Color[3] = desc.clearValue.w;
-			optClearValue.Format = desc.format;
-			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
-				state, &optClearValue, IID_PPV_ARGS(&resource)));
-		}
-		else
-		{
-			DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
-				state, nullptr, IID_PPV_ARGS(&resource)));
-		}
-
-
-		std::shared_ptr<Texture2D> tex = std::make_shared<Texture2D>(desc, resource);
-
-		if (desc.cpuResource != nullptr)
-		{
-			CopyDataCpuToGpu(tex.get(), desc.cpuResource->GetBufferPointer(), desc.cpuResource->GetBufferSize());
-			tex->cpuResource = desc.cpuResource;
-		}
-
-		return tex;
-	}
-
-	std::shared_ptr<Buffer> DX12RHI::CreateBuffer(BufferDesc desc)
-	{
-		D3D12_RESOURCE_DESC dxDesc = Buffer::ToDxDesc(desc);
-		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
-		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-		D3D12_RESOURCE_STATES state = desc.heapProp == ResourceHeapProperties::Upload ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
-		DX_LogIfFailed(m_Device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc, state, nullptr, IID_PPV_ARGS(&resource)));
-		std::shared_ptr<Buffer> buffer = std::make_shared<Buffer>(desc, resource);
-
-
-		if (desc.cpuResource != nullptr)
-		{
-			if(desc.heapProp == ResourceHeapProperties::Upload)
-			{
-				CopyDataCpuToGpu(buffer.get(), desc.cpuResource->GetBufferPointer(), desc.cpuResource->GetBufferSize());
-				buffer->cpuResource = desc.cpuResource;
-			}
-		}
-
-
-		return buffer;
-	}
-
-	std::shared_ptr<Buffer> DX12RHI::CreateBuffer(BufferDesc desc, const void* data, UINT64 sizeInBytes)
-	{
-		if (desc.heapProp == ResourceHeapProperties::Default)
-		{
-			LOG_ERROR("Static Heap Type Can't Get Resource Directly!");
-		}
-		DX_LogIfFailed(D3DCreateBlob(sizeInBytes, &desc.cpuResource));
-		CopyMemory(desc.cpuResource->GetBufferPointer(), data, sizeInBytes);
-		std::shared_ptr<Buffer> buffer = CreateBuffer(desc);
-		return buffer;
-	}
-
-	void DX12RHI::CopyTextureToSwapChain(Texture2D* tex)
-	{
-		ResourceStateTransform(tex, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		ResourceStateTransform(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(), D3D12_RESOURCE_STATE_COPY_DEST);
-
-		if(tex->dxDesc.SampleDesc.Count == 1)
-		{
-			m_CurrCmdList->CopyResource(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer->gpuResource.Get(), tex->gpuResource.Get());
-		}
-	}
-
 	void DX12RHI::Present()
 	{
-		DX_LogIfFailed(m_FrameResourceCmdList->Close());
-		ID3D12CommandList* cmdsLists[] = { m_FrameResourceCmdList.Get() };
-		m_CmdQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
-
-		DX_LogIfFailed(m_SwapChain->Present(0, 0));
-		m_CurrBackBufferIndex = (m_CurrBackBufferIndex + 1) % g_SwapChainCount;
-		m_CurrFrameContext->fenceValue = ++m_FenceValue;
-		m_CmdQueue->Signal(m_Fence.Get(), m_CurrFrameContext->fenceValue);
-
-		m_CurrFrameContextIndex = (m_CurrFrameContextIndex + 1) % g_FrameContextCount;
-		m_CurrFrameContext = m_FrameContexts[m_CurrFrameContextIndex].get();
-		WaitForFenceValue(m_CurrFrameContext->fenceValue);
-		DX_LogIfFailed(m_CurrFrameContext->cmdAllocator->Reset());
-		m_FrameResourceCmdList->Reset(m_CurrFrameContext->cmdAllocator.Get(), nullptr);
-		m_CurrCmdList = m_FrameResourceCmdList.Get();
-		
-
-		/*FlushCommandQueue();*/
+		DX_LogIfFailed(m_swapChain->Present(0, 0));
 	}
 
-	void DX12RHI::BeginSingleRenderPass()
+	void DX12RHI::ResizeSwapChain(uint32_t width, uint32_t height)
 	{
-		DX_LogIfFailed(m_MainCmdAllocator->Reset());
-		DX_LogIfFailed(m_MainCmdList->Reset(m_MainCmdAllocator.Get(), nullptr));
-		m_CurrCmdList = m_MainCmdList.Get();
-	}
-
-	void DX12RHI::EndSingleRenderPass()
-	{
-		DX_LogIfFailed(m_MainCmdList->Close());
-		ID3D12CommandList* cmdsLists[] = { m_MainCmdList.Get() };
-		m_CmdQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
-		FlushCommandQueue();
-		m_CurrCmdList = m_FrameResourceCmdList.Get();
-	}
-
-	void DX12RHI::ResourceStateTransform(Resource* resource, D3D12_RESOURCE_STATES stateAfter)
-	{
-		D3D12_RESOURCE_STATES stateBefore = resource->state;
-		if (stateBefore == stateAfter)
+		if (!m_swapChain || !m_device || width == 0 || height == 0)
 			return;
-		
-		auto resourceTrans = CD3DX12_RESOURCE_BARRIER::Transition(resource->gpuResource.Get(), stateBefore, stateAfter);
-		m_CurrCmdList->ResourceBarrier(1, &resourceTrans);
 
-		resource->state = stateAfter;
-	}
+		LOG_INFO("DX12RHI ResizeSwapChain: {} x {}", width, height);
 
-	void DX12RHI::PrepareForPresent()
-	{
-		ResourceStateTransform(m_SwapChainContents[m_CurrBackBufferIndex].backBuffer.get(), D3D12_RESOURCE_STATE_PRESENT);
-	}
+		// 先确保 GPU 不再使用旧 backbuffer
+		FlushCommandQueue();
 
-
-	void DX12RHI::CmdSetViewportsAndScissorRects(D3D12_RECT scissorRect, D3D12_VIEWPORT viewport)
-	{
-		m_CurrCmdList->RSSetViewports(1, &viewport);
-		m_CurrCmdList->RSSetScissorRects(1, &scissorRect);
-	}
-
-	void DX12RHI::CmdSetPipelineState(ID3D12PipelineState* pipeline)
-	{
-		m_CurrCmdList->SetPipelineState(pipeline);
-	}
-
-	void DX12RHI::CmdSetGraphicsRootSignature(ID3D12RootSignature* rootSignature)
-	{
-		m_CurrCmdList->SetGraphicsRootSignature(rootSignature);
-	}
-
-	void DX12RHI::CmdSetRenderTargets(UINT numRenderTargetViews, const D3D12_CPU_DESCRIPTOR_HANDLE* pRenderTargetDescriptors, bool RTsSingleHandleToDescriptorRange, const D3D12_CPU_DESCRIPTOR_HANDLE* pDepthStencilDescriptor)
-	{
-		m_CurrCmdList->OMSetRenderTargets(numRenderTargetViews, pRenderTargetDescriptors, RTsSingleHandleToDescriptorRange, pDepthStencilDescriptor);
-	}
-
-	void DX12RHI::CmdSetDescriptorHeaps(const std::vector<ID3D12DescriptorHeap*>& descriptorHeaps)
-	{
-		m_CurrCmdList->SetDescriptorHeaps(descriptorHeaps.size(), &descriptorHeaps[0]);
-	}
-
-	void DX12RHI::CmdSetDescriptorHeaps()
-	{
-		ID3D12DescriptorHeap* descriptorHeaps[] = { m_CbvUavSrvHeap->GetDXHeapPtr(), m_SamplerHeap->GetDXHeapPtr() };
-		m_CurrCmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
-	}
-
-	void DX12RHI::CmdSetGraphicsRootDescriptorTable(UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
-	{
-		m_CurrCmdList->SetGraphicsRootDescriptorTable(RootParameterIndex, BaseDescriptor);
-	}
-
-	void DX12RHI::CmdSetGraphicsRootConstantBufferView(UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
-	{
-		m_CurrCmdList->SetGraphicsRootConstantBufferView(RootParameterIndex, BufferLocation);
-	}
-
-	void DX12RHI::CmdSetVertexBuffers(UINT startSlot, UINT numViews, const D3D12_VERTEX_BUFFER_VIEW* pViews)
-	{
-		m_CurrCmdList->IASetVertexBuffers(startSlot, numViews, pViews);
-	}
-
-	void DX12RHI::CmdSetIndexBuffer(const D3D12_INDEX_BUFFER_VIEW* pView)
-	{
-		m_CurrCmdList->IASetIndexBuffer(pView);
-	}
-
-	void DX12RHI::CmdSetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY PrimitiveTopology)
-	{
-		m_CurrCmdList->IASetPrimitiveTopology(PrimitiveTopology);
-	}
-
-	void DX12RHI::CmdDrawIndexedInstanced(UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation)
-	{
-		m_CurrCmdList->DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
-	}
-
-	photon::FrameResource* DX12RHI::GetCurrFrameResource(FrameResourceType type)
-	{
-		return m_FrameContexts[m_CurrFrameContextIndex]->frameResources[type].get();
-	}
-
-	void DX12RHI::CreateFrameResource(FrameResourceType type, FrameResourceDesc* desc)
-	{
-		for(int i = 0; i < g_FrameContextCount; ++i)
+		// 释放旧的 swapchain buffer 包装
+		for (UINT i = 0; i < g_SwapChainCount; ++i)
 		{
-			switch (type)
+			if (m_swapChainContents[i].backBuffer)
 			{
-			case photon::FrameResourceType::StaticModelFrameResource: 
-			{
-				auto _desc = dynamic_cast<StaticModelFrameResourceDesc*>(desc);
-				auto frameResource = std::make_shared<StaticModelFrameResource>(this, *_desc);
-				m_FrameContexts[i]->frameResources[type] = frameResource;
-				break;
-			}
-			case photon::FrameResourceType::DynamicModelFrameResource:
-				break;
-			default:
-				break;
-			}
-
-
-		}
-	}
-
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> DX12RHI::GetStaticSamplers()
-	{
-		const CD3DX12_STATIC_SAMPLER_DESC pointWrap(0, D3D12_FILTER_MIN_MAG_MIP_POINT,
-			D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
-		const CD3DX12_STATIC_SAMPLER_DESC pointClamp(1, D3D12_FILTER_MIN_MAG_MIP_POINT,
-			D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
-		const CD3DX12_STATIC_SAMPLER_DESC linearWrap(2, D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-			D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
-		const CD3DX12_STATIC_SAMPLER_DESC linearClamp(3, D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-			D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
-		const CD3DX12_STATIC_SAMPLER_DESC anisotropicWrap(4, D3D12_FILTER_ANISOTROPIC,
-			D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
-		const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(5, D3D12_FILTER_ANISOTROPIC,
-			D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
-
-		return { pointWrap, pointClamp,
-				linearWrap, linearClamp,
-				anisotropicWrap, anisotropicClamp };
-	}
-
-	photon::RenderTargetView* DX12RHI::GetCurrBackBufferAsRenderTarget()
-	{
-		return m_SwapChainContents[m_CurrBackBufferIndex].rtview;
-	}
-
-	photon::ShaderResourceView* DX12RHI::GetCurrBackBufferAsShaderResource(const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc)
-	{
-		auto currBackBufferCtx = m_SwapChainContents[m_CurrBackBufferIndex];
-		CreateShaderResourceView(currBackBufferCtx.backBuffer.get(), pDesc, currBackBufferCtx.srview);
-		return currBackBufferCtx.srview;
-	}
-
-
-
-
-	void DX12RHI::InitializeImGui()
-	{
-		DXGI_SWAP_CHAIN_DESC1 desc;
-		m_SwapChain->GetDesc1(&desc);
-		ShaderResourceView* srvView = CreateShaderResourceView();
-		ImGui_ImplDX12_Init(m_Device.Get(), g_FrameContextCount, desc.Format, m_CbvUavSrvHeap->GetDXHeapPtr(),
-			srvView->cpuHandleInHeap, srvView->gpuHandleInHeap);
-	}
-
-	void DX12RHI::CmdDrawImGui()
-	{
-		// Update and Render additional Platform Windows
-		ImGuiIO& io = ImGui::GetIO();
-
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_CurrCmdList);
-		}
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_CurrCmdList);
-	}
-
-	std::shared_ptr<photon::Texture2D> DX12RHI::LoadTextureFromFile(const std::wstring& filepath, std::unique_ptr<uint8_t[]>& decodedData, D3D12_SUBRESOURCE_DATA& subresource, size_t maxsize /*= 0*/, bool bForceLoadSRGB)
-	{
-		Texture2DDesc desc;
-		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-		DX_LogIfFailed(DirectX::LoadWICTextureFromFile(m_Device.Get(), filepath.c_str(), &resource, decodedData, subresource)); 
-
-
-		D3D12_HEAP_PROPERTIES heapProp;
-		D3D12_HEAP_FLAGS heapFlags;
-		resource->GetHeapProperties(&heapProp, &heapFlags);
-		desc = Texture2D::ToPhotonDesc(resource->GetDesc(), (ResourceHeapProperties)(heapProp.Type));
-		std::shared_ptr<Texture2D> retTex = std::make_shared<Texture2D>(desc, resource);
-
-		if(bForceLoadSRGB)
-		{
-			bool reCreate = true;
-			auto newDesc = desc;
-			switch(newDesc.format)
-			{
-			case DXGI_FORMAT_R8G8B8A8_UNORM:
-				newDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-				break;
-			case DXGI_FORMAT_B8G8R8A8_UNORM:
-				newDesc.format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-				break;
-			default:
-				reCreate = false;
-				break;
-			}
-			if(reCreate)
-			{
-				auto newTex = CreateTexture2D(newDesc);
-				CopyDataGpuToGpu(newTex.get(), retTex.get());
-				newTex->SetSRGBOldTexture(retTex);
-				retTex = newTex;
+				m_swapChainContents[i].backBuffer.reset();
 			}
 		}
 
-		return retTex;
+		// 某些驱动下 ResizeBuffers 后 waitable object 也应重新获取
+		if (m_swapChainWaitableObject)
+		{
+			CloseHandle(m_swapChainWaitableObject);
+			m_swapChainWaitableObject = nullptr;
+		}
+
+		DX_LogIfFailed(
+			m_swapChain->ResizeBuffers(
+				g_SwapChainCount,
+				width,
+				height,
+				DXGI_FORMAT_R8G8B8A8_UNORM,
+				DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT));
+
+		DX_LogIfFailed(m_swapChain->SetMaximumFrameLatency(g_SwapChainCount));
+		m_swapChainWaitableObject = m_swapChain->GetFrameLatencyWaitableObject();
+
+		CreateSwapChainRenderTarget();
 	}
 
-	void DX12RHI::CopySubResourceDataCpuToGpu(Resource* dest, Resource* upload, UINT64 uploadOffsetInBytes, D3D12_SUBRESOURCE_DATA* resources, UINT resourcesStartIdx /*= 0*/, UINT resourcesNum /*= 1*/)
+	uint64_t DX12RHI::GetCompletedFenceValue(QueueType queueType) const
 	{
-		ResourceStateTransform(upload, D3D12_RESOURCE_STATE_GENERIC_READ);
-		ResourceStateTransform(dest, D3D12_RESOURCE_STATE_COPY_DEST);
-		UpdateSubresources(m_CurrCmdList, dest->gpuResource.Get(), upload->gpuResource.Get(), uploadOffsetInBytes, resourcesStartIdx, resourcesNum, resources);
+		auto fence = GetFenceByType(queueType);
+		return fence->GetCompletedValue();
 	}
 
-	void DX12RHI::CmdClearDepthStencil(DepthStencilView* view, D3D12_CLEAR_FLAGS ClearFlags, float depth, UINT8 stencil, UINT numRects, const D3D12_RECT* clearRect /*= nullptr*/)
+	uint64_t DX12RHI::SignalQueue(QueueType queueType)
 	{
-		ResourceStateTransform(view->resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-		m_CurrCmdList->ClearDepthStencilView(view->cpuHandleInHeap, ClearFlags, depth, stencil, numRects, clearRect);
-	}
+		switch (queueType)
+		{
+		case QueueType::Graphics:
+			m_graphicsQueue->Signal(m_graphicsFence.Get(), m_graphicsFenceValue);
+			return m_graphicsFenceValue++;
+		case QueueType::Compute:
+			m_computeQueue->Signal(m_computeFence.Get(), m_computeFenceValue);
+			return m_computeFenceValue++;
+		case QueueType::Copy:
+			m_copyQueue->Signal(m_copyFence.Get(), m_copyFenceValue);
+			return m_copyFenceValue++;
+		}
 
-	void DX12RHI::CmdClearRenderTarget(RenderTargetView* view, Vector4 clearRGBA, UINT numRects, const D3D12_RECT* clearRect /*= nullptr*/)
+		return 0;
+	}
+	
+	uint64_t DX12RHI::GetResourceSizeInBytes(ID3D12Resource* pResource)
 	{
-		ResourceStateTransform(view->resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		float clearRGBAFloats[4] = { clearRGBA.x, clearRGBA.y, clearRGBA.z, clearRGBA.w };
-		m_CurrCmdList->ClearRenderTargetView(view->cpuHandleInHeap, clearRGBAFloats, numRects, clearRect);
+		if (!pResource)
+			return 0;
+
+		D3D12_RESOURCE_DESC desc = pResource->GetDesc();
+		// 如果是buffer，直接查width即可
+		if (desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+			return desc.Width;
+
+		// 否则直接调用API查找即可
+		D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &desc);
+		return info.SizeInBytes;
 	}
 
-	photon::ConstantBufferView* DX12RHI::CreateConstantBufferView(const D3D12_CONSTANT_BUFFER_VIEW_DESC* pDesc, ConstantBufferView* thisView /*= nullptr*/)
+	UINT DX12RHI::GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE type) const
 	{
-		return m_CbvUavSrvHeap->CreateConstantBufferView(pDesc, thisView);
+		return m_device->GetDescriptorHandleIncrementSize(type);
 	}
 
-	photon::ConstantBufferView* DX12RHI::CreateConstantBufferView()
+	HRESULT DX12RHI::CreateDXBuffer(const DXBufferDesc& desc, DXBuffer& outResource)
 	{
-		return m_CbvUavSrvHeap->CreateConstantBufferView();
+		static uint64_t name_id = 1;
+
+		Microsoft::WRL::ComPtr<ID3D12Resource> res;
+		D3D12_RESOURCE_DESC dxDesc = DXBuffer::ToDxDesc(desc);
+		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
+
+		D3D12_RESOURCE_STATES state = DXBuffer::GetInitialResourceState(desc);
+		auto ret = m_device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+			state, nullptr, IID_PPV_ARGS(&res));
+		DX_LogIfFailed(ret);
+
+		outResource.Initialize(desc, res, outResource.GetClassNameID() + "_" + std::to_string(name_id++));
+
+		return ret;
 	}
 
-	photon::ShaderResourceView* DX12RHI::CreateShaderResourceView(Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC* pDesc, ShaderResourceView* thisView /*= nullptr*/)
+	HRESULT DX12RHI::CreateDXTexture2D(const DXTexture2DDesc& desc, DXTexture2D& outResource)
 	{
-		return m_CbvUavSrvHeap->CreateShaderResourceView(resource, pDesc, thisView);
+		static uint64_t name_id = 1;
+
+		Microsoft::WRL::ComPtr<ID3D12Resource> res;
+		D3D12_RESOURCE_DESC dxDesc = DXTexture2D::ToDxDesc(desc);
+		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
+
+		D3D12_RESOURCE_STATES state = DXTexture2D::GetInitialResourceState(desc);
+		D3D12_CLEAR_VALUE clearValue = DXTexture2D::ToDXTextureDesc(desc).clearValue;
+		HRESULT hr = m_device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+			state, desc.hasClearValue ? &clearValue : nullptr, IID_PPV_ARGS(&res));
+
+		DX_LogIfFailed(hr);
+
+		outResource.Initialize(desc, res, outResource.GetClassNameID() + "_" + std::to_string(name_id++));
+
+		return hr;
 	}
 
-	photon::ShaderResourceView* DX12RHI::CreateShaderResourceView()
+	HRESULT DX12RHI::CreateDXTexture2DArray(const DXTexture2DArrayDesc& desc, DXTexture2DArray& outResource)
 	{
-		return m_CbvUavSrvHeap->CreateShaderResourceView();
+		static uint64_t name_id = 1;
+
+		Microsoft::WRL::ComPtr<ID3D12Resource> res;
+		D3D12_RESOURCE_DESC dxDesc = DXTexture2DArray::ToDxDesc(desc);
+		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
+		// 创建在upload堆的资源只能被GPU读，无法进行其他操作
+		D3D12_RESOURCE_STATES state = DXTexture2DArray::GetInitialResourceState(desc);
+		D3D12_CLEAR_VALUE clearValue = DXTexture2DArray::ToDXTextureDesc(desc).clearValue;
+		HRESULT hr = m_device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+			state, desc.hasClearValue ? &clearValue : nullptr, IID_PPV_ARGS(&res));
+
+		DX_LogIfFailed(hr);
+
+		outResource.Initialize(desc, res, outResource.GetClassNameID() + "_" + std::to_string(name_id++));
+
+		return hr;
 	}
 
-	photon::UnorderedAccessView* DX12RHI::CreateUnorderedAccessView(Resource* resource, Resource* counterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC* pDesc, UnorderedAccessView* thisView /*= nullptr*/)
+	HRESULT DX12RHI::CreateDXTexture3D(const DXTexture3DDesc& desc, DXTexture3D& outResource)
 	{
-		return m_CbvUavSrvHeap->CreateUnorderedAccessView(resource, counterResource, pDesc, thisView);
+		static uint64_t name_id = 1;
+
+		Microsoft::WRL::ComPtr<ID3D12Resource> res;
+		D3D12_RESOURCE_DESC dxDesc = DXTexture3D::ToDxDesc(desc);
+		CD3DX12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES((D3D12_HEAP_TYPE)desc.heapProp);
+
+		D3D12_RESOURCE_STATES state = DXTexture3D::GetInitialResourceState(desc);
+		auto ret = m_device->CreateCommittedResource(&heapProp, D3D12_HEAP_FLAG_NONE, &dxDesc,
+			state, nullptr, IID_PPV_ARGS(&res));
+		DX_LogIfFailed(ret);
+
+		outResource.Initialize(desc, res, outResource.GetClassNameID() + "_" + std::to_string(name_id++));
+
+		return ret;
 	}
 
-	photon::UnorderedAccessView* DX12RHI::CreateUnorderedAccessView()
-	{
-		return m_CbvUavSrvHeap->CreateUnorderedAccessView();
-	}
-
-	photon::DepthStencilView* DX12RHI::CreateDepthStencilView(Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC* pDesc, DepthStencilView* thisView /*= nullptr*/)
-	{
-		return m_DsvHeap->CreateDepthStencilView(resource, pDesc, thisView);
-	}
-
-	photon::DepthStencilView* DX12RHI::CreateDepthStencilView()
-	{
-		return m_DsvHeap->CreateDepthStencilView();
-	}
-
-	photon::RenderTargetView* DX12RHI::CreateRenderTargetView(Resource* resource, const D3D12_RENDER_TARGET_VIEW_DESC* pDesc, RenderTargetView* thisView /*= nullptr*/)
-	{
-		return m_RtvHeap->CreateRenderTargetView(resource, pDesc, thisView);
-	}
-
-	photon::RenderTargetView* DX12RHI::CreateRenderTargetView()
-	{
-		return m_RtvHeap->CreateRenderTargetView();
-	}
-
-	photon::SamplerView* DX12RHI::CreateSampler(const D3D12_SAMPLER_DESC* pDesc, SamplerView* thisView /*= nullptr*/)
-	{
-		return m_SamplerHeap->CreateSampler(pDesc, thisView);
-	}
-
-	photon::SamplerView* DX12RHI::CreateSampler()
-	{
-		return m_SamplerHeap->CreateSampler();
-	}
-
-	std::shared_ptr<photon::ConstantBuffer> DX12RHI::CreateConstantBuffer(unsigned int elementCount, unsigned int singleElementSizeInBytes)
-	{
-		unsigned int constantBufferStrideBytes = RenderUtil::GetConstantBufferByteSize(singleElementSizeInBytes);
-		UINT64 constantBufferSizeInBytes = elementCount * constantBufferStrideBytes;
-		
-		BufferDesc defaultBufferDesc;
-		defaultBufferDesc.bufferSizeInBytes = constantBufferSizeInBytes;
-		defaultBufferDesc.cpuResource = nullptr;
-		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
-		auto buffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
-
-		BufferDesc uploadBufferDesc;
-		uploadBufferDesc.bufferSizeInBytes = constantBufferSizeInBytes;
-		defaultBufferDesc.cpuResource = nullptr;
-		defaultBufferDesc.heapProp = ResourceHeapProperties::Upload;
-		auto uploadBuffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
-
-		return std::make_shared<ConstantBuffer>(buffer, uploadBuffer, elementCount, singleElementSizeInBytes, constantBufferStrideBytes, constantBufferStrideBytes);
-	}
-
-	std::shared_ptr<photon::ResourceManager> DX12RHI::GetResourceManager()
-	{
-		return m_ResourceManager;
-	}
-
-	std::shared_ptr<photon::VertexBuffer> DX12RHI::CreateVertexBuffer(VertexType type, const void* data, UINT64 sizeInBytes)
-	{
-
-		BufferDesc defaultBufferDesc;
-		defaultBufferDesc.bufferSizeInBytes = sizeInBytes;
-		defaultBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(data, sizeInBytes);
-		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
-		auto vertexBuffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
-		ResourceStateTransform(vertexBuffer.get(), D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-		
-		return std::make_shared<VertexBuffer>(vertexBuffer, type);
-	}
-
-	std::shared_ptr<photon::IndexBuffer> DX12RHI::CreateIndexBuffer(const void* data, UINT64 sizeInBytes)
-	{
-		BufferDesc defaultBufferDesc;
-		defaultBufferDesc.bufferSizeInBytes = sizeInBytes;
-		defaultBufferDesc.cpuResource = RenderUtil::CreateD3DBlob(data, sizeInBytes);
-		defaultBufferDesc.heapProp = ResourceHeapProperties::Default;
-		auto indexBuffer = m_ResourceManager->CreateBuffer(defaultBufferDesc);
-		ResourceStateTransform(indexBuffer.get(), D3D12_RESOURCE_STATE_INDEX_BUFFER);
-		return std::make_shared<IndexBuffer>(indexBuffer);
-	}
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> DX12RHI::CreateGraphicsPipelineState(const D3D12_GRAPHICS_PIPELINE_STATE_DESC* desc)
 	{
 		Microsoft::WRL::ComPtr<ID3D12PipelineState> ret;
-		DX_LogIfFailed(m_Device->CreateGraphicsPipelineState(desc, IID_PPV_ARGS(&ret)));
+		DX_LogIfFailed(m_device->CreateGraphicsPipelineState(desc, IID_PPV_ARGS(&ret)));
 		return ret;
 	}
 
-	void DX12RHI::CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource)
+	uint32_t DX12RHI::GetCurrentBackBufferIndex() const
 	{
-		ResourceStateTransform(dstResource, D3D12_RESOURCE_STATE_COPY_DEST);
-		ResourceStateTransform(srcResource, D3D12_RESOURCE_STATE_GENERIC_READ);
-		m_CurrCmdList->CopyResource(dstResource->gpuResource.Get(), srcResource->gpuResource.Get());
+		return m_frameSyncSystem->GetCurrentFrameIndex();
 	}
 
-	void DX12RHI::CopyDataGpuToGpu(Resource* dstResource, Resource* srcResource, UINT64 dstStartPosInBytes, UINT64 srcStartPosInBytes, UINT64 sizeInBytes)
+	DXTexture2D* DX12RHI::GetCurrBackbuffer()
 	{
-		ResourceStateTransform(dstResource, D3D12_RESOURCE_STATE_COPY_DEST);
-		ResourceStateTransform(srcResource, D3D12_RESOURCE_STATE_GENERIC_READ);
-		m_CurrCmdList->CopyBufferRegion(dstResource->gpuResource.Get(), dstStartPosInBytes, srcResource->gpuResource.Get(), srcStartPosInBytes, sizeInBytes);
+		return m_swapChainContents[GetCurrentBackBufferIndex()].backBuffer.get();
 	}
 
-	void DX12RHI::CopyDataCpuToGpu(Resource* dstResource, const void* data, UINT64 sizeInBytes)
+	DXTexture2D* DX12RHI::GetBackbuffer(uint32_t idx)
 	{
-		auto dst = dstResource->gpuResource.Get();
-		void* mappedData = nullptr;
-		dst->Map(0, nullptr, &mappedData);
-		CopyMemory(mappedData, data, sizeInBytes);
-		dst->Unmap(0, nullptr);
+		return m_swapChainContents[idx].backBuffer.get();
 	}
 
 
-	void DX12RHI::CopyDataCpuToGpu(Resource* dstResource, UINT64 startPosInBytes, const void* data, UINT64 sizeInBytes)
+	ID3D12CommandQueue* DX12RHI::GetQueueByType(QueueType type) const
 	{
-		auto dst = dstResource->gpuResource.Get();
-		void* mappedData = nullptr;
-		dst->Map(0, nullptr, &mappedData);
-		CopyMemory((char*)mappedData + startPosInBytes, data, sizeInBytes);
-		dst->Unmap(0, nullptr);
-	}
-
-
-	void DX12RHI::CopyTextureSubRegionGpuToGpu(Resource* dest, Resource* src, UINT32 destArrayIndex, Vector3i destResourceCoords, UINT32 srcArrayIndex /*= 0*/, Vector3i srcResourceCoordsStart /*=*/, Vector3i srcResourceCoordsEnd /*= */)
-	{
-		ResourceStateTransform(dest, D3D12_RESOURCE_STATE_COPY_DEST);
-		ResourceStateTransform(src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		D3D12_TEXTURE_COPY_LOCATION destLoc;
-		destLoc.pResource = dest->gpuResource.Get();
-		destLoc.SubresourceIndex = destArrayIndex;
-		destLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		D3D12_TEXTURE_COPY_LOCATION srcLoc;
-		srcLoc.pResource = src->gpuResource.Get();
-		srcLoc.SubresourceIndex = srcArrayIndex;
-		srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		D3D12_BOX srcBox;
-		srcBox.left = srcResourceCoordsStart.x;
-		srcBox.top = srcResourceCoordsStart.y;
-		srcBox.front = srcResourceCoordsStart.z;
-
-		srcBox.right = srcResourceCoordsEnd.x == -1 ? src->dxDesc.Width : srcResourceCoordsEnd.x;
-		srcBox.bottom = srcResourceCoordsEnd.y == -1 ? src->dxDesc.Height : srcResourceCoordsEnd.y;
-		srcBox.back = srcResourceCoordsEnd.z == -1 ? src->dxDesc.DepthOrArraySize : srcResourceCoordsEnd.z;
-
-
-		m_CurrCmdList->CopyTextureRegion(&destLoc, destResourceCoords.x, destResourceCoords.y, destResourceCoords.z, &srcLoc, &srcBox);
-	}
-
-	void DX12RHI::CopyTexturesToCubemap(Resource* cubemap, const std::array<std::shared_ptr<Texture2D>, 6>& textures)
-	{
-		for(int i = 0; i < textures.size(); ++i)
+		switch (type)
 		{
-			assert(cubemap->dxDesc.Width == textures[i]->dxDesc.Width);
-			assert(cubemap->dxDesc.Height == textures[i]->dxDesc.Height);
-			CopyTextureSubRegionGpuToGpu(cubemap, textures[i].get(), i);
+		case QueueType::Graphics:
+			return m_graphicsQueue.Get();
+		case QueueType::Compute:
+			return m_computeQueue.Get();
+		case QueueType::Copy:
+			return m_copyQueue.Get();
+		default:
+			return nullptr;
 		}
 	}
 
-	void DX12RHI::Clear()
+	ID3D12Fence* DX12RHI::GetFenceByType(QueueType type) const
+	{
+		switch (type)
+		{
+		case QueueType::Graphics:
+			return m_graphicsFence.Get();
+		case QueueType::Compute:
+			return m_computeFence.Get();
+		case QueueType::Copy:
+			return m_copyFence.Get();
+		default:
+			return nullptr;
+		}
+	}
+
+	void DX12RHI::Shutdown()
 	{
 		FlushCommandQueue();
-		// Clean DX12 Resource
-		if(m_SwapChain)
+		// Clean DX12 DXResource
+		if(m_swapChain)
 		{
-			m_SwapChain->SetFullscreenState(false, nullptr); 
+			m_swapChain->SetFullscreenState(false, nullptr); 
 		}
 	}
 
 
 	void DX12RHI::OnWindowResize(const WindowResizeEvent& e)
 	{
-		ReCreateSwapChain();
+		// 新体系里由 RenderSystem 统一处理 resize：
+			// 1. Resize swapchain
+			// 2. Recreate sceneColor / sceneDepth
+			// 3. Recreate postprocess targets
 	}
 
 }

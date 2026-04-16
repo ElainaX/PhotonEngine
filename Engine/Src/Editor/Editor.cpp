@@ -1,4 +1,4 @@
-﻿#include "Editor.h"
+#include "Editor.h"
 #include "EditorGlobalContext.h"
 #include "Function/Global/RuntimeGlobalContext.h"
 

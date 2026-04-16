@@ -1,4 +1,4 @@
-﻿#include "ShaderMacros.h"
+#include "ShaderMacros.h"
 
 namespace photon 
 {

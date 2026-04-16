@@ -1,4 +1,4 @@
-﻿#include "InputSystem.h"
+#include "InputSystem.h"
 
 #include "Function/Render/WindowSystem.h"
 #include "Function/Render/RenderSystem.h"

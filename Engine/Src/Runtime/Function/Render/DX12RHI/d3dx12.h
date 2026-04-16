@@ -7037,7 +7037,7 @@ public:
 class CD3DX12FeatureSupport
 {
 public: // Function declaration
-    // Default constructor that creates an empty object
+    // DefaultBuffer constructor that creates an empty object
     CD3DX12FeatureSupport() noexcept;
 
     // Initialize data from the given device
@@ -7789,7 +7789,7 @@ inline HRESULT CD3DX12FeatureSupport::FormatInfo(DXGI_FORMAT Format, UINT8& Plan
 // MaxGPUVirtualAddressBitsPerResource handled in D3D12Options
 FEATURE_SUPPORT_GET(UINT, m_dGPUVASupport, MaxGPUVirtualAddressBitsPerProcess);
 
-// 7: Shader Model
+// 7: Shader ModelAsset
 inline D3D_SHADER_MODEL CD3DX12FeatureSupport::HighestShaderModel() const noexcept
 {
     return m_dShaderModel.HighestShaderModel;
@@ -7803,7 +7803,7 @@ FEATURE_SUPPORT_GET(UINT, m_dOptions1, TotalLaneCount);
 FEATURE_SUPPORT_GET(BOOL, m_dOptions1, ExpandedComputeResourceStates);
 FEATURE_SUPPORT_GET(BOOL, m_dOptions1, Int64ShaderOps);
 
-// 10: Protected Resource Session Support
+// 10: Protected DXResource Session Support
 inline D3D12_PROTECTED_RESOURCE_SESSION_SUPPORT_FLAGS CD3DX12FeatureSupport::ProtectedResourceSessionSupport(UINT NodeIndex) const
 {
     return m_dProtectedResourceSessionSupport[NodeIndex].Support;
@@ -7894,10 +7894,10 @@ inline HRESULT CD3DX12FeatureSupport::QueryMetaCommand(D3D12_FEATURE_DATA_QUERY_
 FEATURE_SUPPORT_GET(D3D12_MESH_SHADER_TIER, m_dOptions7, MeshShaderTier);
 FEATURE_SUPPORT_GET(D3D12_SAMPLER_FEEDBACK_TIER, m_dOptions7, SamplerFeedbackTier);
 
-// 33: Protected Resource Session Type Count
+// 33: Protected DXResource Session Type Count
 FEATURE_SUPPORT_GET_NODE_INDEXED_NAME(UINT, m_dProtectedResourceSessionTypeCount, Count, ProtectedResourceSessionTypeCount);
 
-// 34: Protected Resource Session Types
+// 34: Protected DXResource Session Types
 FEATURE_SUPPORT_GET_NODE_INDEXED_NAME(std::vector<GUID>, m_dProtectedResourceSessionTypes, TypeVec, ProtectedResourceSessionTypes);
 
 #if defined(D3D12_SDK_VERSION) && (D3D12_SDK_VERSION >= 3)

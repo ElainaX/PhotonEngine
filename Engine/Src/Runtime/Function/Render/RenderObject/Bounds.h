@@ -5,12 +5,12 @@
 namespace photon 
 {
 
-	struct Bounds
-	{
-		virtual Bounds Intersect(const Bounds& rhs) = 0;
-		virtual Bounds Union(const Bounds& rhs) = 0;
-		virtual bool isIntersect(const Bounds& rhs) = 0;
-	};
+	//struct Bounds
+	//{
+	//	virtual Bounds Intersect(const Bounds& rhs);
+	//	virtual Bounds Union(const Bounds& rhs);
+	//	virtual bool isIntersect(const Bounds& rhs);
+	//};
 
 
 }

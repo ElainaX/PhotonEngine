@@ -1,39 +1,47 @@
-﻿#pragma once
-#include "RenderType.h"
-#include "PassBlackboard.h"
-
+#pragma once
+#include "RenderTypes.h"
+#include "RenderPass/PassBlackboard.h"
 #include "EGFrameContext.h"
-#include <memory>
+#include "RenderPass/PassContext.h"
+#include "Function/UI/ImGuiSystem.h"
 
 namespace photon 
 {
-	class RHI;
-	class RenderResourceData;
 	class WindowUI;
 	class EG_FrameContext;
 
 	struct RenderPipelineCreateInfo
 	{
-		virtual ~RenderPipelineCreateInfo() {}
+		virtual ~RenderPipelineCreateInfo() = default;
+		RenderPipelineServices services = {};
 	};
 
 	class RenderPipeline
 	{
 	public:
 		RenderPipeline(RenderPipelineType renderPipelineType = RenderPipelineType::ForwardPipeline)
-			: m_Type(renderPipelineType){}
+			: m_type(renderPipelineType){}
 
-		virtual void Render(EG_FrameContext* frame) = 0;
-		virtual void Initialize(RenderPipelineCreateInfo* createInfo) = 0;
-		virtual void PrepareContext(EG_FrameContext* frame) = 0;
-		virtual void SetCurrEditorUI(WindowUI* ui) = 0;
-		virtual void Stop() = 0;
-		virtual void ReStart() = 0;
+		virtual ~RenderPipeline() = default;
+
+		virtual void Initialize(const RenderPipelineCreateInfo& createInfo) = 0;
+		virtual void Prepare(EG_FrameContext& frame) = 0;
+		virtual void Execute(EG_FrameContext& frame) = 0;
+
+
+		virtual void SetCurrEditorUI(WindowUI* ui) { m_ui = ui; }
+		virtual void SetImGuiSystem(ImGuiSystem* imguiSystem)
+		{
+			m_services.imguiSystem = imguiSystem;
+		}
+		virtual void Stop() {};
+		virtual void ReStart() {};
 
 	protected:
-		RenderPipelineType m_Type = RenderPipelineType::ForwardPipeline;
-
-		PassBlackboard m_BB;
+		RenderPipelineType m_type = RenderPipelineType::ForwardPipeline;
+		RenderPipelineServices m_services = {};
+		PassBlackboard m_blackboard = {};
+		WindowUI* m_ui = nullptr;
 	};
 
 }

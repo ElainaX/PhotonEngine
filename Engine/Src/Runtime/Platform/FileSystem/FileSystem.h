@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <vector>
 #include <filesystem>
@@ -6,22 +6,22 @@
 
 namespace photon 
 {
-	const std::filesystem::path g_AssetTextureFolder = L"E:/Code/PhotonEngine/Engine/Assets/Texture";
-	const std::filesystem::path g_AssetTextureCubemapFolder = L"E:/Code/PhotonEngine/Engine/Assets/Texture/Cubemap";
-	const std::filesystem::path g_AssetModelFolder = L"E:/Code/PhotonEngine/Engine/Assets/Model";
-	const std::wstring g_ShaderFileFolder = L"E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders/";
-	const std::filesystem::path g_AssetFolder = L"E:/Code/PhotonEngine/Engine/Assets";
-	const std::filesystem::path g_EditorFolder = L"E:/Code/PhotonEngine/Engine/Src/Editor";
+	const std::filesystem::path g_AssetTextureFolder = "E:/Code/PhotonEngine/Engine/Assets/Texture";
+	const std::filesystem::path g_AssetTextureCubemapFolder = "E:/Code/PhotonEngine/Engine/Assets/Texture/Cubemap";
+	const std::filesystem::path g_AssetModelFolder = "E:/Code/PhotonEngine/Engine/Assets/Model";
+	const std::filesystem::path g_AssetShaderFolder = "E:/Code/PhotonEngine/Engine/Src/Runtime/Function/Render/Shaders";
+	const std::filesystem::path g_AssetFolder = "E:/Code/PhotonEngine/Engine/Assets";
+	const std::filesystem::path g_EditorFolder = "E:/Code/PhotonEngine/Engine/Src/Editor";
 
 	class FileSystem
 	{
 	public:
 
-		static std::vector<std::filesystem::path> GetFiles(const std::filesystem::path& directory, 
-			const std::wstring& extension = L"");
+		static std::vector<std::filesystem::path> GetFiles(const std::filesystem::path& directory,
+		                                                   const std::string& extension = "");
 
-		static std::vector<std::filesystem::path> GetFilesRecursive(const std::filesystem::path& directory, 
-			const std::wstring& extension = L"");
+		static std::vector<std::filesystem::path> GetFilesRecursive(const std::filesystem::path& directory,
+		                                                            const std::string& extension = "");
 
 
 	};
@@ -32,12 +32,12 @@ namespace photon
 		static const std::filesystem::path GetRelativePath(const std::filesystem::path& directory, 
 			const std::filesystem::path& filePath);
 
-		static const std::vector<std::wstring> GetPathSegments(const std::filesystem::path& filePath);
+		static const std::vector<std::string> GetPathSegments(const std::filesystem::path& filePath);
 
-		static const std::tuple<std::wstring, std::wstring, std::wstring>
-			GetFileExtensions(const std::filesystem::path& filePath);
+		static const std::tuple<std::string, std::string, std::string>
+		GetFileExtensions(const std::filesystem::path& filePath);
 
-		static const std::wstring GetFilePureName(const std::wstring& filePath);
+		static const std::string GetFilePureName(const std::string& filePath);
 
 		static const std::filesystem::path GetFileFolder(const std::filesystem::path& path);
 	};

@@ -1,4 +1,4 @@
-﻿#include "MouseEvent.h"
+#include "MouseEvent.h"
 
 #include <format>
 #include <windowsx.h>

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Function/Render/RenderSystem.h"
 #include "Function/Render/WindowSystem.h"
 
@@ -16,6 +16,7 @@ namespace photon
 	public:
 		virtual void Initialize(const WindowUIInitInfo& initInfo) = 0;
 		virtual void PreRender() = 0;
+		virtual ~WindowUI() = default;
 	};
 
 
