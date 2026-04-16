@@ -231,9 +231,12 @@ namespace photon
 					if (face.mNumIndices != 3)
 						continue;
 
-					indices.push_back(baseVertex + face.mIndices[0]);
+					/*indices.push_back(baseVertex + face.mIndices[0]);
 					indices.push_back(baseVertex + face.mIndices[1]);
-					indices.push_back(baseVertex + face.mIndices[2]);
+					indices.push_back(baseVertex + face.mIndices[2]);*/
+					indices.push_back(face.mIndices[0]);
+					indices.push_back(face.mIndices[1]);
+					indices.push_back(face.mIndices[2]);
 					sub.indexCount += 3;
 				}
 
@@ -403,12 +406,6 @@ namespace photon
 			LOG_ERROR("LoadModel path is empty");
 			return nullptr;
 		}
-
-		//if (!HasObjExtension(path))
-		//{
-		//	LOG_ERROR("LoadModel currently only supports .obj : {}", path.string());
-		//	return nullptr;
-		//}
 
 		const std::filesystem::path absPath = std::filesystem::absolute(path).lexically_normal();
 		const Guid modelGuid = MakeGuidFromPathAndSuffix(absPath, "model");
@@ -638,6 +635,8 @@ namespace photon
 		MaterialAsset asset = ImportMaterialAsset({}, shaderHandle);
 		asset.meta.guid = MakeGuidFromString(debugName + std::to_string(m_materialAssets.size() + 1));
 		asset.meta.debugName = debugName;
+		asset.matConstant = { .semantic = ShaderParameterScope::Material, .name = "MatConstant" };
+		asset.matConstant.bytes.resize(sizeof(PbrMaterialData));
 		m_materialAssets[asset.meta.guid] = asset;
 		MaterialHandle h = m_materialCollection->CreateFromAsset(asset);
 		m_materialGuidToHandle[asset.meta.guid] = h;

@@ -93,9 +93,9 @@ namespace photon
 		houseItem->mesh = m_resourceManager->GetMeshHandleByGuid(houseModel->meshGuid);
 		houseItem->layers = RenderLayer::Opaque | RenderLayer::ShadowCaster;
 		houseItem->flags.castShadow = true;
-		houseItem->overrideMaterials.push_back(pbrMat);
-		houseItem->overrideMaterials.push_back(pbrMat);
-		houseItem->overrideMaterials.push_back(pbrMat);
+		//houseItem->overrideMaterials.push_back(pbrMat);
+		//houseItem->overrideMaterials.push_back(pbrMat);
+		//houseItem->overrideMaterials.push_back(pbrMat);
 		m_resourceManager->SetMeshShader(houseItem->mesh, pbrShader);
 		{
 			XMMATRIX world = XMMatrixScaling(0.001f, 0.001f, 0.001f);
@@ -107,9 +107,9 @@ namespace photon
 		floorItem->mesh = m_resourceManager->GetMeshHandleByGuid(floorModel->meshGuid);
 		floorItem->layers = RenderLayer::Opaque | RenderLayer::ShadowCaster;
 		floorItem->flags.castShadow = true;
-		floorItem->overrideMaterials.push_back(pbrMat);
-		floorItem->overrideMaterials.push_back(pbrMat);
-		floorItem->overrideMaterials.push_back(pbrMat);
+		//floorItem->overrideMaterials.push_back(pbrMat);
+		//floorItem->overrideMaterials.push_back(pbrMat);
+		//floorItem->overrideMaterials.push_back(pbrMat);
 		m_resourceManager->SetMeshShader(floorItem->mesh, pbrShader);
 		{
 			XMMATRIX world =
